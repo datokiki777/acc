@@ -1,0 +1,21 @@
+{
+  "name": "ACC",
+  "short_name": "ACC",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f2447",
+  "theme_color": "#0f2447",
+  "description": "Accounts app for tracking people, balances and stages.",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
