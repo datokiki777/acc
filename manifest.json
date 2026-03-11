@@ -1,7 +1,7 @@
 {
   "id": "/accounts-app",
-  "name": "Accounts",
-  "short_name": "Accounts",
+  "name": "ACC",
+  "short_name": "ACC",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
