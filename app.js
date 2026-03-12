@@ -2246,14 +2246,11 @@ function openOverviewPersonDetail(personId) {
                   >
                     <div class="swipe-content">
                       <div class="closed-stage-head" data-toggle-closed-stage="${stage.id}">
-                        <div class="closed-stage-col closed-stage-left">
-                          <div class="stage-title-row">
-                            <span class="sheet-item-title">${escapeHtml(stage.name)}</span>
-                            <span class="mini-count-badge">${(stage.entries || []).length}</span>
-                          </div>
+                        <div class="closed-stage-left-group">
+                          <span class="closed-stage-name">${escapeHtml(stage.name)}</span>
+                          <span class="mini-count-badge">${(stage.entries || []).length}</span>
                         </div>
-
-                        <div class="closed-stage-col closed-stage-right">
+                        <div class="closed-stage-right-group">
                           <span class="closed-stage-balance ${balanceClass(stageBalance(stage))}">
                             ${formatMoney(stageBalance(stage), stageCurrency(stage))}
                           </span>
