@@ -1744,6 +1744,8 @@ main{
 .currency-breakdown{
   display:flex;
   flex-wrap:wrap;
+  flex-direction:row-reverse;
+  justify-content:flex-start;
   gap:8px;
 }
 
