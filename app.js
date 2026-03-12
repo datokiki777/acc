@@ -1734,11 +1734,6 @@ function closeModal() {
     fab.classList.remove("fab-hidden");
   }
 
-  if (history.state && history.state.modal) {
-    _suppressPopstate = true;
-    history.back();
-  }
-
   requestAnimationFrame(() => render());
 }
 
@@ -1749,7 +1744,21 @@ window.addEventListener("popstate", () => {
   }
 
   if (modalOverlay.classList.contains("show")) {
-    closeModal();
+    // modal დახურვა history.back() გარეშე — pushState უკვე გაკეთდა გახსნისას
+    modalOverlay.classList.remove("show");
+    modalContent.innerHTML = "";
+    fab.classList.remove("fab-back");
+    fab.style.pointerEvents = "";
+    fab.style.opacity = "";
+    fab.textContent = "+";
+    fab.onclick = openMainAddMenu;
+    const anyExpanded = state.people.some(p => p.expanded);
+    if (anyExpanded) {
+      fab.classList.add("fab-hidden");
+    } else {
+      fab.classList.remove("fab-hidden");
+    }
+    requestAnimationFrame(() => render());
     return;
   }
 
@@ -1758,19 +1767,17 @@ window.addEventListener("popstate", () => {
     return;
   }
 
+  if (state.statsExpanded) {
+    state.statsExpanded = false;
+    render();
+    return;
+  }
+
   const anyExpanded = state.people.some(p => p.expanded);
   if (anyExpanded) {
     state.people.forEach(p => { p.expanded = false; });
     saveData();
     render();
-    history.pushState({ cards: true }, "");
-    return;
-  }
-
-  if (state.statsExpanded) {
-    state.statsExpanded = false;
-    render();
-    history.pushState({ cards: true }, "");
     return;
   }
 });
