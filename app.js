@@ -2560,9 +2560,6 @@ function scheduleAndroidInstallPrompt() {
   if (!deferredInstallPrompt) return;
   if (isRunningStandalone()) return;
 
-  const dismissed = localStorage.getItem("acc-install-dismissed") === "1";
-  if (dismissed) return;
-
   clearTimeout(installPromptTimer);
 
   installPromptTimer = setTimeout(() => {
@@ -2575,9 +2572,6 @@ function scheduleAndroidInstallPrompt() {
 function scheduleIosInstallPrompt() {
   if (!isIosDevice()) return;
   if (isRunningStandalone()) return;
-
-  const dismissed = localStorage.getItem("acc-ios-install-dismissed") === "1";
-  if (dismissed) return;
 
   clearTimeout(installPromptTimer);
 
@@ -2616,8 +2610,6 @@ window.addEventListener("appinstalled", () => {
   hideIosInstallPromptUI();
   hideUpdatePromptUI();
 
-  localStorage.setItem("acc-install-dismissed", "1");
-  localStorage.setItem("acc-ios-install-dismissed", "1");
 });
 
 if (installPromptLaterBtn) {
