@@ -1047,12 +1047,42 @@ main{
 }
 
 .closed-stage-head{
-  display:grid;
-  grid-template-columns:minmax(0, 1fr) auto;
+  display:flex;
+  flex-direction:row;
   align-items:center;
-  gap:14px;
-  padding:12px 14px;
+  gap:0;
+  padding:9px 14px;
   cursor:pointer;
+}
+
+/* მარცხენა ჯგუფი: სახელი + ბეჯი */
+.closed-stage-left-group{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:7px;
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+}
+
+.closed-stage-name{
+  font-size:14px;
+  font-weight:800;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* მარჯვენა ჯგუფი: თანხა + ისარი */
+.closed-stage-right-group{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+  margin-left:10px;
 }
 
 .closed-stage-left,
@@ -1060,43 +1090,16 @@ main{
   min-width:0;
 }
 
-.closed-stage-right{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  justify-content:flex-end;
-  text-align:right;
-  flex-shrink:0;
-  margin-left:auto;
-  white-space:nowrap;
-}
-
-.closed-stage-left .sheet-item-title{
-  display:block;
-  font-size:17px;
-  font-weight:900;
-  line-height:1.2;
-}
-
-.closed-stage-center .sheet-item-sub{
-  display:block;
-  margin:0;
-  font-size:13px;
-  line-height:1.35;
-  word-break:break-word;
-  color:var(--muted);
-}
-
 .closed-stage-balance{
-  font-size:15px;
-  font-weight:900;
+  font-size:13px;
+  font-weight:800;
   white-space:nowrap;
 }
 
 .closed-stage-count{
-  min-width:26px;
-  height:26px;
-  padding:0 8px;
+  min-width:24px;
+  height:24px;
+  padding:0 7px;
   border-radius:999px;
   display:inline-flex;
   align-items:center;
@@ -1112,7 +1115,7 @@ main{
   align-items:center;
   justify-content:center;
   min-width:16px;
-  font-size:22px;
+  font-size:20px;
   font-weight:900;
   line-height:1;
   flex-shrink:0;
