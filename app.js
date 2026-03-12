@@ -2740,7 +2740,3 @@ state.statsExpanded = false;
 syncModeButtons();
 render();
 maybeShowIosInstallPrompt();
-
-setTimeout(() => {
-  showUpdatePromptUI();
-}, 2000);
