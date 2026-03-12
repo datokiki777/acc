@@ -2468,12 +2468,14 @@ if (btnWork) {
 
 
  /* =========================
-   PWA Install Prompt
+   PWA Install + Update Prompt
    Android + iPhone + Update
 ========================= */
 
 let deferredInstallPrompt = null;
 let installPromptTimer = null;
+let pendingServiceWorker = null;
+let controllerChangeHandled = false;
 
 const installPromptOverlay = document.getElementById("installPromptOverlay");
 const installPromptLaterBtn = document.getElementById("installPromptLaterBtn");
@@ -2590,6 +2592,18 @@ function maybeShowIosInstallPrompt() {
   scheduleIosInstallPrompt();
 }
 
+function exportJsonBackup() {
+  const blob = new Blob([JSON.stringify(state.people, null, 2)], {
+    type: "application/json"
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `acc-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 window.addEventListener("beforeinstallprompt", event => {
   event.preventDefault();
   deferredInstallPrompt = event;
@@ -2652,9 +2666,25 @@ if (iosInstallPromptOverlay) {
   });
 }
 
+if (updateExportBtn) {
+  updateExportBtn.addEventListener("click", () => {
+    exportJsonBackup();
+  });
+}
+
 if (updateCancelBtn) {
   updateCancelBtn.addEventListener("click", () => {
     hideUpdatePromptUI();
+  });
+}
+
+if (updateApplyBtn) {
+  updateApplyBtn.addEventListener("click", () => {
+    if (pendingServiceWorker) {
+      pendingServiceWorker.postMessage({ type: "SKIP_WAITING" });
+    } else {
+      window.location.reload();
+    }
   });
 }
 
@@ -2665,6 +2695,43 @@ if (updatePromptOverlay) {
     }
   });
 }
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (controllerChangeHandled) return;
+    controllerChangeHandled = true;
+    window.location.reload();
+  });
+
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./service-worker.js");
+
+      if (registration.waiting) {
+        pendingServiceWorker = registration.waiting;
+        showUpdatePromptUI();
+      }
+
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener("statechange", () => {
+          if (
+            newWorker.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
+            pendingServiceWorker = newWorker;
+            showUpdatePromptUI();
+          }
+        });
+      });
+    } catch (error) {
+      console.log("Service Worker error:", error);
+    }
+  });
+}
+
 
 /* =========================
    17) Init
@@ -2681,12 +2748,3 @@ state.statsExpanded = false;
 syncModeButtons();
 render();
 maybeShowIosInstallPrompt();
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("./service-worker.js")
-      .then(() => console.log("Service Worker registered"))
-      .catch(error => console.log("Service Worker error:", error));
-  });
-}
