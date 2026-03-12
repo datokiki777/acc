@@ -2276,3 +2276,9 @@ body:not(.light-theme) .mini-count-badge{
     font-size:14px;
   }
 }
+
+ .install-open .fab{
+  opacity:0;
+  pointer-events:none;
+  transform:scale(.9);
+}
