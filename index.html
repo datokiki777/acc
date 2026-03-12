@@ -18,36 +18,32 @@
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="title-row">
-        <button class="icon-btn" id="menuBtn" aria-label="Import / Export">⇅</button>
+  <div class="topbar-main-row">
+  <button class="icon-btn" id="menuBtn" aria-label="Import / Export">⇅</button>
 
-        <button class="theme-switch" id="themeToggleBtn" aria-label="Toggle theme">
-          <span class="theme-icon">☀️</span>
-          <span class="theme-icon">🌙</span>
-        </button>
-      </div>
+  <div class="mode-switch topbar-mode-switch">
+    <button id="modePersonal" class="mode-btn active">Personal</button>
+    <button id="modeWork" class="mode-btn">Work</button>
+  </div>
 
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Search by name..."
-          autocomplete="off"
-        />
-      </div>
-    </header>
+  <button class="theme-switch" id="themeToggleBtn" aria-label="Toggle theme">
+  <span class="theme-icon">🌙</span>
+  <span class="theme-icon">☀️</span>
+</button>
+</div>
 
-    <main>
-      <div class="stats-bar" id="statsBar"></div>
-      <section class="people-list" id="peopleList">
-        <div class="empty-state" id="emptyState">
-          <div class="empty-icon">📒</div>
-          <div class="empty-title">No records yet</div>
-          <div class="empty-text">Tap the plus button below and start by adding a person.</div>
-        </div>
-      </section>
-    </main>
+  <div class="stats-bar" id="statsBar"></div>
+</header>
+
+<main>
+  <section class="people-list" id="peopleList">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📒</div>
+      <div class="empty-title">No records yet</div>
+      <div class="empty-text">Tap the plus button below and start by adding a person.</div>
+    </div>
+  </section>
+</main>
   </div>
 
   <button class="fab" id="fab" aria-label="Add">+</button>
