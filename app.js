@@ -17,7 +17,9 @@
   14) Menus + Overview
   15) Static Events
   16) Mode Switch
-  17) Init
+  17) PWA Install + Update Prompt
+  18) Init
+  19) Service Worker Registration & Update Detection
 ========================================================= */
 
 
@@ -467,6 +469,52 @@ function findOpenStage(personId) {
   return (person.stages || []).find(stage => !stage.closed) || null;
 }
 
+function closeActiveStage(personId, afterClose = null) {
+  const openStage = findOpenStage(personId);
+  if (!openStage) return;
+
+  openStage.closed = true;
+  saveData();
+  render();
+
+  if (typeof afterClose === "function") {
+    afterClose(openStage);
+  }
+}
+
+function confirmCloseAndOpenNewStage(personId) {
+  const openStage = findOpenStage(personId);
+  if (!openStage) {
+    openStageForm(personId);
+    return;
+  }
+
+  confirmDelete(
+    "Active stage will be closed and a new stage will open. Continue?",
+    () => {
+      closeActiveStage(personId, () => {
+        openStageForm(personId);
+      });
+    },
+    false,
+    "Close & Open"
+  );
+}
+
+function confirmEditActiveStage(personId) {
+  const openStage = findOpenStage(personId);
+  if (!openStage) return;
+
+  confirmDelete(
+    "Edit active stage?",
+    () => {
+      openStageForm(personId, openStage.id);
+    },
+    false,
+    "Edit"
+  );
+}
+
 
 /* =========================
    5) Animations
@@ -877,12 +925,21 @@ function exportPersonPdf(personId) {
 }
 
 function openQuickActions({ title = "", onEdit, onToggleStage, onExportPerson, onCancel }) {
+  const hasEdit = typeof onEdit === "function";
   const hasStageToggle = typeof onToggleStage === "function";
   const hasExport = typeof onExportPerson === "function";
 
-  openModal(
-    title || "Actions",
-    `
+  let actionsHtml = "";
+
+  if (!hasEdit && hasStageToggle) {
+    actionsHtml = `
+      <div class="quick-actions-row quick-actions-row-2">
+        <button type="button" class="secondary-btn" id="quickCancelBtn">Cancel</button>
+        <button type="button" class="primary-btn" id="quickToggleStageBtn"></button>
+      </div>
+    `;
+  } else {
+    actionsHtml = `
       ${hasStageToggle ? `
         <div style="margin-bottom:10px;">
           <button type="button" class="secondary-btn full-btn" id="quickToggleStageBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;"></button>
@@ -895,11 +952,16 @@ function openQuickActions({ title = "", onEdit, onToggleStage, onExportPerson, o
         </div>
       ` : ""}
 
-      <div class="quick-actions-row quick-actions-row-2">
-        <button type="button" class="secondary-btn" id="quickCancelBtn">Cancel</button>
-        <button type="button" class="primary-btn" id="quickEditBtn">Edit</button>
+      <div class="quick-actions-row ${hasEdit ? "quick-actions-row-2" : ""}" style="${hasEdit ? "" : "display:grid;grid-template-columns:1fr;"}">
+        <button type="button" class="secondary-btn ${hasEdit ? "" : "full-btn"}" id="quickCancelBtn">Cancel</button>
+        ${hasEdit ? `<button type="button" class="primary-btn" id="quickEditBtn">Edit</button>` : ""}
       </div>
-    `,
+    `;
+  }
+
+  openModal(
+    title || "Actions",
+    actionsHtml,
     () => {
       const cancelBtn = document.getElementById("quickCancelBtn");
       const editBtn = document.getElementById("quickEditBtn");
@@ -913,10 +975,10 @@ function openQuickActions({ title = "", onEdit, onToggleStage, onExportPerson, o
         };
       }
 
-      if (editBtn) {
+      if (editBtn && hasEdit) {
         editBtn.onclick = () => {
           closeModal();
-          if (typeof onEdit === "function") onEdit();
+          onEdit();
         };
       }
 
@@ -1096,9 +1158,12 @@ function setupActionCard(card) {
       onExportPerson = () => exportPersonPdf(payload.personId);
     }
 
+    const allowEdit =
+      !(payload.type === "stage" && payload.source === "overview");
+
     openQuickActions({
       title: payload.type === "person" ? "Person" : payload.type === "stage" ? "Stage" : "Entry",
-      onEdit: () => openEditByPayload(payload),
+      onEdit: allowEdit ? () => openEditByPayload(payload) : null,
       onToggleStage,
       onExportPerson,
       onCancel: () => {
@@ -1329,14 +1394,25 @@ function renderPerson(person) {
         </div>
 
         <div class="person-body-footer">
-          <div class="person-actions">
-            ${
-              openStage
-                ? `<button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>`
-                : `<button class="primary-btn" data-add-stage="${person.id}">+ Add Stage</button>`
-            }
-          </div>
-        </div>
+  <div class="person-actions">
+    ${
+      openStage
+        ? `<button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>`
+        : `<button class="primary-btn" data-add-stage="${person.id}">+ Add Stage</button>`
+    }
+  </div>
+
+  ${
+    openStage
+      ? `
+        <div class="quick-actions-row quick-actions-row-2">
+  <button class="secondary-btn" data-open-next-stage="${person.id}">🔒 Open Stage</button>
+  <button class="secondary-btn" data-edit-active-stage="${person.id}">✏️ Edit</button>
+</div>
+      `
+      : ""
+  }
+</div>
       </div>
     </article>
   `;
@@ -1591,6 +1667,19 @@ function bindDynamicEvents() {
       }
     };
   });
+  document.querySelectorAll("[data-open-next-stage]").forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      confirmCloseAndOpenNewStage(el.dataset.openNextStage);
+    };
+  });
+
+  document.querySelectorAll("[data-edit-active-stage]").forEach(el => {
+    el.onclick = e => {
+      e.stopPropagation();
+      confirmEditActiveStage(el.dataset.editActiveStage);
+    };
+  });
 
   document.querySelectorAll(".swipe-card").forEach(card => {
     setupActionCard(card);
@@ -1601,6 +1690,8 @@ function bindDynamicEvents() {
 /* =========================
    11) Modal Helpers
 ========================= */
+
+let _suppressPopstate = false;
 
 function openModal(title, html, afterOpen) {
   modalTitle.textContent = title;
@@ -1613,6 +1704,8 @@ function openModal(title, html, afterOpen) {
   fab.style.opacity = "";
   fab.textContent = "←";
   fab.onclick = closeModal;
+
+  history.pushState({ modal: true }, "");
 
   if (typeof afterOpen === "function") afterOpen();
 }
@@ -1634,8 +1727,25 @@ function closeModal() {
     fab.classList.remove("fab-hidden");
   }
 
+  if (history.state && history.state.modal) {
+    _suppressPopstate = true;
+    history.back();
+  }
+
   requestAnimationFrame(() => render());
 }
+
+window.addEventListener("popstate", () => {
+  if (_suppressPopstate) {
+    _suppressPopstate = false;
+    return;
+  }
+  if (modalOverlay.classList.contains("show")) {
+    closeModal();
+  } else if (confirmOverlay.classList.contains("show")) {
+    closeConfirm();
+  }
+});
 
 
 /* =========================
@@ -1744,7 +1854,7 @@ function openStageForm(
         </div>
 
         <div class="form-actions">
-          <button type="button" class="primary-btn" id="cancelModalBtn">Cancel</button>
+          <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
           <button type="submit" class="primary-btn">Save</button>
         </div>
       </form>
@@ -2028,11 +2138,11 @@ function openTransferActionsModal() {
       }
 
       if (exportBtn) {
-  exportBtn.onclick = () => {
-    exportJsonBackup();
-    closeModal();
-  };
-}
+        exportBtn.onclick = () => {
+          exportJsonBackup();
+          closeModal();
+        };
+      }
 
       if (exportAllPdfBtn) {
         exportAllPdfBtn.onclick = () => {
@@ -2139,6 +2249,16 @@ function openEditStagesPanel() {
   );
 }
 
+function personTotalBalanceByCurrency(person) {
+  const totals = {};
+  (person.stages || []).forEach(stage => {
+    const currency = stageCurrency(stage);
+    const balance = stageBalance(stage);
+    totals[currency] = (totals[currency] || 0) + balance;
+  });
+  return totals;
+}
+
 function openOverviewPersonDetail(personId) {
   const person = findPerson(personId);
   if (!person) return;
@@ -2156,9 +2276,22 @@ function openOverviewPersonDetail(personId) {
         <div class="overview-summary-row">
           <span class="overview-summary-label">Total Balance</span>
           <span class="overview-summary-value">
-            <span class="${balanceClass(personOpenBalance(person))}">
-              ${formatMoney(personOpenBalance(person), currentCurrency)}
-            </span>
+            ${(() => {
+              const totals = personTotalBalanceByCurrency(person);
+              const ordered = getOrderedCurrencyEntries(totals);
+              if (!ordered.length) {
+                return `<span class="gray">${formatMoney(0, "EUR")}</span>`;
+              }
+              if (ordered.length === 1) {
+                const [currency, amount] = ordered[0];
+                return `<span class="${balanceClass(amount)}">${formatMoney(amount, currency)}</span>`;
+              }
+              return `<span class="overview-summary-value-stack">
+                ${ordered.map(([currency, amount]) =>
+                  `<span class="${balanceClass(amount)}">${formatMoney(amount, currency)}</span>`
+                ).join("")}
+              </span>`;
+            })()}
           </span>
         </div>
 
@@ -2246,11 +2379,14 @@ function openOverviewPersonDetail(personId) {
                   >
                     <div class="swipe-content">
                       <div class="closed-stage-head" data-toggle-closed-stage="${stage.id}">
-                        <div class="closed-stage-left-group">
-                          <span class="closed-stage-name">${escapeHtml(stage.name)}</span>
-                          <span class="mini-count-badge">${(stage.entries || []).length}</span>
+                        <div class="closed-stage-col closed-stage-left">
+                          <div class="stage-title-row">
+                            <span class="sheet-item-title">${escapeHtml(stage.name)}</span>
+                            <span class="mini-count-badge">${(stage.entries || []).length}</span>
+                          </div>
                         </div>
-                        <div class="closed-stage-right-group">
+
+                        <div class="closed-stage-col closed-stage-right">
                           <span class="closed-stage-balance ${balanceClass(stageBalance(stage))}">
                             ${formatMoney(stageBalance(stage), stageCurrency(stage))}
                           </span>
@@ -2501,8 +2637,8 @@ if (btnWork) {
 }
 
 
- /* =========================
-   PWA Install + Update Prompt
+/* =========================
+   17) PWA Install + Update Prompt
    Android + iPhone + Update
 ========================= */
 
@@ -2640,7 +2776,7 @@ function exportJsonBackup() {
 
 
 /* =========================
-   17) Init
+   18) Init
 ========================= */
 
 loadTheme();
@@ -2656,7 +2792,7 @@ render();
 maybeShowIosInstallPrompt();
 
 /* =========================
-   18) Service Worker Registration & Update Detection
+   19) Service Worker Registration & Update Detection
 ========================= */
 
 if ("serviceWorker" in navigator) {
