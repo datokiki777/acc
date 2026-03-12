@@ -2350,3 +2350,16 @@ body.light-theme .app-prompt-badge{
   color:#1f6feb;
   border:1px solid rgba(31,111,235,0.16);
 }
+
+.app-prompt-sheet{
+  padding:20px 22px 22px;
+}
+
+.app-prompt-badge{
+  display:inline-block;
+  margin-bottom:10px;
+}
+
+.overlay.app-prompt-overlay{
+  padding:16px;
+}
