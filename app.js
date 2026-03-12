@@ -2487,46 +2487,60 @@ const updateCancelBtn = document.getElementById("updateCancelBtn");
 const updateApplyBtn = document.getElementById("updateApplyBtn");
 const updateExportBtn = document.getElementById("updateExportBtn");
 
+function hideFabForPrompt() {
+  if (!fab) return;
+  document.body.classList.add("install-open");
+  fab.classList.add("fab-hidden");
+  fab.style.display = "none";
+}
+
+function showFabAfterPrompt() {
+  if (!fab) return;
+  document.body.classList.remove("install-open");
+  fab.classList.remove("fab-hidden");
+  fab.style.display = "";
+}
+
 function showInstallPromptUI() {
   if (!installPromptOverlay) return;
   installPromptOverlay.classList.add("show");
   installPromptOverlay.setAttribute("aria-hidden", "false");
-  document.body.classList.add("install-open");
+  hideFabForPrompt();
 }
 
 function hideInstallPromptUI() {
   if (!installPromptOverlay) return;
   installPromptOverlay.classList.remove("show");
   installPromptOverlay.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("install-open");
+  showFabAfterPrompt();
 }
 
 function showIosInstallPromptUI() {
   if (!iosInstallPromptOverlay) return;
   iosInstallPromptOverlay.classList.add("show");
   iosInstallPromptOverlay.setAttribute("aria-hidden", "false");
-  document.body.classList.add("install-open");
+  hideFabForPrompt();
 }
 
 function hideIosInstallPromptUI() {
   if (!iosInstallPromptOverlay) return;
   iosInstallPromptOverlay.classList.remove("show");
   iosInstallPromptOverlay.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("install-open");
+  showFabAfterPrompt();
 }
 
 function showUpdatePromptUI() {
   if (!updatePromptOverlay) return;
   updatePromptOverlay.classList.add("show");
   updatePromptOverlay.setAttribute("aria-hidden", "false");
-  document.body.classList.add("install-open");
+  hideFabForPrompt();
 }
 
 function hideUpdatePromptUI() {
   if (!updatePromptOverlay) return;
   updatePromptOverlay.classList.remove("show");
   updatePromptOverlay.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("install-open");
+  showFabAfterPrompt();
 }
 
 function isIosDevice() {
