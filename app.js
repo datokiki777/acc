@@ -1734,11 +1734,6 @@ function openStageForm(
         </div>
 
         <div class="field">
-          <label for="stageNote">Note</label>
-          <textarea id="stageNote" name="note" placeholder="Optional">${stage ? escapeHtml(stage.note || "") : ""}</textarea>
-        </div>
-
-        <div class="field">
           <label for="stageCurrency">Currency</label>
           <select id="stageCurrency" name="currency">
             <option value="EUR" ${(stage?.currency || "EUR") === "EUR" ? "selected" : ""}>€</option>
@@ -1773,7 +1768,7 @@ function openStageForm(
 
         const fd = new FormData(form);
         const name = String(fd.get("name") || "").trim();
-        const note = String(fd.get("note") || "").trim();
+        const note = "";
         const currency = String(fd.get("currency") || "EUR");
         const oldCurrency = stage ? stageCurrency(stage) : "EUR";
         const hasEntries = !!(stage && (stage.entries || []).length);
@@ -2204,11 +2199,7 @@ function openOverviewPersonDetail(personId) {
                       <span class="open-stage-mini-title">${escapeHtml(openStage.name)}</span>
                       <span class="mini-count-badge">${(openStage.entries || []).length}</span>
                     </div>
-                    ${
-                      openStage.note
-                        ? `<div class="open-stage-mini-note">${escapeHtml(openStage.note)}</div>`
-                        : ""
-                    }
+                    ${""}
                   </div>
                   <div class="open-stage-mini-right">
                     <div class="open-stage-mini-balance ${balanceClass(stageBalance(openStage))}">
@@ -2260,7 +2251,6 @@ function openOverviewPersonDetail(personId) {
                             <span class="sheet-item-title">${escapeHtml(stage.name)}</span>
                             <span class="mini-count-badge">${(stage.entries || []).length}</span>
                           </div>
-                          <span class="sheet-item-sub">${stage.note ? escapeHtml(stage.note) : "No comment"}</span>
                         </div>
 
                         <div class="closed-stage-col closed-stage-right">
@@ -2667,3 +2657,45 @@ state.statsExpanded = false;
 syncModeButtons();
 render();
 maybeShowIosInstallPrompt();
+
+/* =========================
+   18) Service Worker Registration & Update Detection
+========================= */
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-workers.js")
+      .then(registration => {
+        if (registration.waiting) {
+          pendingServiceWorker = registration.waiting;
+          showUpdatePromptUI();
+        }
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              pendingServiceWorker = newWorker;
+              showUpdatePromptUI();
+            }
+          });
+        });
+      })
+      .catch(err => console.warn("Service Worker registration failed:", err));
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (controllerChangeHandled) return;
+      controllerChangeHandled = true;
+      window.location.reload();
+    });
+  });
+}
+
+if (updateApplyBtn) {
+  updateApplyBtn.addEventListener("click", () => {
+    if (pendingServiceWorker) pendingServiceWorker.postMessage({ type: "SKIP_WAITING" });
+    hideUpdatePromptUI();
+  });
+}
+if (updateCancelBtn) updateCancelBtn.addEventListener("click", hideUpdatePromptUI);
+if (updateExportBtn) updateExportBtn.addEventListener("click", exportJsonBackup);
