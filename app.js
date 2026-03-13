@@ -2821,7 +2821,7 @@ function scheduleAndroidInstallPrompt() {
     if (deferredInstallPrompt && !isRunningStandalone()) {
       showInstallPromptUI();
     }
-  }, 10000);
+  }, 3000);
 }
 
 function scheduleIosInstallPrompt() {
@@ -2834,7 +2834,7 @@ function scheduleIosInstallPrompt() {
     if (isIosDevice() && !isRunningStandalone()) {
       showIosInstallPromptUI();
     }
-  }, 10000);
+  }, 3000);
 }
 
  window.addEventListener("beforeinstallprompt", e => {
@@ -2924,7 +2924,7 @@ if (topbarEl && window.ResizeObserver) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/ACC-app/service-workers.js")
+    navigator.serviceWorker.register("./service-workers.js")
       .then(registration => {
         if (registration.waiting) {
           pendingServiceWorker = registration.waiting;
