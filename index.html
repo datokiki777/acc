@@ -31,6 +31,11 @@
   <link rel="apple-touch-icon" href="icon-192.png" />
 </head>
 <body>
+  <!-- დაამატე ეს ხაზი -->
+  <div class="offline-indicator" id="offlineIndicator">
+    📴 You're offline - changes will sync when connection returns
+  </div>
+  
   <div class="app">
 
     <!-- =========================
@@ -41,8 +46,8 @@
         <button class="icon-btn" id="menuBtn" aria-label="Import / Export">⇄</button>
 
         <div class="mode-switch topbar-mode-switch">
-          <button id="modePersonal" class="mode-btn active">Personal</button>
-          <button id="modeWork" class="mode-btn">Work</button>
+          <button id="modePersonal" class="mode-btn active" aria-label="Switch to personal mode">Personal</button>
+          <button id="modeWork" class="mode-btn" aria-label="Switch to work mode">Work</button>
         </div>
 
         <button class="theme-switch" id="themeToggleBtn" aria-label="Toggle theme">
@@ -71,7 +76,7 @@
   <!-- =========================
        Floating Action Button
   ========================= -->
-  <button class="fab" id="fab" aria-label="Add">+</button>
+  <button class="fab" id="fab" aria-label="Add new person or entry">+</button>
 
   <!-- =========================
        Legacy hidden elements

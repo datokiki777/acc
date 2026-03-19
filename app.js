@@ -82,6 +82,18 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function todayStr() {
   const d = new Date();
   const y = d.getFullYear();
@@ -1475,8 +1487,11 @@ function adjustMainPadding() {
 
 function syncFab() {
   if (fab.classList.contains("fab-back")) return; // modal ღიაა — არ შევეხოთ
+  
   const anyExpanded = state.people.some(p => p.expanded);
-  if (anyExpanded) {
+  const isPromptOpen = document.querySelector('.overlay.show') !== null;
+  
+  if (anyExpanded || isPromptOpen) {
     fab.classList.add("fab-hidden");
   } else {
     fab.classList.remove("fab-hidden");
@@ -2564,9 +2579,10 @@ function openChoosePersonForEntry() {
 ========================= */
 
 if (searchInput) {
+  const debouncedRender = debounce(() => render(), 300);
   searchInput.addEventListener("input", e => {
     state.search = e.target.value;
-    render();
+    debouncedRender();
   });
 }
 
@@ -2910,6 +2926,22 @@ state.people = loadDataByMode(state.mode).map(person => ({
 
 state.statsExpanded = false;
 syncModeButtons();
+
+// Offline ინდიკატორის კონტროლი
+const offlineIndicator = document.getElementById('offlineIndicator');
+
+function updateOfflineIndicator() {
+  if (!navigator.onLine) {
+    offlineIndicator.classList.add('show');
+  } else {
+    offlineIndicator.classList.remove('show');
+  }
+}
+
+window.addEventListener('online', updateOfflineIndicator);
+window.addEventListener('offline', updateOfflineIndicator);
+
+updateOfflineIndicator();
 render();
 maybeShowIosInstallPrompt();
 

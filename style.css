@@ -23,6 +23,7 @@
   20) Edit Blocks
   21) Animations
   22) Responsive
+  23) Offline Indicator
 ========================================================= */
 
 
@@ -558,26 +559,23 @@ main{
    9) Person Cards
 ========================= */
 
-.person-card{
-  overflow:hidden;
-  padding:0;
-  margin-bottom:12px;
-  border-radius:18px;
-  background:#2c4368;
-  border:1px solid var(--line);
-  box-shadow:
-    0 8px 22px rgba(0,0,0,0.16),
-    inset 0 1px 0 rgba(255,255,255,0.10);
-  transform:translateY(0) scale(1);
-  will-change:transform, box-shadow;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.22s ease,
-    background 0.22s ease;
+.person-card {
+  overflow: hidden;
+  padding: 0;
+  margin-bottom: 12px;
+  border-radius: 18px;
+  background: #2c4368;
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.10);
+  transform: translateY(0) scale(1);
+  will-change: transform, box-shadow;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.person-card:active{
-  transform:scale(0.985);
+/* დაამატე .person-card:active */
+.person-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .person-card.expanded{
@@ -619,16 +617,16 @@ main{
   color:var(--muted);
 }
 
-.balance{
-  font-size:15px;
-  font-weight:600;
-  white-space:nowrap;
-  padding:8px 14px;
-  border-radius:999px;
-  background:#f3f5f8;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);
-  letter-spacing:-0.02em;
-  transition:all .25s ease;
+.balance {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f3f5f8;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  letter-spacing: -0.02em;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .balance.green{
@@ -715,6 +713,25 @@ main{
 .person-body-footer .totals-line{
   margin-top:0;
   margin-bottom:8px;
+}
+
+.stats-box {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 74px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #dfe7f3;
+  border: 1px solid #31415c;
+  box-shadow: none;
+  text-align: left;
+  transition: transform 0.2s ease;
+}
+
+.stats-box:hover {
+  transform: translateY(-2px);
 }
 
 
@@ -1426,6 +1443,24 @@ main{
   gap:12px;
 }
 
+/* დაამატე stats-overview-panel-ის ქვემოთ */
+.stats-overview-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  max-height: 85vh;
+  border-radius: 24px 24px 0 0;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 
 /* =========================
    13) Swipe Actions
@@ -1440,38 +1475,42 @@ main{
   -webkit-user-select:none;
 }
 
-.swipe-content{
-  position:relative;
-  z-index:2;
-  width:100%;
-  min-width:100%;
-  display:block;
-  background:inherit;
-  border-radius:inherit;
-  will-change:transform;
-  transition:transform 0.18s ease;
+/* შეცვალე არსებული swipe-content */
+.swipe-content {
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
-.swipe-delete-action{
-  position:absolute;
-  top:0;
-  right:0;
-  bottom:0;
-  width:96px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:1;
-  border:none;
-  outline:none;
-  padding:0;
-  opacity:0;
-  background:linear-gradient(180deg, #ff7b7b, #ea4f4f);
-  color:#fff;
-  font-size:14px;
-  font-weight:900;
-  letter-spacing:0.02em;
-  transition:opacity 0.14s ease;
+/* შეცვალე swipe-delete-action */
+.swipe-delete-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 1;
+  border: none;
+  outline: none;
+  padding: 0;
+  opacity: 0;
+  background: linear-gradient(180deg, #ff6b6b, #ff4757);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  transition: opacity 0.14s ease;
+}
+
+.swipe-delete-action::before {
+  content: "🗑️";
+  font-size: 18px;
+}
+
+.swipe-card.swipe-open .swipe-content {
+  transform: translateX(-96px);
 }
 
 .swipe-delete-action span{
@@ -1487,6 +1526,8 @@ main{
   pointer-events:auto;
   opacity:1;
 }
+
+
 
 
 /* =========================
@@ -2526,4 +2567,32 @@ body.light-theme .app-prompt-badge{
 
 .overlay.app-prompt-overlay{
   padding:16px;
+}
+
+/* =========================
+   23) Offline Indicator
+========================= */
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ffa502;
+  color: white;
+  text-align: center;
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 2000;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+}
+
+.offline-indicator.show {
+  transform: translateY(0);
+}
+
+body.light-theme .offline-indicator {
+  background: #f39c12;
 }
