@@ -139,7 +139,7 @@ main{
   max-width:none;
   transform:none;
   background:var(--bg);
-  padding:4px 8px 2px;
+  padding:10px 8px 2px;
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
 
