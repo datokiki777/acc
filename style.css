@@ -139,8 +139,11 @@ main{
   max-width:none;
   transform:none;
   background:var(--bg);
-  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
-  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 8px)
+    12px
+    8px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.06);
 }
 
 .topbar-main-row{
