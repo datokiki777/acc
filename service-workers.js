@@ -1,11 +1,30 @@
-const CACHE_NAME = "accounts-pwa-v5.1";
+const CACHE_NAME = "acc-shell-v6.1.0";
 
-const ASSETS_TO_CACHE = [
+const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css",
-  "./app.js",
   "./manifest.json",
+
+  "./css/01-base.css",
+  "./css/02-layout.css",
+  "./css/03-components.css",
+  "./css/04-modals.css",
+  "./css/05-forms.css",
+  "./css/06-sections.css",
+  "./css/07-effects.css",
+  "./css/08-responsive.css",
+  "./css/09-theme.css",
+
+  "./js/01-config.js",
+  "./js/02-storage.js",
+  "./js/03-utils.js",
+  "./js/04-render.js",
+  "./js/05-forms.js",
+  "./js/06-actions.js",
+  "./js/07-events.js",
+  "./js/08-modals.js",
+  "./js/09-export.js",
+  "./js/10-init.js",
 
   "./icons/icon-152.png",
   "./icons/icon-167.png",
@@ -18,7 +37,10 @@ const ASSETS_TO_CACHE = [
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(APP_SHELL);
+    })()
   );
 });
 
@@ -26,6 +48,7 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
+
       await Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
@@ -34,6 +57,7 @@ self.addEventListener("activate", event => {
           return Promise.resolve();
         })
       );
+
       await self.clients.claim();
     })()
   );
@@ -48,44 +72,48 @@ self.addEventListener("message", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
-  const requestUrl = new URL(event.request.url);
-  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  if (!isSameOrigin) return;
+  const isNavigationRequest =
+    event.request.mode === "navigate" ||
+    event.request.destination === "document" ||
+    url.pathname === "/" ||
+    url.pathname.endsWith(".html");
 
-  const isHtmlRequest =
-    requestUrl.pathname === "/" ||
-    requestUrl.pathname.endsWith(".html");
-
-  if (isHtmlRequest) {
+  if (isNavigationRequest) {
     event.respondWith(
       fetch(event.request)
-        .then(networkResponse => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        .then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
-          return networkResponse;
+          return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => {
+          return (
+            (await caches.match(event.request)) ||
+            (await caches.match("./")) ||
+            (await caches.match("./index.html"))
+          );
+        })
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
 
-      return fetch(event.request).then(networkResponse => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== "basic") {
-          return networkResponse;
+      return fetch(event.request).then(response => {
+        if (!response || response.status !== 200 || response.type !== "basic") {
+          return response;
         }
 
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
-        return networkResponse;
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
       });
     })
   );

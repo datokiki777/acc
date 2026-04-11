@@ -1,0 +1,72 @@
+01-base.css
+- :root variables
+- reset
+- html, body
+- typography
+- global element defaults
+- base utility classes
+
+02-layout.css
+- app shell
+- topbar
+- main containers
+- wrappers
+- grids
+- spacing structure
+- sticky / fixed layout blocks
+
+03-components.css
+- buttons
+- cards
+- pills
+- empty states
+- generic UI blocks
+- reusable component styles
+
+04-modals.css
+- overlay
+- modal
+- sheet
+- confirm modal
+- modal actions
+- modal inner layout
+
+05-forms.css
+- form wrappers
+- labels
+- inputs
+- textarea
+- select
+- form actions
+- type toggles
+- form-specific controls
+
+06-sections.css
+- person card
+- stage card
+- entry card
+- stats section
+- search section
+- overview section
+- section-specific UI
+
+07-effects.css
+- transitions
+- animations
+- swipe effects
+- press effects
+- hover/active polish
+- transform/opacity helpers
+
+08-responsive.css
+- media queries
+- mobile adjustments
+- tablet/desktop adjustments
+- compact layout fixes
+- safe-area / small-screen fixes
+
+09-theme.css
+- light theme overrides
+- dark theme overrides
+- theme-specific component adjustments
+- theme polish

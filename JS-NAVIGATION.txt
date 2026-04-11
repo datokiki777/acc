@@ -1,0 +1,55 @@
+01-config.js
+- keys
+- state
+- DOM refs
+
+02-storage.js
+- IndexedDB
+- save/load
+- mode/theme storage
+
+03-utils.js
+- uid
+- formatters
+- money/date/html helpers
+
+04-render.js
+- render
+- renderPerson
+- renderEntry
+- renderStats
+- layout helpers
+
+05-forms.js
+- openPersonForm
+- openStageForm
+- openEntryForm
+
+06-actions.js
+- deleteByPayload
+- setupActionCard
+- stage actions
+- quick actions
+
+07-events.js
+- bindDynamicEvents
+- bindStatsEvents
+- static listeners
+- popstate handlers
+
+08-modals.js
+- openModal
+- closeModal
+- confirmDelete
+- openMainAddMenu
+- openEditStagesPanel
+
+09-export.js
+- PDF export
+- import/export backup
+- debug/export helpers
+
+10-init.js
+- initApp
+- startup
+- service worker
