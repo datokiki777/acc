@@ -1,4 +1,4 @@
-const CACHE_NAME = "acc-shell-v6.2.0";
+const CACHE_NAME = "acc-shell-v6.5";
 
 const APP_SHELL = [
   "./",
