@@ -177,33 +177,9 @@ confirmOk.addEventListener("click", () => { if (typeof state.confirmAction === "
 
 importFile.addEventListener("change", async e => {
   const file = e.target.files?.[0];
-  if (!file) return;
 
   try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    const isFullBackup =
-      data &&
-      typeof data === "object" &&
-      !Array.isArray(data) &&
-      Array.isArray(data.personal) &&
-      Array.isArray(data.work);
-
-    if (!isFullBackup) throw new Error("Invalid backup file");
-
-    await dbSet(PERSONAL_STORAGE_KEY, JSON.stringify(data.personal));
-    await dbSet(WORK_STORAGE_KEY, JSON.stringify(data.work));
-
-    await loadDataByMode(state.mode);
-    state.people = (state.people || []).map(p => ({
-      ...p,
-      expanded: false
-    }));
-
-    render();
-    closeModal();
-  } catch (error) {
-    alert("Could not read the backup file.");
+    await handleImportedJsonFile(file);
   } finally {
     importFile.value = "";
   }

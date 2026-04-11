@@ -84,6 +84,378 @@ async function exportJsonBackup() {
   URL.revokeObjectURL(a.href);
 }
 
+function isNonEmptyValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeImportedPeopleArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(person => ({
+    ...person,
+    expanded: false,
+    stages: Array.isArray(person.stages)
+      ? person.stages.map(stage => ({
+          ...stage,
+          entries: Array.isArray(stage.entries) ? stage.entries : []
+        }))
+      : []
+  }));
+}
+
+function entryFingerprint(entry) {
+  return [
+    entry?.type || "",
+    Number(entry?.amount || 0),
+    entry?.date || "",
+    entry?.comment || ""
+  ].join("|");
+}
+
+function stageFingerprint(stage) {
+  return [
+    stage?.name || "",
+    stage?.closed ? "1" : "0",
+    stage?.currency || stageCurrency(stage) || ""
+  ].join("|");
+}
+
+function personFingerprint(person) {
+  return [
+    (person?.name || "").trim().toLowerCase(),
+    (person?.note || "").trim().toLowerCase()
+  ].join("|");
+}
+
+function mergeEntryObjects(currentEntry, incomingEntry) {
+  const base = { ...currentEntry };
+
+  Object.keys(incomingEntry || {}).forEach(key => {
+    const incomingValue = incomingEntry[key];
+    const currentValue = base[key];
+
+    if (Array.isArray(incomingValue)) {
+      base[key] = cloneJson(incomingValue);
+      return;
+    }
+
+    if (typeof incomingValue === "object" && incomingValue !== null) {
+      base[key] = cloneJson(incomingValue);
+      return;
+    }
+
+    if (!isNonEmptyValue(currentValue) && isNonEmptyValue(incomingValue)) {
+      base[key] = incomingValue;
+      return;
+    }
+
+    if (key === "id" && !isNonEmptyValue(currentValue) && isNonEmptyValue(incomingValue)) {
+      base[key] = incomingValue;
+    }
+  });
+
+  return base;
+}
+
+function mergeEntriesArray(currentEntries = [], incomingEntries = []) {
+  const result = currentEntries.map(entry => ({ ...entry }));
+  const usedIndexes = new Set();
+
+  incomingEntries.forEach(incomingEntry => {
+    let matchIndex = -1;
+
+    if (incomingEntry?.id) {
+      matchIndex = result.findIndex(entry => entry?.id === incomingEntry.id);
+    }
+
+    if (matchIndex === -1) {
+      const incomingFp = entryFingerprint(incomingEntry);
+      matchIndex = result.findIndex((entry, idx) => {
+        if (usedIndexes.has(idx)) return false;
+        return entryFingerprint(entry) === incomingFp;
+      });
+    }
+
+    if (matchIndex === -1) {
+      result.push({ ...incomingEntry });
+    } else {
+      result[matchIndex] = mergeEntryObjects(result[matchIndex], incomingEntry);
+      usedIndexes.add(matchIndex);
+    }
+  });
+
+  return result;
+}
+
+function mergeStageObjects(currentStage, incomingStage) {
+  const merged = { ...currentStage };
+
+  Object.keys(incomingStage || {}).forEach(key => {
+    if (key === "entries") return;
+
+    const incomingValue = incomingStage[key];
+    const currentValue = merged[key];
+
+    if (Array.isArray(incomingValue)) return;
+
+    if (typeof incomingValue === "object" && incomingValue !== null) {
+      merged[key] = cloneJson(incomingValue);
+      return;
+    }
+
+    if (!isNonEmptyValue(currentValue) && isNonEmptyValue(incomingValue)) {
+      merged[key] = incomingValue;
+      return;
+    }
+
+    if (key === "closed" && incomingValue === true) {
+      merged[key] = true;
+    }
+  });
+
+  merged.entries = mergeEntriesArray(currentStage?.entries || [], incomingStage?.entries || []);
+  return merged;
+}
+
+function mergeStagesArray(currentStages = [], incomingStages = []) {
+  const result = currentStages.map(stage => ({
+    ...stage,
+    entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
+  }));
+  const usedIndexes = new Set();
+
+  incomingStages.forEach(incomingStage => {
+    let matchIndex = -1;
+
+    if (incomingStage?.id) {
+      matchIndex = result.findIndex(stage => stage?.id === incomingStage.id);
+    }
+
+    if (matchIndex === -1) {
+      const incomingFp = stageFingerprint(incomingStage);
+      matchIndex = result.findIndex((stage, idx) => {
+        if (usedIndexes.has(idx)) return false;
+        return stageFingerprint(stage) === incomingFp;
+      });
+    }
+
+    if (matchIndex === -1) {
+      result.push({
+        ...incomingStage,
+        entries: Array.isArray(incomingStage.entries)
+          ? incomingStage.entries.map(entry => ({ ...entry }))
+          : []
+      });
+    } else {
+      result[matchIndex] = mergeStageObjects(result[matchIndex], incomingStage);
+      usedIndexes.add(matchIndex);
+    }
+  });
+
+  return result;
+}
+
+function mergePersonObjects(currentPerson, incomingPerson) {
+  const merged = { ...currentPerson };
+
+  Object.keys(incomingPerson || {}).forEach(key => {
+    if (key === "stages" || key === "expanded") return;
+
+    const incomingValue = incomingPerson[key];
+    const currentValue = merged[key];
+
+    if (Array.isArray(incomingValue)) return;
+
+    if (typeof incomingValue === "object" && incomingValue !== null) {
+      merged[key] = cloneJson(incomingValue);
+      return;
+    }
+
+    if (!isNonEmptyValue(currentValue) && isNonEmptyValue(incomingValue)) {
+      merged[key] = incomingValue;
+      return;
+    }
+  });
+
+  merged.expanded = false;
+  merged.stages = mergeStagesArray(currentPerson?.stages || [], incomingPerson?.stages || []);
+
+  return merged;
+}
+
+function mergePeopleArrays(currentPeople = [], incomingPeople = []) {
+  const result = currentPeople.map(person => ({
+    ...person,
+    expanded: false,
+    stages: Array.isArray(person.stages)
+      ? person.stages.map(stage => ({
+          ...stage,
+          entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
+        }))
+      : []
+  }));
+  const usedIndexes = new Set();
+
+  incomingPeople.forEach(incomingPerson => {
+    let matchIndex = -1;
+
+    if (incomingPerson?.id) {
+      matchIndex = result.findIndex(person => person?.id === incomingPerson.id);
+    }
+
+    if (matchIndex === -1) {
+      const incomingFp = personFingerprint(incomingPerson);
+      matchIndex = result.findIndex((person, idx) => {
+        if (usedIndexes.has(idx)) return false;
+        return personFingerprint(person) === incomingFp;
+      });
+    }
+
+    if (matchIndex === -1) {
+      result.push({
+        ...incomingPerson,
+        expanded: false,
+        stages: Array.isArray(incomingPerson.stages)
+          ? incomingPerson.stages.map(stage => ({
+              ...stage,
+              entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
+            }))
+          : []
+      });
+    } else {
+      result[matchIndex] = mergePersonObjects(result[matchIndex], incomingPerson);
+      usedIndexes.add(matchIndex);
+    }
+  });
+
+  return result;
+}
+
+function validateFullBackupData(data) {
+  return !!(
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    Array.isArray(data.personal) &&
+    Array.isArray(data.work)
+  );
+}
+
+async function applyImportedBackupReplace(data) {
+  const personal = normalizeImportedPeopleArray(data.personal);
+  const work = normalizeImportedPeopleArray(data.work);
+
+  await dbSet(PERSONAL_STORAGE_KEY, JSON.stringify(personal));
+  await dbSet(WORK_STORAGE_KEY, JSON.stringify(work));
+
+  await loadDataByMode(state.mode);
+  state.people = (state.people || []).map(person => ({
+    ...person,
+    expanded: false
+  }));
+
+  render();
+  closeModal();
+}
+
+async function applyImportedBackupMerge(data) {
+  const currentData = await getAllModeData();
+
+  const mergedPersonal = mergePeopleArrays(
+    normalizeImportedPeopleArray(currentData.personal),
+    normalizeImportedPeopleArray(data.personal)
+  );
+
+  const mergedWork = mergePeopleArrays(
+    normalizeImportedPeopleArray(currentData.work),
+    normalizeImportedPeopleArray(data.work)
+  );
+
+  await dbSet(PERSONAL_STORAGE_KEY, JSON.stringify(mergedPersonal));
+  await dbSet(WORK_STORAGE_KEY, JSON.stringify(mergedWork));
+
+  await loadDataByMode(state.mode);
+  state.people = (state.people || []).map(person => ({
+    ...person,
+    expanded: false
+  }));
+
+  render();
+  closeModal();
+}
+
+function openImportModeModal(data) {
+  openModal("Import JSON", `
+    <div class="inline-note" style="margin-bottom:12px;">
+      Choose how to import this backup.
+    </div>
+
+    <div class="quick-actions-row quick-actions-row-2" style="margin-bottom:10px;">
+      <button type="button" class="secondary-btn" id="importMergeBtn">Merge</button>
+      <button type="button" class="danger-btn" id="importReplaceBtn">Replace</button>
+    </div>
+
+    <div class="quick-actions-row" style="display:grid;grid-template-columns:1fr;">
+      <button type="button" class="primary-btn" id="importCancelBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;">
+        Cancel
+      </button>
+    </div>
+  `, () => {
+    const mergeBtn = document.getElementById("importMergeBtn");
+    const replaceBtn = document.getElementById("importReplaceBtn");
+    const cancelBtn = document.getElementById("importCancelBtn");
+
+    if (cancelBtn) cancelBtn.onclick = closeModal;
+
+    if (mergeBtn) {
+      mergeBtn.onclick = async () => {
+        try {
+          await applyImportedBackupMerge(data);
+        } catch (error) {
+          alert("Could not merge the backup file.");
+        }
+      };
+    }
+
+    if (replaceBtn) {
+      replaceBtn.onclick = () => {
+        confirmDelete(
+          "Replace will overwrite your current Personal and Work data. Continue?",
+          async () => {
+            try {
+              await applyImportedBackupReplace(data);
+            } catch (error) {
+              alert("Could not replace the backup file.");
+            }
+          },
+          false,
+          "Replace"
+        );
+      };
+    }
+  });
+}
+
+async function handleImportedJsonFile(file) {
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!validateFullBackupData(data)) {
+      throw new Error("Invalid backup file");
+    }
+
+    openImportModeModal(data);
+  } catch (error) {
+    alert("Could not read the backup file.");
+  }
+}
+
 function openTransferActionsModal() {
   openModal("Data Transfer", `
     <div class="quick-actions-row quick-actions-row-2" style="margin-bottom:10px;">
@@ -106,7 +478,7 @@ function openTransferActionsModal() {
     if (exportBtn) exportBtn.onclick = () => { exportJsonBackup(); closeModal(); };
     if (exportAllPdfBtn) exportAllPdfBtn.onclick = () => { closeModal(); exportAllPdf(); };
     if (exportPersonPdfBtn) exportPersonPdfBtn.onclick = () => { closeModal(); openChoosePersonForPdf(); };
-    if (importBtn) importBtn.onclick = () => { closeModal(); confirmDelete("Importing a file will replace your current data. Continue?", () => importFile.click(), false, "Import"); };
+    if (importBtn) importBtn.onclick = () => { closeModal(); importFile.click(); };
   });
 }
 
