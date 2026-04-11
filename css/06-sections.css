@@ -312,16 +312,16 @@
 .overview-summary-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 0;
 }
 
 .overview-summary-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 10px 0;
+  gap: 10px;
+  padding: 7px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -335,13 +335,13 @@
 }
 
 .overview-summary-label {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--muted);
 }
 
 .overview-summary-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
   text-align: right;
   word-break: break-word;
@@ -369,21 +369,35 @@
 }
 
 .open-stage-mini-card {
+  position: relative;
   padding: 0;
-  margin-top: 16px;
-  margin-bottom: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 10px;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  border: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+}
+
+.open-stage-mini-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(180deg, #46d37e, #2aa95d);
+  opacity: 0.95;
 }
 
 .open-stage-mini-inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 10px 12px 10px 18px;
   cursor: pointer;
 }
 
@@ -391,32 +405,33 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .open-stage-mini-right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
   margin-left: auto;
   white-space: nowrap;
 }
 
 .open-stage-mini-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .open-stage-mini-note {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
 }
 
 .open-stage-mini-balance {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .stage-title-row {
@@ -428,14 +443,14 @@
 }
 
 .mini-count-badge {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 9px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1;
   flex-shrink: 0;
@@ -446,8 +461,26 @@
 }
 
 .closed-stage-item {
-  padding: 0;
+  position: relative;
+  padding: 8px 12px 8px 12px;
   overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+}
+
+.closed-stage-item::before {
+  content: "";
+  position: absolute;
+  left: 0px;
+  top: 16px;
+  bottom: 16px;
+  width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8b6dff, #6c52dd);
+  opacity: 0.95;
+  z-index: 0;
 }
 
 .closed-stage-head {
@@ -455,8 +488,13 @@
   flex-direction: row;
   align-items: center;
   gap: 0;
-  padding: 9px 14px;
+  padding: 10px 12px 10px 16px;
+  margin: 8px 0 8px 0;
+  border-radius: 16px;
   cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .closed-stage-left-group {
@@ -531,8 +569,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  font-size: 20px;
+  min-width: 14px;
+  font-size: 17px;
   font-weight: 900;
   line-height: 1;
   flex-shrink: 0;
@@ -548,28 +586,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .closed-stage-summary-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--muted);
 }
 
 .closed-stage-summary-total {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .closed-stage-date-range {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
@@ -968,4 +1006,51 @@
   font-weight: 900;
   letter-spacing: 0.1em;
   opacity: 1;
+}
+
+/* ===== Accent colors for closed stages ===== */
+
+.closed-stage-item.accent-blue::before {
+  background: linear-gradient(180deg, #4da3ff, #2f7be6);
+}
+
+.closed-stage-item.accent-red::before {
+  background: linear-gradient(180deg, #ff6b6b, #d94a4a);
+}
+
+.closed-stage-item.accent-orange::before {
+  background: linear-gradient(180deg, #ffb347, #e6952c);
+}
+
+.closed-stage-item.accent-cyan::before {
+  background: linear-gradient(180deg, #2dd4bf, #14b8a6);
+}
+
+.closed-stage-item.accent-pink::before {
+  background: linear-gradient(180deg, #ff7ad9, #d94fb5);
+}
+
+.closed-stage-item.accent-blue .closed-stage-head {
+  background: linear-gradient(180deg, rgba(77, 163, 255, 0.14), rgba(47, 123, 230, 0.08));
+  border-color: rgba(77, 163, 255, 0.14);
+}
+
+.closed-stage-item.accent-red .closed-stage-head {
+  background: linear-gradient(180deg, rgba(255, 107, 107, 0.14), rgba(217, 74, 74, 0.08));
+  border-color: rgba(255, 107, 107, 0.14);
+}
+
+.closed-stage-item.accent-orange .closed-stage-head {
+  background: linear-gradient(180deg, rgba(255, 179, 71, 0.14), rgba(230, 149, 44, 0.08));
+  border-color: rgba(255, 179, 71, 0.14);
+}
+
+.closed-stage-item.accent-cyan .closed-stage-head {
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.14), rgba(20, 184, 166, 0.08));
+  border-color: rgba(45, 212, 191, 0.14);
+}
+
+.closed-stage-item.accent-pink .closed-stage-head {
+  background: linear-gradient(180deg, rgba(255, 122, 217, 0.14), rgba(217, 79, 181, 0.08));
+  border-color: rgba(255, 122, 217, 0.14);
 }

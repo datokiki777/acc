@@ -34,18 +34,18 @@
 }
 
 .sheet-header {
-  padding: 16px 14px 10px;
+  padding: 12px 12px 8px;
 }
 
 .sheet-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .sheet-body {
-  padding: 0 14px 14px;
+  padding: 0 12px 12px;
 }
 
 .sheet-footer {

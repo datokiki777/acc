@@ -14,10 +14,10 @@
 .sheet-item {
   width: 100%;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   border: none;
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 16px;
+  padding: 11px 12px;
   text-align: left;
   background: var(--gray-soft);
   color: var(--text);
@@ -25,17 +25,17 @@
 
 .sheet-item-title {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .sheet-item-sub {
   display: block;
-  margin-top: 5px;
-  font-size: 13px;
+  margin-top: 4px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.25;
   color: var(--muted);
 }
 
@@ -50,15 +50,15 @@
 }
 
 .inline-note {
-  margin: 10px 0 12px;
-  padding: 14px 18px;
-  border-radius: 18px;
+  margin: 6px 0 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.2;
   letter-spacing: -0.01em;
   color: var(--text);
 }
