@@ -143,3 +143,22 @@
 .overlay.app-prompt-overlay {
   padding: 16px;
 }
+
+.sheet-item-title-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sheet-item-icon{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  background:rgba(255,255,255,0.08);
+  font-size:16px;
+  line-height:1;
+}
