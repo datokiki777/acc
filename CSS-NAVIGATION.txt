@@ -73,6 +73,7 @@
 - press effects
 - hover/active polish
 - transform/opacity helpers
+- startup splash animation (App Store style)
 
 08-responsive.css
 - media queries
