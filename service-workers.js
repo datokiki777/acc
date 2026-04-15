@@ -1,4 +1,5 @@
-const CACHE_NAME = "acc-shell-v7.1";
+const CACHE_NAME = "acc-shell-v7.2";
+const RUNTIME_CACHE = "acc-runtime-v7.2";
 
 const APP_SHELL = [
   "./",
@@ -26,6 +27,8 @@ const APP_SHELL = [
   "./js/09-export.js",
   "./js/10-init.js",
 
+  "./icons/favicon.ico",
+  "./icons/favicon-32x32.png",
   "./icons/icon-167x167.png",
   "./icons/icon-180x180.png",
   "./icons/icon-192x192.png",
@@ -40,6 +43,7 @@ self.addEventListener("install", event => {
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       await cache.addAll(APP_SHELL);
+      await self.skipWaiting();
     })()
   );
 });
@@ -51,7 +55,7 @@ self.addEventListener("activate", event => {
 
       await Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== RUNTIME_CACHE) {
             return caches.delete(key);
           }
         })
@@ -63,7 +67,9 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("message", event => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
+  if (!event.data) return;
+
+  if (event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
@@ -72,6 +78,7 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
+
   if (url.origin !== self.location.origin) return;
 
   const isNavigationRequest =
@@ -82,51 +89,60 @@ self.addEventListener("fetch", event => {
 
   if (isNavigationRequest) {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      (async () => {
+        try {
+          const fresh = await fetch(event.request);
+
+          if (fresh && fresh.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, fresh.clone());
           }
-          return response;
-        })
-        .catch(async () => {
+
+          return fresh;
+        } catch (error) {
           return (
             (await caches.match(event.request)) ||
             (await caches.match("./")) ||
             (await caches.match("./index.html"))
           );
-        })
+        }
+      })()
     );
     return;
   }
 
   event.respondWith(
-  caches.match(event.request).then(cached => {
-    if (cached) {
-      fetch(event.request)
-        .then(response => {
-          if (!response || response.status !== 200 || response.type !== "basic") {
-            return;
-          }
+    (async () => {
+      const cached = await caches.match(event.request);
+      if (cached) {
+        fetch(event.request)
+          .then(async response => {
+            if (!response || response.status !== 200 || response.type !== "basic") {
+              return;
+            }
 
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        })
-        .catch(() => {});
+            const runtime = await caches.open(RUNTIME_CACHE);
+            runtime.put(event.request, response.clone());
+          })
+          .catch(() => {});
 
-      return cached;
-    }
-
-    return fetch(event.request).then(response => {
-      if (!response || response.status !== 200 || response.type !== "basic") {
-        return response;
+        return cached;
       }
 
-      const clone = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-      return response;
-    });
-  })
-);
+      try {
+        const response = await fetch(event.request);
+
+        if (!response || response.status !== 200 || response.type !== "basic") {
+          return response;
+        }
+
+        const runtime = await caches.open(RUNTIME_CACHE);
+        runtime.put(event.request, response.clone());
+
+        return response;
+      } catch (error) {
+        return caches.match(event.request);
+      }
+    })()
+  );
 });
