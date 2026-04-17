@@ -1,9 +1,6 @@
 {
   "start_url": "/acc/",
   "scope": "/acc/",
-  "id": "./",
-  "start_url": "./",
-  "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#071633",
