@@ -1,16 +1,18 @@
 01-config.js
+
 - app keys
 - global state
 - DOM references
 
 02-storage.js
+
 - IndexedDB layer
 - openDB
 - dbGet
 - dbSet
 - dbDelete
 - dbClear
-- saveData
+- saveData (🔹 autosync trigger)
 - loadDataByMode
 - loadMode
 - saveMode
@@ -22,6 +24,7 @@
 - hasAnyDataInAnyMode
 
 03-utils.js
+
 - uid
 - todayStr
 - formatDate
@@ -47,6 +50,7 @@
 - gesture helpers
 
 04-render.js
+
 - render
 - renderPerson
 - renderEntry
@@ -57,6 +61,7 @@
 - syncFab
 
 05-forms.js
+
 - openPersonForm
 - openStageForm
 - openEntryForm
@@ -65,27 +70,25 @@
 - entry form submit logic
 
 06-actions.js
+
 - openMainAddMenu
 - openQuickActions
 - openEditByPayload
-- deleteByPayload
+- deleteByPayload (🔹 immediate cloud sync)
 - setupActionCard
-- closeActiveStage
+- closeActiveStage (🔹 immediate cloud sync)
 - confirmCloseAndOpenNewStage
 - confirmEditActiveStage
 - openChoosePersonForEntry
 - add person / add entry launcher
 - openOverviewPersonDetail
-- closed stage accent class assignment by index
-- overview stage detail card rendering
 
 07-events.js
+
 - bindDynamicEvents
 - bindStatsEvents
 - bindPremiumPressEffects
 - static listeners
-- fab.onclick = openMainAddMenu
-- menuBtn.addEventListener(...)
 - theme button click
 - confirm button listeners
 - import input listener
@@ -94,6 +97,7 @@
 - switchMode
 
 08-modals.js
+
 - openModal
 - closeModal
 - confirmDelete
@@ -101,6 +105,7 @@
 - modal-related popstate
 
 09-export.js
+
 - buildPdfHtml
 - triggerPdfPrint
 - exportAllPdf
@@ -108,7 +113,6 @@
 - exportJsonBackup
 - openTransferActionsModal
 - openChoosePersonForPdf
-- other export/import helpers
 - openDataBackupModal
 - getStorageInfo
 - getBackupMeta
@@ -118,12 +122,29 @@
 - getPersonalStats
 - getWorkStats
 - Data & Backup modal rendering
-- backup / restore / close actions
+- Backup / Restore (local)
+- Cloud Save (manual)
+- Cloud Load (latest + history)
 
 10-init.js
+
 - install prompt logic
 - iOS install prompt logic
-- update prompt UI show/hide
-- debug init
+- update prompt UI
 - initApp()
-- service worker registration/update detection
+- 🔹 cloud status refresh
+- 🔹 next-day history finalize
+
+11-cloud-sync.js ⭐
+
+- Firebase connection
+- handleAccCloudSave (latest snapshot)
+- handleAccCloudLoad (restore არჩევანი)
+- autosync (debounce ~8s)
+- immediate sync (critical actions)
+- daily history system
+- next-day finalize logic
+- expireAt (TTL ready)
+- cloud status control
+- history snapshot creation
+- restore არჩევანი (Latest + History)

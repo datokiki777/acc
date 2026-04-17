@@ -1,95 +1,67 @@
 01-base.css
+
 - :root variables
 - reset
 - html, body
 - typography
-- global element defaults
-- base utility classes
+- base utilities
 
 02-layout.css
+
 - app shell
 - topbar
-- main containers
-- wrappers
-- grids
-- spacing structure
-- sticky / fixed layout blocks
+- containers
+- layout grid
+- spacing
 
 03-components.css
+
 - buttons
 - cards
 - pills
-- empty states
-- generic UI blocks
-- reusable component styles
+- reusable UI
 
 04-modals.css
-- overlay
-- modal
-- sheet
-- confirm modal
-- modal actions
-- modal inner layout
-- sheet-item-title-row
-- sheet-item-icon
-- main menu modal
-- Data & Backup modal
-- backup rows / dots / status pill
-- backup / restore / close button styling
-- light-theme modal polish
 
+- modal / sheet
+- confirm modal
+- Data & Backup modal
+- backup rows / dots
+- status pill (🔹 cloud synced / error / local)
+- backup / restore buttons
 
 05-forms.css
-- form wrappers
-- labels
+
 - inputs
-- textarea
-- form actions
-- type toggles
-- form-specific controls
-- type-toggle-row
-- type-toggle-btn
-- type-toggle-money
-- currency-inline-picker
-- currency-choice-btn
+- labels
+- form layout
+- currency picker
 
 06-sections.css
+
 - person card
 - stage card
 - entry card
 - stats section
-- search section
 - overview section
-- section-specific UI
-- overview detail compact cards
-- open stage accent card
-- closed stage accent variants
-- closed-stage-head inner tinted card styling
 
 07-effects.css
+
 - transitions
-- animations
-- swipe effects
 - press effects
-- hover/active polish
-- transform/opacity helpers
-- startup splash animation (App Store style)
+- animations
+- splash / loader
 
 08-responsive.css
-- media queries
-- mobile adjustments
-- tablet/desktop adjustments
-- compact layout fixes
-- safe-area / small-screen fixes
+
+- mobile fixes
+- tablet
+- compact layout
 
 09-theme.css
-- light theme overrides
-- dark theme overrides
-- theme-specific component adjustments
-- currency light-theme overrides
-- icon light-theme overrides
+
+- light theme
+- dark theme
 - theme polish
-- topbar light-theme polish
-- mode switch light-theme styling
-- theme button / menu button light-theme styling
-- modal light-theme overrides
+- modal overrides
+- cloud status colors
