@@ -980,3 +980,28 @@ body.light-theme .open-stage-mini-card::before {
   background: linear-gradient(180deg, #69d79a, #3eb776);
   box-shadow: 0 0 10px rgba(62, 183, 118, 0.10);
 }
+
+/* ===== Restore Source (Light Theme) ===== */
+
+body.light-theme .restore-item {
+  background: linear-gradient(180deg, #dfe6ef, #d5deea);
+  border: 1px solid #bcc8d8;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.72),
+    0 4px 10px rgba(70, 88, 112, 0.08);
+  color: #22324a;
+}
+
+body.light-theme .restore-item:hover {
+  background: linear-gradient(180deg, #e5ebf3, #dbe4ef);
+  border-color: #b2bfd0;
+}
+
+body.light-theme .restore-item.active {
+  background: linear-gradient(180deg, #cdddff, #bdd2fb);
+  border: 1px solid #8fb0ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.74),
+    0 6px 14px rgba(76, 141, 255, 0.16);
+  color: #1f4fa8;
+}
