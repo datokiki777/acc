@@ -377,22 +377,27 @@ function wireUpdateFound(registration) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("./service-workers.js");
-      swRegistrationRef = registration;
+      const registration = await navigator.serviceWorker.register("/service-workers.js");
+swRegistrationRef = registration;
 
-      if (registration.waiting) {
-        pendingServiceWorker = registration.waiting;
-        showUpdatePromptUI();
-      }
+console.log("SW registered:", registration.scope);
 
-      wireUpdateFound(registration);
+if (registration.waiting) {
+  pendingServiceWorker = registration.waiting;
+  showUpdatePromptUI();
+}
 
-      setTimeout(() => {
-        registration.update().catch(() => {});
-      }, 1500);
-    } catch (err) {
-      console.warn("Service Worker registration failed:", err);
-    }
+wireUpdateFound(registration);
+
+setTimeout(() => {
+  registration.update().catch(err => {
+    console.warn("SW update failed:", err);
+  });
+}, 1500);
+   } catch (err) {
+  console.warn("Service Worker registration failed:", err);
+  alert("Service Worker error: " + (err?.message || err));
+}
 
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (controllerChangeHandled) return;
