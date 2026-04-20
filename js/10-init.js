@@ -377,7 +377,7 @@ function wireUpdateFound(registration) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/service-workers.js");
+      const registration = await navigator.serviceWorker.register("./service-workers.js");
 swRegistrationRef = registration;
 
 console.log("SW registered:", registration.scope);
@@ -389,11 +389,14 @@ if (registration.waiting) {
 
 wireUpdateFound(registration);
 
-setTimeout(() => {
-  registration.update().catch(err => {
-    console.warn("SW update failed:", err);
-  });
-}, 1500);
+if (
+  location.protocol === "http:" &&
+  (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+) {
+  setTimeout(() => {
+    registration.update().catch(() => {});
+  }, 1500);
+}
    } catch (err) {
   console.warn("Service Worker registration failed:", err);
   alert("Service Worker error: " + (err?.message || err));

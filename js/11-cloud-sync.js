@@ -10,7 +10,7 @@ const ACC_CLOUD_META_LAST_HISTORY_SAVED_DAY = "__acc_cloud_last_history_saved_da
 
 let accAutoSyncTimer = null;
 let accLastSyncAt = 0;
-const ACC_AUTOSYNC_DELAY = 8000; // 8 წამი
+const ACC_AUTOSYNC_DELAY = 5000; // 5 წამი
 let accCloudStatus = "idle";
 let accCloudLastAt = "";
 let accCloudLastError = "";
@@ -31,6 +31,10 @@ function accToDisplayDay(dayKey) {
 
 async function accMarkPendingHistoryDay(dayKey = accToDayKey()) {
   try {
+    const existing = await dbGet(ACC_CLOUD_META_PENDING_HISTORY_DAY);
+
+    if (existing) return;
+
     await dbSet(ACC_CLOUD_META_PENDING_HISTORY_DAY, dayKey);
   } catch (error) {
     console.error("ACC failed to mark pending history day:", error);
@@ -137,44 +141,59 @@ async function finalizeAccPendingHistoryDayIfNeeded() {
 
     const todayKey = accToDayKey();
     const pendingDay = await accGetPendingHistoryDay();
+
     if (!pendingDay) return false;
     if (pendingDay === todayKey) return false;
 
     const lastSavedDay = await accGetLastHistorySavedDay();
+    let finalized = false;
+
     if (lastSavedDay === pendingDay) {
-      await dbDelete(ACC_CLOUD_META_PENDING_HISTORY_DAY);
-      return false;
+      finalized = true;
+    } else {
+      const historyDoc = await db
+        .collection(ACC_CLOUD_HISTORY_COLLECTION)
+        .doc(pendingDay)
+        .get();
+
+      if (historyDoc.exists) {
+        await accSetLastHistorySavedDay(pendingDay);
+        finalized = true;
+      } else {
+        const mainDoc = await db
+          .collection(ACC_CLOUD_LATEST_COLLECTION)
+          .doc(ACC_CLOUD_LATEST_DOC)
+          .get();
+
+        if (!mainDoc.exists) return false;
+
+        const mainPayload = mainDoc.data() || {};
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 30);
+
+        await db.collection(ACC_CLOUD_HISTORY_COLLECTION).doc(pendingDay).set({
+          type: "daily-history",
+          historyDay: pendingDay,
+          historyDayDisplay: accToDisplayDay(pendingDay),
+          sourceUpdatedAt: mainPayload.updatedAt || "",
+          savedAt: new Date().toISOString(),
+          expireAt: firebase.firestore.Timestamp.fromDate(expireAt),
+          mode: mainPayload.mode || "personal",
+          personal: cloneJson(mainPayload.personal || []),
+          work: cloneJson(mainPayload.work || []),
+        });
+
+        await accSetLastHistorySavedDay(pendingDay);
+        finalized = true;
+      }
     }
 
-    const historyDoc = await db.collection(ACC_CLOUD_HISTORY_COLLECTION).doc(pendingDay).get();
-    if (historyDoc.exists) {
-      await accSetLastHistorySavedDay(pendingDay);
+    if (finalized) {
       await dbDelete(ACC_CLOUD_META_PENDING_HISTORY_DAY);
-      return false;
+      return true;
     }
 
-    const mainDoc = await db.collection(ACC_CLOUD_LATEST_COLLECTION).doc(ACC_CLOUD_LATEST_DOC).get();
-    if (!mainDoc.exists) return false;
-
-    const mainPayload = mainDoc.data() || {};
-    const expireAt = new Date();
-    expireAt.setDate(expireAt.getDate() + 30);
-
-    await db.collection(ACC_CLOUD_HISTORY_COLLECTION).doc(pendingDay).set({
-      type: "daily-history",
-      historyDay: pendingDay,
-      historyDayDisplay: accToDisplayDay(pendingDay),
-      sourceUpdatedAt: mainPayload.updatedAt || "",
-      savedAt: new Date().toISOString(),
-      expireAt: firebase.firestore.Timestamp.fromDate(expireAt),
-      mode: mainPayload.mode || "personal",
-      personal: cloneJson(mainPayload.personal || []),
-      work: cloneJson(mainPayload.work || []),
-    });
-
-    await accSetLastHistorySavedDay(pendingDay);
-    await dbDelete(ACC_CLOUD_META_PENDING_HISTORY_DAY);
-    return true;
+    return false;
   } catch (error) {
     console.error("ACC finalize history failed:", error);
     return false;
