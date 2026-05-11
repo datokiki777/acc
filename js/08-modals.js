@@ -116,6 +116,10 @@ function askRestoreSource(options) {
       </div>
     `).join("");
 
+    // 🔹 HIDE the floating back button (←) during restore
+    const wasFabHidden = fab.classList.contains("fab-hidden");
+    fab.classList.add("fab-hidden");
+
     openModal("Restore source", `
       <div class="restore-list">
         ${listHtml}
@@ -141,6 +145,8 @@ function askRestoreSource(options) {
 
       cancelBtn.onclick = () => {
         closeModal();
+        // 🔹 Restore FAB visibility
+        if (!wasFabHidden) fab.classList.remove("fab-hidden");
         resolve(null);
       };
 
@@ -148,6 +154,8 @@ function askRestoreSource(options) {
         if (selectedIndex < 0) return;
         const picked = options[selectedIndex];
         closeModal();
+        // 🔹 Restore FAB visibility
+        if (!wasFabHidden) fab.classList.remove("fab-hidden");
         resolve(picked);
       };
     });
