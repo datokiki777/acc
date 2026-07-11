@@ -12,7 +12,7 @@
 - dbSet
 - dbDelete
 - dbClear
-- saveData (🔹 autosync trigger)
+- saveData
 - loadDataByMode
 - loadMode
 - saveMode
@@ -74,9 +74,9 @@
 - openMainAddMenu
 - openQuickActions
 - openEditByPayload
-- deleteByPayload (🔹 immediate cloud sync)
+- deleteByPayload
 - setupActionCard
-- closeActiveStage (🔹 immediate cloud sync)
+- closeActiveStage
 - confirmCloseAndOpenNewStage
 - confirmEditActiveStage
 - openChoosePersonForEntry
@@ -124,8 +124,6 @@
 - getWorkStats
 - Data & Backup modal rendering
 - Backup / Restore (local)
-- Cloud Save (manual)
-- Cloud Load (latest + history)
 
 10-init.js
 
@@ -133,20 +131,3 @@
 - iOS install prompt logic
 - update prompt UI
 - initApp()
-- 🔹 cloud status refresh
-- 🔹 next-day history finalize
-
-11-cloud-sync.js ⭐
-
-- Firebase connection
-- handleAccCloudSave (latest snapshot)
-- handleAccCloudLoad (restore არჩევანი)
-- autosync (debounce ~8s)
-- immediate sync (critical actions)
-- daily history system
-- next-day finalize logic
-- expireAt (TTL ready)
-- cloud status control
-- history snapshot creation
-- restore არჩევანი (Latest + History)
-- cloud restore source picker (cancel / empty / picked)

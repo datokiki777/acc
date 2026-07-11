@@ -23,21 +23,8 @@ This repository is published by GitHub Pages as the ACC PWA at `https://acc.dbui
 - `google-services.json`
 - signing keys such as `.jks`, `.keystore`, `.p12`, `.pem`, `.key`
 
-## Firebase Note
+## Data Storage Note
 
-The Firebase web config in `index.html` is not a password. It can be visible in browser JavaScript.
+ACC is a local-first PWA. Data is stored in the browser/device IndexedDB and can be exported/imported as JSON from the app.
 
-Real security must come from Firebase Authentication and strict Firestore security rules. Do not put service account keys, admin credentials, private keys, or real passwords in frontend JavaScript.
-
-Recommended Firestore design:
-
-```text
-users/{uid}/accData/latest
-users/{uid}/accData/history/{day}
-```
-
-Rule idea:
-
-```text
-allow read, write: if request.auth != null && request.auth.uid == uid;
-```
+Do not add Firebase config, service account keys, admin credentials, private keys, or real passwords to frontend JavaScript.

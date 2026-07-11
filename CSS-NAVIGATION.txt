@@ -27,7 +27,7 @@
 - confirm modal
 - Data & Backup modal
 - backup rows / dots
-- status pill (🔹 cloud synced / error / local)
+- status pill colors
 - backup / restore buttons
 - restore source modal / restore-item list
 
@@ -65,4 +65,4 @@
 - dark theme
 - theme polish
 - modal overrides
-- cloud status colors
+- backup/status colors

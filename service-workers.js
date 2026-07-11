@@ -1,5 +1,5 @@
-const CACHE_NAME = "acc-shell-v8.2";
-const RUNTIME_CACHE = "acc-runtime-v8.2";
+const CACHE_NAME = "acc-shell-v9.0";
+const RUNTIME_CACHE = "acc-runtime-v9.0";
 
 const APP_SHELL = [
   "./",
@@ -26,7 +26,6 @@ const APP_SHELL = [
   "./js/08-modals.js",
   "./js/09-export.js",
   "./js/10-init.js",
-  "./js/11-cloud-sync.js",
 
   "./icons/favicon.ico",
   "./icons/favicon-32x32.png",
