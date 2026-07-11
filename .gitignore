@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# Android/Capacitor files should not be published in this PWA-only repo
+android/
+capacitor.config.json
+package-lock.json
+package.json
+
+# Native app signing keys and secrets
+*.apk
+*.aab
+*.aar
+*.ap_
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+google-services.json
+GoogleService-Info.plist
