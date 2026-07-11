@@ -383,14 +383,9 @@ if (registration.waiting) {
 
 wireUpdateFound(registration);
 
-if (
-  location.protocol === "http:" &&
-  (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-) {
-  setTimeout(() => {
-    registration.update().catch(() => {});
-  }, 1500);
-}
+setTimeout(() => {
+  registration.update().catch(() => {});
+}, 1500);
    } catch (err) {
   console.warn("Service Worker registration failed:", err);
   alert("Service Worker error: " + (err?.message || err));
