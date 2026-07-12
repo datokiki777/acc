@@ -55,12 +55,7 @@ function renderWorkSalaryPanel(person) {
   if (state.mode !== "work") return "";
   const salary = personSalarySummary(person);
   if (!salary.enabled) {
-    return `
-      <div class="salary-panel salary-panel-empty">
-        <div class="salary-panel-title">Salary not set</div>
-        <button type="button" class="secondary-btn salary-setup-btn" data-edit-salary="${person.id}">Set Salary</button>
-      </div>
-    `;
+    return "";
   }
   return `
     <div class="salary-panel">
