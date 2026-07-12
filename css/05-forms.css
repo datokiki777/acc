@@ -43,6 +43,16 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.field-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.salary-type-hidden {
+  display: none;
+}
+
 .entry-kind-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -67,7 +67,7 @@ function renderWorkSalaryPanel(person) {
       <div class="salary-panel-head">
         <div>
           <div class="salary-panel-title">Payroll</div>
-          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · from ${formatDate(salary.startDate)} · day ${salary.payDay}</div>
+          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}</div>
         </div>
         <div class="salary-due-pill ${salary.due > 0 ? "due" : "clear"}">
           ${salary.due > 0 ? formatMoneyPlain(salary.due, salary.currency) : "Clear"}
@@ -76,7 +76,7 @@ function renderWorkSalaryPanel(person) {
       <div class="salary-grid">
         <div><span>Accrued</span><strong>${formatMoneyPlain(salary.accrued, salary.currency)}</strong></div>
         <div><span>Paid</span><strong>${formatMoneyPlain(salary.paid, salary.currency)}</strong></div>
-        <div><span>Days</span><strong>${salary.days}</strong></div>
+        <div><span>Next Pay</span><strong>${formatDate(salary.nextPayDate)}</strong></div>
       </div>
     </div>
   `;

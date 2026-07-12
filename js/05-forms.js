@@ -49,17 +49,18 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           </div>
 
           <div class="field">
-            <label for="salaryPayDay">Pay Day</label>
+            <label for="salaryPayPeriodWeeks">Pay Period</label>
             <input
-              id="salaryPayDay"
-              name="salaryPayDay"
+              id="salaryPayPeriodWeeks"
+              name="salaryPayPeriodWeeks"
               type="number"
               step="1"
               min="1"
-              max="31"
-              placeholder="Example: 1"
-              value="${person?.salaryPayDay ? escapeHtml(person.salaryPayDay) : "1"}"
+              max="52"
+              placeholder="Weeks, example: 2"
+              value="${person?.salaryPayPeriodWeeks || person?.salaryPayDay ? escapeHtml(person.salaryPayPeriodWeeks || person.salaryPayDay) : "2"}"
             >
+            <div class="field-hint">Weeks between salary payments.</div>
           </div>
         </div>
         ` : ""}
@@ -89,7 +90,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
         const name = String(fd.get("name") || "").trim();
         const salaryAmount = normalizeAmount(fd.get("salaryAmount"));
         const salaryStartDate = String(fd.get("salaryStartDate") || "").trim();
-        const salaryPayDay = Math.min(31, Math.max(1, Number(fd.get("salaryPayDay") || 1)));
+        const salaryPayPeriodWeeks = Math.min(52, Math.max(1, Number(fd.get("salaryPayPeriodWeeks") || 1)));
 
         if (!name) return;
 
@@ -98,7 +99,8 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           if (state.mode === "work") {
             person.salaryAmount = salaryAmount;
             person.salaryStartDate = salaryStartDate;
-            person.salaryPayDay = salaryPayDay;
+            person.salaryPayPeriodWeeks = salaryPayPeriodWeeks;
+            delete person.salaryPayDay;
             person.salaryCurrency = person.salaryCurrency || findOpenStage(person.id)?.currency || "EUR";
           }
           await saveData();
@@ -118,7 +120,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             ...(state.mode === "work" ? {
               salaryAmount,
               salaryStartDate,
-              salaryPayDay,
+              salaryPayPeriodWeeks,
               salaryCurrency: "EUR"
             } : {}),
             expanded: false,
@@ -304,6 +306,7 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
   if (!stage) return;
   const isWork = state.mode === "work";
   const entryCategory = entry?.category || "regular";
+  const entryType = entryCategory === "salary" ? "Gave" : (entry?.type || "Gave");
 
   openModal(
     entry ? "Edit Entry" : "Add Entry",
@@ -323,17 +326,17 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
           >
         </div>
 
-        <div class="field">
+        <div class="field ${entryCategory === "salary" ? "salary-type-hidden" : ""}" id="entryTypeField">
           <label>Type</label>
           <div class="type-toggle-row">
-            <button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Gave" ? "active gave" : ""}" data-entry-type="Gave">
-              ${entryTypeToggleContent("Gave", (entry?.type || "Gave") === "Gave")}
+            <button type="button" class="type-toggle-btn ${entryType === "Gave" ? "active gave" : ""}" data-entry-type="Gave">
+              ${entryTypeToggleContent("Gave", entryType === "Gave")}
             </button>
-            <button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Received" ? "active received" : ""}" data-entry-type="Received">
-              ${entryTypeToggleContent("Received", (entry?.type || "Gave") === "Received")}
+            <button type="button" class="type-toggle-btn ${entryType === "Received" ? "active received" : ""}" data-entry-type="Received">
+              ${entryTypeToggleContent("Received", entryType === "Received")}
             </button>
           </div>
-          <input type="hidden" id="entryType" name="type" value="${entry?.type || "Gave"}">
+          <input type="hidden" id="entryType" name="type" value="${entryType}">
         </div>
 
         ${isWork ? `
@@ -368,22 +371,35 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
     () => {
       const form = document.getElementById("entryForm");
       const cancelBtn = document.getElementById("cancelModalBtn");
+      const typeField = document.getElementById("entryTypeField");
       const typeInput = document.getElementById("entryType");
       const typeButtons = document.querySelectorAll("[data-entry-type]");
       const categoryInput = document.getElementById("entryCategory");
       const categoryButtons = document.querySelectorAll("[data-entry-category]");
       cancelBtn.onclick = () => { if (reopenOverviewPersonId) openOverviewPersonDetail(reopenOverviewPersonId); else closeModal(); };
+      const setEntryType = nextType => {
+        typeInput.value = nextType;
+        typeButtons.forEach(b => {
+          const type = b.dataset.entryType || "Gave";
+          const isActive = type === nextType;
+          b.classList.remove("active", "gave", "received");
+          if (isActive) { b.classList.add("active"); b.classList.add(type === "Gave" ? "gave" : "received"); }
+          b.innerHTML = entryTypeToggleContent(type, isActive);
+        });
+      };
+      const syncEntryKind = () => {
+        const category = categoryInput ? categoryInput.value : "regular";
+        if (category === "salary") {
+          setEntryType("Gave");
+          typeField?.classList.add("salary-type-hidden");
+          return;
+        }
+        typeField?.classList.remove("salary-type-hidden");
+      };
       typeButtons.forEach(btn => {
         btn.onclick = () => {
           const nextType = btn.dataset.entryType || "Gave";
-          typeInput.value = nextType;
-          typeButtons.forEach(b => {
-            const type = b.dataset.entryType || "Gave";
-            const isActive = type === nextType;
-            b.classList.remove("active", "gave", "received");
-            if (isActive) { b.classList.add("active"); b.classList.add(type === "Gave" ? "gave" : "received"); }
-            b.innerHTML = entryTypeToggleContent(type, isActive);
-          });
+          setEntryType(nextType);
         };
       });
       categoryButtons.forEach(btn => {
@@ -393,15 +409,17 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
           categoryButtons.forEach(b => {
             b.classList.toggle("active", b.dataset.entryCategory === nextCategory);
           });
+          syncEntryKind();
         };
       });
+      syncEntryKind();
       form.onsubmit = async e => {
         e.preventDefault();
         const fd = new FormData(form);
         const amount = normalizeAmount(fd.get("amount"));
         if (amount < 1) return;
-        const type = String(fd.get("type") || "");
         const category = isWork ? String(fd.get("category") || "regular") : "";
+        const type = category === "salary" ? "Gave" : String(fd.get("type") || "");
         const date = String(fd.get("date") || todayStr());
         const comment = String(fd.get("comment") || "").trim();
         if (!amount || amount <= 0 || !type) return;

@@ -62,6 +62,20 @@ function daysInclusive(startDateStr, endDate = new Date()) {
   return Math.max(0, diff + 1);
 }
 
+function daysSince(startDateStr, endDate = new Date()) {
+  const start = parseLocalDate(startDateStr);
+  if (!start) return 0;
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  return Math.max(0, Math.floor((end - start) / 86400000));
+}
+
+function addDays(dateStr, days) {
+  const date = parseLocalDate(dateStr);
+  if (!date) return "";
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function balanceClass(value) {
   if (value > 0) return "green";
   if (value < 0) return "red";
@@ -150,11 +164,12 @@ function personOpenBalance(person) {
 function getPersonSalaryConfig(person) {
   const monthly = normalizeAmount(person?.salaryAmount || 0);
   const startDate = person?.salaryStartDate || "";
+  const periodWeeks = Math.min(52, Math.max(1, Number(person?.salaryPayPeriodWeeks || person?.salaryPayDay || 1)));
   if (!monthly || !startDate) return null;
   return {
     monthly,
     startDate,
-    payDay: Math.min(31, Math.max(1, Number(person?.salaryPayDay || 1))),
+    periodWeeks,
     currency: person?.salaryCurrency || findOpenStage(person?.id)?.currency || "EUR"
   };
 }
@@ -176,10 +191,13 @@ function personSalaryPaid(person) {
 function personSalarySummary(person, date = new Date()) {
   const config = getPersonSalaryConfig(person);
   if (!config) {
-    return { enabled: false, accrued: 0, paid: 0, due: 0, currency: "EUR", days: 0, monthly: 0, payDay: 1 };
+    return { enabled: false, accrued: 0, paid: 0, due: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "" };
   }
-  const days = daysInclusive(config.startDate, date);
-  const accrued = normalizeAmount((config.monthly * 12 / 365) * days);
+  const days = daysSince(config.startDate, date);
+  const periodDays = config.periodWeeks * 7;
+  const completedPeriods = Math.floor(days / periodDays);
+  const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
+  const accrued = normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
   return {
     enabled: true,
@@ -189,7 +207,10 @@ function personSalarySummary(person, date = new Date()) {
     currency: config.currency,
     days,
     monthly: config.monthly,
-    payDay: config.payDay,
+    periodWeeks: config.periodWeeks,
+    periodAmount,
+    completedPeriods,
+    nextPayDate: addDays(config.startDate, (completedPeriods + 1) * periodDays),
     startDate: config.startDate
   };
 }
