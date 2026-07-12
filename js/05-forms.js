@@ -23,6 +23,47 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           >
         </div>
 
+        ${state.mode === "work" ? `
+        <div class="salary-form-block">
+          <div class="field">
+            <label for="salaryAmount">Monthly Salary</label>
+            <input
+              id="salaryAmount"
+              name="salaryAmount"
+              type="number"
+              step="1"
+              min="0"
+              placeholder="Example: 2500"
+              value="${person?.salaryAmount ? escapeHtml(person.salaryAmount) : ""}"
+            >
+          </div>
+
+          <div class="field">
+            <label for="salaryStartDate">Salary Start Date</label>
+            <input
+              id="salaryStartDate"
+              name="salaryStartDate"
+              type="date"
+              value="${person?.salaryStartDate ? escapeHtml(person.salaryStartDate) : ""}"
+            >
+          </div>
+
+          <div class="field">
+            <label for="salaryPayDay">Pay Day</label>
+            <input
+              id="salaryPayDay"
+              name="salaryPayDay"
+              type="number"
+              step="1"
+              min="1"
+              max="31"
+              placeholder="Example: 1"
+              value="${person?.salaryPayDay ? escapeHtml(person.salaryPayDay) : "1"}"
+            >
+          </div>
+        </div>
+        ` : ""}
+
         <div class="form-actions">
           <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
           <button type="submit" class="primary-btn">Save</button>
@@ -46,11 +87,20 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
 
         const fd = new FormData(form);
         const name = String(fd.get("name") || "").trim();
+        const salaryAmount = normalizeAmount(fd.get("salaryAmount"));
+        const salaryStartDate = String(fd.get("salaryStartDate") || "").trim();
+        const salaryPayDay = Math.min(31, Math.max(1, Number(fd.get("salaryPayDay") || 1)));
 
         if (!name) return;
 
         if (person) {
           person.name = name;
+          if (state.mode === "work") {
+            person.salaryAmount = salaryAmount;
+            person.salaryStartDate = salaryStartDate;
+            person.salaryPayDay = salaryPayDay;
+            person.salaryCurrency = person.salaryCurrency || findOpenStage(person.id)?.currency || "EUR";
+          }
           await saveData();
           render();
 
@@ -65,6 +115,12 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           state.people.unshift({
             id: newId,
             name,
+            ...(state.mode === "work" ? {
+              salaryAmount,
+              salaryStartDate,
+              salaryPayDay,
+              salaryCurrency: "EUR"
+            } : {}),
             expanded: false,
             stages: []
           });
@@ -246,14 +302,76 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
   const stage = findStage(personId, stageId);
   const entry = entryId ? findEntry(personId, stageId, entryId) : null;
   if (!stage) return;
+  const isWork = state.mode === "work";
+  const entryCategory = entry?.category || "regular";
+
   openModal(
     entry ? "Edit Entry" : "Add Entry",
-    `<form class="form" id="entryForm"><div class="field"><label for="entryAmount">Amount</label><input id="entryAmount" name="amount" type="number" step="1" min="1" required placeholder="Example: 50" value="${entry ? escapeHtml(normalizeAmount(entry.amount)) : ""}"></div><div class="field"><label>Type</label><div class="type-toggle-row"><button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Gave" ? "active gave" : ""}" data-entry-type="Gave">${entryTypeToggleContent("Gave", (entry?.type || "Gave") === "Gave")}</button><button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Received" ? "active received" : ""}" data-entry-type="Received">${entryTypeToggleContent("Received", (entry?.type || "Gave") === "Received")}</button></div><input type="hidden" id="entryType" name="type" value="${entry?.type || "Gave"}"></div><div class="field"><label for="entryDate">Date</label><input id="entryDate" name="date" type="date" value="${entry ? escapeHtml(entry.date) : todayStr()}"></div><div class="field"><label for="entryComment">Comment</label><textarea id="entryComment" name="comment" placeholder="Optional">${entry ? escapeHtml(entry.comment || "") : ""}</textarea></div><div class="form-actions"><button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button><button type="submit" class="primary-btn">Save</button></div></form>`,
+    `
+      <form class="form" id="entryForm">
+        <div class="field">
+          <label for="entryAmount">Amount</label>
+          <input
+            id="entryAmount"
+            name="amount"
+            type="number"
+            step="1"
+            min="1"
+            required
+            placeholder="Example: 50"
+            value="${entry ? escapeHtml(normalizeAmount(entry.amount)) : ""}"
+          >
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <div class="type-toggle-row">
+            <button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Gave" ? "active gave" : ""}" data-entry-type="Gave">
+              ${entryTypeToggleContent("Gave", (entry?.type || "Gave") === "Gave")}
+            </button>
+            <button type="button" class="type-toggle-btn ${(entry?.type || "Gave") === "Received" ? "active received" : ""}" data-entry-type="Received">
+              ${entryTypeToggleContent("Received", (entry?.type || "Gave") === "Received")}
+            </button>
+          </div>
+          <input type="hidden" id="entryType" name="type" value="${entry?.type || "Gave"}">
+        </div>
+
+        ${isWork ? `
+        <div class="field">
+          <label>Kind</label>
+          <div class="entry-kind-row">
+            <button type="button" class="entry-kind-btn ${entryCategory === "regular" ? "active" : ""}" data-entry-category="regular">Regular</button>
+            <button type="button" class="entry-kind-btn ${entryCategory === "salary" ? "active" : ""}" data-entry-category="salary">Salary</button>
+            <button type="button" class="entry-kind-btn ${entryCategory === "gift" ? "active" : ""}" data-entry-category="gift">Gift</button>
+            <button type="button" class="entry-kind-btn ${entryCategory === "advance" ? "active" : ""}" data-entry-category="advance">Advance</button>
+          </div>
+          <input type="hidden" id="entryCategory" name="category" value="${entryCategory}">
+        </div>
+        ` : ""}
+
+        <div class="field">
+          <label for="entryDate">Date</label>
+          <input id="entryDate" name="date" type="date" value="${entry ? escapeHtml(entry.date) : todayStr()}">
+        </div>
+
+        <div class="field">
+          <label for="entryComment">Comment</label>
+          <textarea id="entryComment" name="comment" placeholder="Optional">${entry ? escapeHtml(entry.comment || "") : ""}</textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
+          <button type="submit" class="primary-btn">Save</button>
+        </div>
+      </form>
+    `,
     () => {
       const form = document.getElementById("entryForm");
       const cancelBtn = document.getElementById("cancelModalBtn");
       const typeInput = document.getElementById("entryType");
       const typeButtons = document.querySelectorAll("[data-entry-type]");
+      const categoryInput = document.getElementById("entryCategory");
+      const categoryButtons = document.querySelectorAll("[data-entry-category]");
       cancelBtn.onclick = () => { if (reopenOverviewPersonId) openOverviewPersonDetail(reopenOverviewPersonId); else closeModal(); };
       typeButtons.forEach(btn => {
         btn.onclick = () => {
@@ -268,19 +386,31 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
           });
         };
       });
+      categoryButtons.forEach(btn => {
+        btn.onclick = () => {
+          const nextCategory = btn.dataset.entryCategory || "regular";
+          if (categoryInput) categoryInput.value = nextCategory;
+          categoryButtons.forEach(b => {
+            b.classList.toggle("active", b.dataset.entryCategory === nextCategory);
+          });
+        };
+      });
       form.onsubmit = async e => {
         e.preventDefault();
         const fd = new FormData(form);
         const amount = normalizeAmount(fd.get("amount"));
         if (amount < 1) return;
         const type = String(fd.get("type") || "");
+        const category = isWork ? String(fd.get("category") || "regular") : "";
         const date = String(fd.get("date") || todayStr());
         const comment = String(fd.get("comment") || "").trim();
         if (!amount || amount <= 0 || !type) return;
         if (entry) {
           entry.amount = amount; entry.type = type; entry.date = date; entry.comment = comment;
+          if (isWork) entry.category = category;
+          else delete entry.category;
         } else {
-          stage.entries.unshift({ id: uid(), amount, type, date, comment });
+          stage.entries.unshift({ id: uid(), amount, type, date, comment, ...(isWork ? { category } : {}) });
         }
         await saveData();
         if (reopenOverviewPersonId) openOverviewPersonDetail(reopenOverviewPersonId);

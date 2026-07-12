@@ -1,5 +1,5 @@
-const CACHE_NAME = "acc-shell-v9.0";
-const RUNTIME_CACHE = "acc-runtime-v9.0";
+const CACHE_NAME = "acc-shell-v9.1";
+const RUNTIME_CACHE = "acc-runtime-v9.1";
 
 const APP_SHELL = [
   "./",

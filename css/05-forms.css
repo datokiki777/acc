@@ -35,6 +35,35 @@
   resize: vertical;
 }
 
+.salary-form-block {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.entry-kind-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.entry-kind-btn {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.entry-kind-btn.active {
+  border-color: rgba(89, 142, 255, 0.72);
+  background: linear-gradient(180deg, rgba(88, 139, 255, 0.35), rgba(52, 93, 190, 0.32));
+}
+
 .type-toggle-row {
   display: flex;
   align-items: stretch;

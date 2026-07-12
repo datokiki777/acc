@@ -1253,3 +1253,137 @@
   background: linear-gradient(180deg, rgba(255, 122, 217, 0.14), rgba(217, 79, 181, 0.08));
   border-color: rgba(255, 122, 217, 0.14);
 }
+
+.salary-panel {
+  margin: 0 14px 10px;
+  padding: 12px;
+  border: 1px solid rgba(135, 166, 220, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(35, 65, 112, 0.58), rgba(20, 42, 78, 0.44));
+}
+
+.salary-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.salary-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.salary-panel-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.salary-panel-sub {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.salary-due-pill {
+  flex: 0 0 auto;
+  min-width: 76px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.salary-due-pill.due {
+  color: #ff9a9a;
+  border: 1px solid rgba(255, 110, 110, 0.34);
+  background: rgba(255, 80, 80, 0.13);
+}
+
+.salary-due-pill.clear {
+  color: #62e090;
+  border: 1px solid rgba(85, 220, 140, 0.28);
+  background: rgba(60, 210, 120, 0.12);
+}
+
+.salary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.salary-grid div {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.salary-grid span,
+.salary-grid strong {
+  display: block;
+  white-space: nowrap;
+}
+
+.salary-grid span {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.salary-grid strong {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.salary-setup-btn {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.salary-action-row {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.salary-pay-btn {
+  background: linear-gradient(180deg, #ff8080, #d94f5b) !important;
+  color: #fff !important;
+}
+
+.entry-category-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 7px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: capitalize;
+  color: #dfe9ff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.entry-category-salary {
+  color: #ffd3d3;
+  background: rgba(255, 95, 95, 0.18);
+}
+
+.entry-category-gift {
+  color: #ffe3a6;
+  background: rgba(255, 194, 82, 0.18);
+}
+
+.entry-category-advance {
+  color: #bfe2ff;
+  background: rgba(80, 165, 255, 0.18);
+}

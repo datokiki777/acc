@@ -34,15 +34,49 @@ function runBalanceAnimations() {
 function renderEntry(personId, stageId, stage, entry, source = "main") {
   const effect = entryEffect(entry.type, entry.amount);
   const currentCurrency = stageCurrency(stage);
+  const categoryLabel = state.mode === "work" && entry.category && entry.category !== "regular"
+    ? `<span class="entry-category-chip entry-category-${escapeHtml(entry.category)}">${escapeHtml(entry.category)}</span>`
+    : "";
   return `
     <div class="entry-card swipe-card" data-action-type="entry" data-person-id="${personId}" data-stage-id="${stageId}" data-entry-id="${entry.id}" data-source="${source}">
       <div class="swipe-content">
         <div class="entry-top">
-          <div class="entry-type ${typeLabelClass(entry.type)}">${entryTypeVisual(entry.type)}</div>
+          <div class="entry-type ${typeLabelClass(entry.type)}">${entryTypeVisual(entry.type)}${categoryLabel}</div>
           <div class="entry-amount ${balanceClass(effect)}">${Number(entry.amount).toFixed(2)}${currencyLabel(currentCurrency)}</div>
         </div>
         ${entry.comment ? `<div class="entry-comment">${escapeHtml(entry.comment)}</div>` : ""}
         <div class="entry-meta">${formatDate(entry.date)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWorkSalaryPanel(person) {
+  if (state.mode !== "work") return "";
+  const salary = personSalarySummary(person);
+  if (!salary.enabled) {
+    return `
+      <div class="salary-panel salary-panel-empty">
+        <div class="salary-panel-title">Salary not set</div>
+        <button type="button" class="secondary-btn salary-setup-btn" data-edit-salary="${person.id}">Set Salary</button>
+      </div>
+    `;
+  }
+  return `
+    <div class="salary-panel">
+      <div class="salary-panel-head">
+        <div>
+          <div class="salary-panel-title">Payroll</div>
+          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · from ${formatDate(salary.startDate)} · day ${salary.payDay}</div>
+        </div>
+        <div class="salary-due-pill ${salary.due > 0 ? "due" : "clear"}">
+          ${salary.due > 0 ? formatMoneyPlain(salary.due, salary.currency) : "Clear"}
+        </div>
+      </div>
+      <div class="salary-grid">
+        <div><span>Accrued</span><strong>${formatMoneyPlain(salary.accrued, salary.currency)}</strong></div>
+        <div><span>Paid</span><strong>${formatMoneyPlain(salary.paid, salary.currency)}</strong></div>
+        <div><span>Days</span><strong>${salary.days}</strong></div>
       </div>
     </div>
   `;
@@ -75,6 +109,7 @@ function renderPerson(person) {
         </div>
       </div>
       <div class="person-body">
+        ${renderWorkSalaryPanel(person)}
         ${openStage ? `<div class="person-body-top-totals"><div class="totals-line"><span>↑ ${totals.gave.toFixed(2)}${currencyLabel(currentCurrency)}</span><span>↓ ${totals.received.toFixed(2)}${currencyLabel(currentCurrency)}</span><span class="${balanceClass(totals.balance)}">Net ${formatMoney(totals.balance, currentCurrency)}</span></div></div>` : ""}
         <div class="person-body-scroll">
           <div class="entry-list">
@@ -86,6 +121,7 @@ function renderPerson(person) {
             ${openStage ? `<button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>` : `<button class="primary-btn" data-add-stage="${person.id}">+ Add Stage</button>`}
           </div>
           ${openStage ? `<div class="quick-actions-row quick-actions-row-2"><button class="secondary-btn" data-open-next-stage="${person.id}">🔒 Open Stage</button><button class="secondary-btn" data-edit-active-stage="${person.id}">✏️ Edit</button></div>` : ""}
+          ${state.mode === "work" && openStage && personSalarySummary(person).enabled ? `<div class="quick-actions-row salary-action-row"><button class="secondary-btn salary-pay-btn" data-pay-salary="${person.id}">Pay Salary</button></div>` : ""}
         </div>
       </div>
     </article>

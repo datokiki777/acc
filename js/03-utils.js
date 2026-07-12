@@ -47,6 +47,21 @@ function formatMoneyPlain(value, currency = "EUR") {
   return `${sign}${Math.abs(num)}${currencyLabel(currency)}`;
 }
 
+function parseLocalDate(dateStr) {
+  if (!dateStr) return null;
+  const parts = String(dateStr).split("-").map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function daysInclusive(startDateStr, endDate = new Date()) {
+  const start = parseLocalDate(startDateStr);
+  if (!start) return 0;
+  const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+  const diff = Math.floor((end - start) / 86400000);
+  return Math.max(0, diff + 1);
+}
+
 function balanceClass(value) {
   if (value > 0) return "green";
   if (value < 0) return "red";
@@ -130,6 +145,53 @@ function personOpenBalance(person) {
   return (person.stages || [])
     .filter(stage => !stage.closed)
     .reduce((sum, stage) => sum + stageBalance(stage), 0);
+}
+
+function getPersonSalaryConfig(person) {
+  const monthly = normalizeAmount(person?.salaryAmount || 0);
+  const startDate = person?.salaryStartDate || "";
+  if (!monthly || !startDate) return null;
+  return {
+    monthly,
+    startDate,
+    payDay: Math.min(31, Math.max(1, Number(person?.salaryPayDay || 1))),
+    currency: person?.salaryCurrency || findOpenStage(person?.id)?.currency || "EUR"
+  };
+}
+
+function isSalaryEntry(entry) {
+  return entry?.category === "salary" || /^\[Salary\]/i.test(String(entry?.comment || ""));
+}
+
+function personSalaryPaid(person) {
+  return (person?.stages || []).reduce((sum, stage) => {
+    return sum + (stage.entries || []).reduce((entrySum, entry) => {
+      if (!isSalaryEntry(entry)) return entrySum;
+      if (entry.type !== "Gave") return entrySum;
+      return entrySum + normalizeAmount(entry.amount);
+    }, 0);
+  }, 0);
+}
+
+function personSalarySummary(person, date = new Date()) {
+  const config = getPersonSalaryConfig(person);
+  if (!config) {
+    return { enabled: false, accrued: 0, paid: 0, due: 0, currency: "EUR", days: 0, monthly: 0, payDay: 1 };
+  }
+  const days = daysInclusive(config.startDate, date);
+  const accrued = normalizeAmount((config.monthly * 12 / 365) * days);
+  const paid = personSalaryPaid(person);
+  return {
+    enabled: true,
+    accrued,
+    paid,
+    due: Math.max(0, accrued - paid),
+    currency: config.currency,
+    days,
+    monthly: config.monthly,
+    payDay: config.payDay,
+    startDate: config.startDate
+  };
 }
 
 function getOrderedCurrencyEntries(totalsMap) {
