@@ -305,7 +305,7 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
   const entry = entryId ? findEntry(personId, stageId, entryId) : null;
   if (!stage) return;
   const isWork = state.mode === "work";
-  const entryCategory = entry?.category || "regular";
+  const entryCategory = isWork ? (entry?.category === "salary" ? "salary" : "gift") : "";
   const entryType = entryCategory === "salary" ? "Gave" : (entry?.type || "Gave");
 
   openModal(
@@ -343,10 +343,8 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
         <div class="field">
           <label>Kind</label>
           <div class="entry-kind-row">
-            <button type="button" class="entry-kind-btn ${entryCategory === "regular" ? "active" : ""}" data-entry-category="regular">Regular</button>
             <button type="button" class="entry-kind-btn ${entryCategory === "salary" ? "active" : ""}" data-entry-category="salary">Salary</button>
             <button type="button" class="entry-kind-btn ${entryCategory === "gift" ? "active" : ""}" data-entry-category="gift">Gift</button>
-            <button type="button" class="entry-kind-btn ${entryCategory === "advance" ? "active" : ""}" data-entry-category="advance">Advance</button>
           </div>
           <input type="hidden" id="entryCategory" name="category" value="${entryCategory}">
         </div>
@@ -418,7 +416,7 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
         const fd = new FormData(form);
         const amount = normalizeAmount(fd.get("amount"));
         if (amount < 1) return;
-        const category = isWork ? String(fd.get("category") || "regular") : "";
+        const category = isWork ? String(fd.get("category") || "gift") : "";
         const type = category === "salary" ? "Gave" : String(fd.get("type") || "");
         const date = String(fd.get("date") || todayStr());
         const comment = String(fd.get("comment") || "").trim();

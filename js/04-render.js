@@ -34,7 +34,7 @@ function runBalanceAnimations() {
 function renderEntry(personId, stageId, stage, entry, source = "main") {
   const effect = entryEffect(entry.type, entry.amount);
   const currentCurrency = stageCurrency(stage);
-  const categoryLabel = state.mode === "work" && entry.category && entry.category !== "regular"
+  const categoryLabel = state.mode === "work" && (entry.category === "salary" || entry.category === "gift")
     ? `<span class="entry-category-chip entry-category-${escapeHtml(entry.category)}">${escapeHtml(entry.category)}</span>`
     : "";
   return `
@@ -77,6 +77,21 @@ function renderWorkSalaryPanel(person) {
   `;
 }
 
+function renderWorkGiftPanel(person) {
+  if (state.mode !== "work") return "";
+  const gift = personGiftSummary(person);
+  if (!gift.total) return "";
+  return `
+    <div class="gift-panel">
+      <div>
+        <div class="gift-panel-title">Gift</div>
+        <div class="gift-panel-sub">Total gift entries</div>
+      </div>
+      <strong>${formatMoneyPlain(gift.total, gift.currency)}</strong>
+    </div>
+  `;
+}
+
 function renderPerson(person) {
   const openStage = findOpenStage(person.id);
   const openStages = (person.stages || []).filter(s => !s.closed);
@@ -105,6 +120,7 @@ function renderPerson(person) {
       </div>
       <div class="person-body">
         ${renderWorkSalaryPanel(person)}
+        ${renderWorkGiftPanel(person)}
         ${openStage ? `<div class="person-body-top-totals"><div class="totals-line"><span>↑ ${totals.gave.toFixed(2)}${currencyLabel(currentCurrency)}</span><span>↓ ${totals.received.toFixed(2)}${currencyLabel(currentCurrency)}</span><span class="${balanceClass(totals.balance)}">Net ${formatMoney(totals.balance, currentCurrency)}</span></div></div>` : ""}
         <div class="person-body-scroll">
           <div class="entry-list">

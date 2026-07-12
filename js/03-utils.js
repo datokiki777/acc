@@ -192,6 +192,22 @@ function personSalaryPaid(person) {
   }, 0);
 }
 
+function isGiftEntry(entry) {
+  return entry?.category === "gift";
+}
+
+function personGiftSummary(person) {
+  const openStage = findOpenStage(person?.id);
+  const currency = person?.salaryCurrency || openStage?.currency || "EUR";
+  const total = (person?.stages || []).reduce((sum, stage) => {
+    return sum + (stage.entries || []).reduce((entrySum, entry) => {
+      if (!isGiftEntry(entry)) return entrySum;
+      return entrySum + normalizeAmount(entry.amount);
+    }, 0);
+  }, 0);
+  return { total, currency };
+}
+
 function personSalarySummary(person, date = new Date()) {
   const config = getPersonSalaryConfig(person);
   if (!config) {

@@ -1005,3 +1005,69 @@ body.light-theme .restore-item.active {
     0 6px 14px rgba(76, 141, 255, 0.16);
   color: #1f4fa8;
 }
+
+body.light-theme .salary-panel {
+  border-color: rgba(112, 132, 164, 0.28);
+  background: linear-gradient(180deg, rgba(246, 250, 255, 0.94), rgba(226, 235, 248, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 22px rgba(60, 82, 120, 0.11);
+}
+
+body.light-theme .salary-panel-title,
+body.light-theme .gift-panel-title {
+  color: #18243a;
+}
+
+body.light-theme .salary-panel-sub,
+body.light-theme .gift-panel-sub,
+body.light-theme .salary-grid span {
+  color: #66758d;
+}
+
+body.light-theme .salary-grid div {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(127, 146, 178, 0.12);
+}
+
+body.light-theme .salary-grid strong {
+  color: #172238;
+}
+
+body.light-theme .salary-due-pill.clear {
+  color: #15975a;
+  border-color: rgba(21, 151, 90, 0.23);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+body.light-theme .salary-due-pill.due {
+  color: #c33c48;
+  border-color: rgba(195, 60, 72, 0.22);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+body.light-theme .gift-panel {
+  border-color: rgba(214, 155, 31, 0.24);
+  background: linear-gradient(180deg, rgba(255, 250, 232, 0.96), rgba(248, 236, 202, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(176, 119, 31, 0.1);
+}
+
+body.light-theme .gift-panel strong {
+  color: #94630b;
+  background: rgba(245, 184, 46, 0.17);
+  border-color: rgba(190, 128, 19, 0.18);
+}
+
+body.light-theme .entry-category-chip {
+  text-shadow: none;
+}
+
+body.light-theme .entry-category-salary {
+  color: #b42334;
+  background: rgba(244, 63, 94, 0.13);
+  border-color: rgba(190, 24, 54, 0.14);
+}
+
+body.light-theme .entry-category-gift {
+  color: #8a5b05;
+  background: rgba(245, 184, 46, 0.18);
+  border-color: rgba(190, 128, 19, 0.14);
+}
