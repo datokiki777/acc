@@ -101,9 +101,6 @@ function bindDynamicEvents() {
   document.querySelectorAll("[data-edit-salary]").forEach(el => {
     el.onclick = e => { e.stopPropagation(); openPersonForm(el.dataset.editSalary); };
   });
-  document.querySelectorAll("[data-pay-salary]").forEach(el => {
-    el.onclick = e => { e.stopPropagation(); paySalaryDue(el.dataset.paySalary); };
-  });
   document.querySelectorAll(".swipe-card").forEach(card => setupActionCard(card));
 }
 

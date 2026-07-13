@@ -1,5 +1,5 @@
-const CACHE_NAME = "acc-shell-v9.5";
-const RUNTIME_CACHE = "acc-runtime-v9.5";
+const CACHE_NAME = "acc-shell-v9.6";
+const RUNTIME_CACHE = "acc-runtime-v9.6";
 
 const APP_SHELL = [
   "./",
@@ -38,11 +38,15 @@ const APP_SHELL = [
   "./icons/icon-1024x1024.png"
 ];
 
+const APP_SHELL_URLS = new Set(
+  APP_SHELL.map(path => new URL(path, self.location).href)
+);
+
 self.addEventListener("install", event => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      await cache.addAll(APP_SHELL);
+      await cache.addAll(APP_SHELL.map(path => new Request(path, { cache: "reload" })));
       await self.skipWaiting();
     })()
   );
@@ -105,6 +109,26 @@ self.addEventListener("fetch", event => {
             (await caches.match("./")) ||
             (await caches.match("./index.html"))
           );
+        }
+      })()
+    );
+    return;
+  }
+
+  if (APP_SHELL_URLS.has(event.request.url)) {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(event.request, { cache: "no-store" });
+
+          if (fresh && fresh.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, fresh.clone());
+          }
+
+          return fresh;
+        } catch (error) {
+          return caches.match(event.request);
         }
       })()
     );

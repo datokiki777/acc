@@ -369,45 +369,6 @@ function confirmEditActiveStage(personId) {
   confirmDelete("Edit active stage?", () => openStageForm(personId, openStage.id), false, "Edit");
 }
 
-function paySalaryDue(personId) {
-  const person = findPerson(personId);
-  const openStage = findOpenStage(personId);
-  if (!person) return;
-  if (!openStage) {
-    confirmDelete("Open a stage before recording salary payment.", () => openStageForm(personId), false, "OK");
-    return;
-  }
-
-  const salary = personSalarySummary(person);
-  if (!salary.enabled) {
-    openPersonForm(personId);
-    return;
-  }
-
-  if (salary.due <= 0) {
-    confirmDelete("No salary is due right now.", () => {}, false, "OK");
-    return;
-  }
-
-  confirmDelete(
-    `Record salary payment of ${formatMoneyPlain(salary.due, salary.currency)}?`,
-    async () => {
-      openStage.entries.unshift({
-        id: uid(),
-        amount: salary.due,
-        type: "Gave",
-        date: todayStr(),
-        comment: `[Salary] ${formatDate(todayStr())}`,
-        category: "salary"
-      });
-      await saveData();
-      render();
-    },
-    false,
-    "Pay"
-  );
-}
-
 // Main Add Menu (FAB)
 function openMainAddMenu() {
   const isWork = state.mode === "work";

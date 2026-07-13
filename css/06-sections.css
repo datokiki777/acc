@@ -1350,16 +1350,6 @@
   font-weight: 900;
 }
 
-.salary-action-row {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.salary-pay-btn {
-  background: linear-gradient(180deg, #ff8080, #d94f5b) !important;
-  color: #fff !important;
-}
-
 .gift-panel {
   margin: 0 14px 10px;
   padding: 12px;

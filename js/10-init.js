@@ -371,7 +371,9 @@ function wireUpdateFound(registration) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("./service-workers.js");
+      const registration = await navigator.serviceWorker.register("./service-workers.js", {
+        updateViaCache: "none"
+      });
 swRegistrationRef = registration;
 
 console.log("SW registered:", registration.scope);
@@ -402,11 +404,21 @@ setTimeout(() => {
 }
 
 if (updateApplyBtn) {
-  updateApplyBtn.addEventListener("click", () => {
+  updateApplyBtn.addEventListener("click", async () => {
     userAcceptedUpdate = true;
 
     if (pendingServiceWorker) {
       pendingServiceWorker.postMessage({ type: "SKIP_WAITING" });
+    } else if (swRegistrationRef) {
+      try {
+        await swRegistrationRef.update();
+      } catch (error) {
+        console.warn("Service worker update check failed:", error);
+      }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
     }
 
     hideUpdatePromptUI();

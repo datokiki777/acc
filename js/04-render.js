@@ -136,7 +136,6 @@ function renderPerson(person) {
             ${openStage ? `<button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>` : `<button class="primary-btn" data-add-stage="${person.id}">+ Add Stage</button>`}
           </div>
           ${openStage ? `<div class="quick-actions-row quick-actions-row-2"><button class="secondary-btn" data-open-next-stage="${person.id}">🔒 Open Stage</button><button class="secondary-btn" data-edit-active-stage="${person.id}">✏️ Edit</button></div>` : ""}
-          ${state.mode === "work" && openStage && personSalarySummary(person).enabled ? `<div class="quick-actions-row salary-action-row"><button class="secondary-btn salary-pay-btn" data-pay-salary="${person.id}">Pay Salary</button></div>` : ""}
         </div>
       </div>
     </article>
