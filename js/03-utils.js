@@ -149,10 +149,10 @@ function stageBalance(stage) {
   }, 0);
 }
 
-function stageWorkCategoryTotal(stage) {
+function stageWorkCategoryBalance(stage) {
   return (stage?.entries || []).reduce((sum, entry) => {
     if (!isSalaryEntry(entry) && !isGiftEntry(entry)) return sum;
-    return sum + normalizeAmount(entry.amount);
+    return sum + entryEffect(entry.type, entry.amount);
   }, 0);
 }
 
@@ -169,7 +169,7 @@ function stageTotals(stage) {
 function personOpenBalance(person) {
   return (person.stages || [])
     .filter(stage => !stage.closed)
-    .reduce((sum, stage) => sum + (isWorkMode() ? stageWorkCategoryTotal(stage) : stageBalance(stage)), 0);
+    .reduce((sum, stage) => sum + (isWorkMode() ? stageWorkCategoryBalance(stage) : stageBalance(stage)), 0);
 }
 
 function getPersonSalaryConfig(person) {
@@ -271,7 +271,7 @@ function getOpenCurrencyTotals(people = state.people) {
       .filter(stage => !stage.closed)
       .forEach(stage => {
         const currency = stageCurrency(stage);
-        const balance = isWorkMode() ? stageWorkCategoryTotal(stage) : stageBalance(stage);
+        const balance = isWorkMode() ? stageWorkCategoryBalance(stage) : stageBalance(stage);
         totals[currency] = (totals[currency] || 0) + balance;
       });
   });
