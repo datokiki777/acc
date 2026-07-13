@@ -57,6 +57,14 @@ function renderWorkSalaryPanel(person) {
   if (!salary.enabled) {
     return "";
   }
+  const statusPills = [
+    salary.due > 0
+      ? `<div class="salary-due-pill due">${formatMoneyPlain(salary.due, salary.currency)}</div>`
+      : "",
+    salary.upcoming > 0
+      ? `<div class="salary-due-pill upcoming">${formatMoneyPlain(salary.upcoming, salary.currency)}</div>`
+      : ""
+  ].join("");
   return `
     <div class="salary-panel">
       <div class="salary-panel-head">
@@ -64,12 +72,9 @@ function renderWorkSalaryPanel(person) {
           <div class="salary-panel-title">Payroll</div>
           <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}</div>
         </div>
-        <div class="salary-due-pill ${salary.due > 0 ? "due" : "clear"}">
-          ${salary.due > 0 ? formatMoneyPlain(salary.due, salary.currency) : "Clear"}
-        </div>
+        <div class="salary-pill-stack">${statusPills || `<div class="salary-due-pill clear">Clear</div>`}</div>
       </div>
       <div class="salary-grid">
-        <div><span>Accrued</span><strong>${formatMoneyPlain(salary.accrued, salary.currency)}</strong></div>
         <div><span>Paid</span><strong>${formatMoneyPlain(salary.paid, salary.currency)}</strong></div>
         <div><span>Next Pay</span><strong>${formatDate(salary.nextPayDate)}</strong></div>
       </div>

@@ -1299,10 +1299,23 @@
   font-weight: 900;
 }
 
+.salary-pill-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .salary-due-pill.due {
   color: #ff9a9a;
   border: 1px solid rgba(255, 110, 110, 0.34);
   background: rgba(255, 80, 80, 0.13);
+}
+
+.salary-due-pill.upcoming {
+  color: #ffd166;
+  border: 1px solid rgba(255, 194, 82, 0.3);
+  background: rgba(255, 194, 82, 0.14);
 }
 
 .salary-due-pill.clear {
@@ -1313,7 +1326,7 @@
 
 .salary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
 }

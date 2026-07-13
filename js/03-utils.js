@@ -227,19 +227,23 @@ function personGiftSummary(person) {
 function personSalarySummary(person, date = new Date()) {
   const config = getPersonSalaryConfig(person);
   if (!config) {
-    return { enabled: false, accrued: 0, paid: 0, due: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "" };
+    return { enabled: false, accrued: 0, paid: 0, due: 0, upcoming: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "" };
   }
   const days = daysSince(config.startDate, date);
   const periodDays = config.periodWeeks * 7;
   const completedPeriods = Math.floor(days / periodDays);
+  const currentPeriodDays = days - (completedPeriods * periodDays);
   const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
   const accrued = normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
+  const due = Math.max(0, accrued - paid);
+  const upcoming = normalizeAmount((periodAmount / periodDays) * currentPeriodDays);
   return {
     enabled: true,
     accrued,
     paid,
-    due: Math.max(0, accrued - paid),
+    due,
+    upcoming,
     currency: config.currency,
     days,
     monthly: config.monthly,
