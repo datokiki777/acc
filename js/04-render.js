@@ -87,7 +87,7 @@ function renderWorkGiftPanel(person) {
         <div class="gift-panel-title">Gift</div>
         <div class="gift-panel-sub">Total gift entries</div>
       </div>
-      <strong>${formatMoneyPlain(gift.total, gift.currency)}</strong>
+      <strong class="${balanceClass(gift.net)}">${formatMoney(gift.net, gift.currency)}</strong>
     </div>
   `;
 }

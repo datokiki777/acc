@@ -1385,6 +1385,18 @@
   border: 1px solid rgba(255, 194, 82, 0.25);
 }
 
+.gift-panel strong.green {
+  color: #62e090;
+  background: rgba(60, 210, 120, 0.12);
+  border-color: rgba(85, 220, 140, 0.28);
+}
+
+.gift-panel strong.red {
+  color: #ff9a9a;
+  background: rgba(255, 80, 80, 0.13);
+  border-color: rgba(255, 110, 110, 0.34);
+}
+
 .entry-category-chip {
   display: inline-flex;
   align-items: center;
