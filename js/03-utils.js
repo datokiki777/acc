@@ -199,13 +199,21 @@ function isGiftEntry(entry) {
 function personGiftSummary(person) {
   const openStage = findOpenStage(person?.id);
   const currency = person?.salaryCurrency || openStage?.currency || "EUR";
-  const total = (person?.stages || []).reduce((sum, stage) => {
-    return sum + (stage.entries || []).reduce((entrySum, entry) => {
-      if (!isGiftEntry(entry)) return entrySum;
-      return entrySum + normalizeAmount(entry.amount);
-    }, 0);
-  }, 0);
-  return { total, currency };
+  const totals = (person?.stages || []).reduce((sum, stage) => {
+    (stage.entries || []).forEach(entry => {
+      if (!isGiftEntry(entry)) return;
+      const amount = normalizeAmount(entry.amount);
+      if (entry.type === "Gave") sum.gave += amount;
+      if (entry.type === "Received") sum.received += amount;
+    });
+    return sum;
+  }, { gave: 0, received: 0 });
+  return {
+    gave: totals.gave,
+    received: totals.received,
+    net: totals.gave - totals.received,
+    currency
+  };
 }
 
 function personSalarySummary(person, date = new Date()) {

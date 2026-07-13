@@ -336,6 +336,13 @@ body.light-theme .person-body-footer .quick-actions-row .secondary-btn {
   border: 1px solid rgba(36, 85, 140, 0.16);
 }
 
+body.light-theme .person-body-footer .quick-actions-row .salary-pay-btn {
+  background: linear-gradient(180deg, #ff858f, #d94355) !important;
+  color: #fff !important;
+  border: 1px solid rgba(174, 37, 52, 0.35) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.36), 0 8px 18px rgba(217, 67, 85, 0.2) !important;
+}
+
 body.light-theme .confirm-actions .secondary-btn,
 body.light-theme .sheet-footer .secondary-btn,
 body.light-theme .modal-sheet .secondary-btn {
@@ -1050,10 +1057,31 @@ body.light-theme .gift-panel {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(176, 119, 31, 0.1);
 }
 
-body.light-theme .gift-panel strong {
+body.light-theme .gift-panel > strong {
   color: #94630b;
   background: rgba(245, 184, 46, 0.17);
   border-color: rgba(190, 128, 19, 0.18);
+}
+
+body.light-theme .gift-panel-grid div {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(190, 128, 19, 0.11);
+}
+
+body.light-theme .gift-panel-grid span {
+  color: #7b6c52;
+}
+
+body.light-theme .gift-panel-grid strong {
+  color: #172238;
+}
+
+body.light-theme .gift-panel-grid strong.green {
+  color: #15975a;
+}
+
+body.light-theme .gift-panel-grid strong.red {
+  color: #c33c48;
 }
 
 body.light-theme .entry-category-chip {
