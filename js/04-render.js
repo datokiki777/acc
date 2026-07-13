@@ -35,7 +35,7 @@ function renderEntry(personId, stageId, stage, entry, source = "main") {
   const effect = entryEffect(entry.type, entry.amount);
   const currentCurrency = stageCurrency(stage);
   const categoryLabel = state.mode === "work" && (entry.category === "salary" || entry.category === "gift")
-    ? `<span class="entry-category-chip entry-category-${escapeHtml(entry.category)}">${escapeHtml(entry.category)}</span>`
+    ? `<span class="entry-category-chip entry-category-${escapeHtml(entry.category)}">${entry.category === "gift" ? "Other" : escapeHtml(entry.category)}</span>`
     : "";
   return `
     <div class="entry-card swipe-card" data-action-type="entry" data-person-id="${personId}" data-stage-id="${stageId}" data-entry-id="${entry.id}" data-source="${source}">
@@ -84,8 +84,8 @@ function renderWorkGiftPanel(person) {
   return `
     <div class="gift-panel">
       <div>
-        <div class="gift-panel-title">Gift</div>
-        <div class="gift-panel-sub">Total gift entries</div>
+        <div class="gift-panel-title">Other</div>
+        <div class="gift-panel-sub">Other balance</div>
       </div>
       <strong class="${balanceClass(gift.net)}">${formatMoney(gift.net, gift.currency)}</strong>
     </div>

@@ -344,7 +344,7 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
           <label>Kind</label>
           <div class="entry-kind-row">
             <button type="button" class="entry-kind-btn ${entryCategory === "salary" ? "active" : ""}" data-entry-category="salary">Salary</button>
-            <button type="button" class="entry-kind-btn ${entryCategory === "gift" ? "active" : ""}" data-entry-category="gift">Gift</button>
+            <button type="button" class="entry-kind-btn ${entryCategory === "gift" ? "active" : ""}" data-entry-category="gift">Other</button>
           </div>
           <input type="hidden" id="entryCategory" name="category" value="${entryCategory}">
         </div>
