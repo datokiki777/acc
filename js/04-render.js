@@ -83,15 +83,11 @@ function renderWorkGiftPanel(person) {
   if (!gift.gave && !gift.received) return "";
   return `
     <div class="gift-panel">
-      <div class="gift-panel-head">
+      <div>
         <div class="gift-panel-title">Gift</div>
-        <div class="gift-panel-sub">Gift entry totals</div>
+        <div class="gift-panel-sub">Total gift entries</div>
       </div>
-      <div class="gift-panel-grid">
-        <div><span>Given</span><strong>${formatMoneyPlain(gift.gave, gift.currency)}</strong></div>
-        <div><span>Received</span><strong>${formatMoneyPlain(gift.received, gift.currency)}</strong></div>
-        <div><span>Net</span><strong class="${balanceClass(gift.net)}">${formatMoney(gift.net, gift.currency)}</strong></div>
-      </div>
+      <strong>${formatMoneyPlain(gift.total, gift.currency)}</strong>
     </div>
   `;
 }

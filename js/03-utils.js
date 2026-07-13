@@ -149,6 +149,13 @@ function stageBalance(stage) {
   }, 0);
 }
 
+function stageWorkCategoryTotal(stage) {
+  return (stage?.entries || []).reduce((sum, entry) => {
+    if (!isSalaryEntry(entry) && !isGiftEntry(entry)) return sum;
+    return sum + normalizeAmount(entry.amount);
+  }, 0);
+}
+
 function stageTotals(stage) {
   let gave = 0, received = 0;
   (stage.entries || []).forEach(entry => {
@@ -162,7 +169,7 @@ function stageTotals(stage) {
 function personOpenBalance(person) {
   return (person.stages || [])
     .filter(stage => !stage.closed)
-    .reduce((sum, stage) => sum + stageBalance(stage), 0);
+    .reduce((sum, stage) => sum + (isWorkMode() ? stageWorkCategoryTotal(stage) : stageBalance(stage)), 0);
 }
 
 function getPersonSalaryConfig(person) {
@@ -211,6 +218,7 @@ function personGiftSummary(person) {
   return {
     gave: totals.gave,
     received: totals.received,
+    total: totals.gave + totals.received,
     net: totals.gave - totals.received,
     currency
   };
@@ -263,7 +271,7 @@ function getOpenCurrencyTotals(people = state.people) {
       .filter(stage => !stage.closed)
       .forEach(stage => {
         const currency = stageCurrency(stage);
-        const balance = stageBalance(stage);
+        const balance = isWorkMode() ? stageWorkCategoryTotal(stage) : stageBalance(stage);
         totals[currency] = (totals[currency] || 0) + balance;
       });
   });

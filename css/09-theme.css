@@ -1056,27 +1056,6 @@ body.light-theme .gift-panel > strong {
   border-color: rgba(190, 128, 19, 0.18);
 }
 
-body.light-theme .gift-panel-grid div {
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(190, 128, 19, 0.11);
-}
-
-body.light-theme .gift-panel-grid span {
-  color: #7b6c52;
-}
-
-body.light-theme .gift-panel-grid strong {
-  color: #172238;
-}
-
-body.light-theme .gift-panel-grid strong.green {
-  color: #15975a;
-}
-
-body.light-theme .gift-panel-grid strong.red {
-  color: #c33c48;
-}
-
 body.light-theme .entry-category-chip {
   text-shadow: none;
 }
