@@ -80,6 +80,13 @@ function addDays(dateStr, days) {
   ].join("-");
 }
 
+function minDateString(firstDateStr, secondDate = new Date()) {
+  const first = parseLocalDate(firstDateStr);
+  if (!first) return secondDate;
+  const second = new Date(secondDate.getFullYear(), secondDate.getMonth(), secondDate.getDate());
+  return first < second ? first : second;
+}
+
 function balanceClass(value) {
   if (value > 0) return "green";
   if (value < 0) return "red";
@@ -175,11 +182,13 @@ function personOpenBalance(person) {
 function getPersonSalaryConfig(person) {
   const monthly = normalizeAmount(person?.salaryAmount || 0);
   const startDate = person?.salaryStartDate || "";
+  const endDate = person?.salaryEndDate || "";
   const periodWeeks = Math.min(52, Math.max(1, Number(person?.salaryPayPeriodWeeks || person?.salaryPayDay || 1)));
   if (!monthly || !startDate) return null;
   return {
     monthly,
     startDate,
+    endDate,
     periodWeeks,
     currency: person?.salaryCurrency || findOpenStage(person?.id)?.currency || "EUR"
   };
@@ -227,16 +236,19 @@ function personGiftSummary(person) {
 function personSalarySummary(person, date = new Date()) {
   const config = getPersonSalaryConfig(person);
   if (!config) {
-    return { enabled: false, accrued: 0, paid: 0, due: 0, upcoming: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "" };
+    return { enabled: false, accrued: 0, paid: 0, due: 0, upcoming: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "", ended: false, endDate: "" };
   }
-  const days = daysSince(config.startDate, date);
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const ended = !!config.endDate && parseLocalDate(config.endDate) <= today;
+  const calculationDate = config.endDate ? minDateString(config.endDate, date) : date;
+  const days = daysSince(config.startDate, calculationDate);
   const periodDays = config.periodWeeks * 7;
   const completedPeriods = Math.floor(days / periodDays);
   const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
   const accrued = normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
   const due = Math.max(0, accrued - paid);
-  const upcoming = periodAmount;
+  const upcoming = ended ? 0 : periodAmount;
   return {
     enabled: true,
     accrued,
@@ -250,7 +262,9 @@ function personSalarySummary(person, date = new Date()) {
     periodAmount,
     completedPeriods,
     nextPayDate: addDays(config.startDate, (completedPeriods + 1) * periodDays),
-    startDate: config.startDate
+    startDate: config.startDate,
+    ended,
+    endDate: config.endDate
   };
 }
 

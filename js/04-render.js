@@ -70,13 +70,13 @@ function renderWorkSalaryPanel(person) {
       <div class="salary-panel-head">
         <div>
           <div class="salary-panel-title">Payroll</div>
-          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}</div>
+          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}${salary.endDate ? ` · ends ${formatDate(salary.endDate)}` : ""}</div>
         </div>
         <div class="salary-pill-stack">${statusPills || `<div class="salary-due-pill clear">Clear</div>`}</div>
       </div>
       <div class="salary-grid">
         <div><span>Paid</span><strong>${formatMoneyPlain(salary.paid, salary.currency)}</strong></div>
-        <div><span>Next Pay</span><strong>${formatDate(salary.nextPayDate)}</strong></div>
+        <div><span>${salary.ended ? "Ended" : "Next Pay"}</span><strong>${formatDate(salary.ended ? salary.endDate : salary.nextPayDate)}</strong></div>
       </div>
     </div>
   `;

@@ -62,6 +62,20 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             >
             <div class="field-hint">Weeks between salary payments.</div>
           </div>
+
+          <div class="field">
+            <label for="salaryEndDate">Salary End Date</label>
+            <div class="salary-end-row">
+              <input
+                id="salaryEndDate"
+                name="salaryEndDate"
+                type="date"
+                value="${person?.salaryEndDate ? escapeHtml(person.salaryEndDate) : ""}"
+              >
+              <button type="button" class="secondary-btn salary-end-today-btn" id="salaryEndTodayBtn">End Today</button>
+            </div>
+            <div class="field-hint">Optional. Payroll stops calculating after this date.</div>
+          </div>
         </div>
         ` : ""}
 
@@ -74,6 +88,14 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
     () => {
       const form = document.getElementById("personForm");
       const cancelBtn = document.getElementById("cancelModalBtn");
+      const salaryEndTodayBtn = document.getElementById("salaryEndTodayBtn");
+      const salaryEndDateInput = document.getElementById("salaryEndDate");
+
+      if (salaryEndTodayBtn && salaryEndDateInput) {
+        salaryEndTodayBtn.onclick = () => {
+          salaryEndDateInput.value = todayStr();
+        };
+      }
 
       cancelBtn.onclick = () => {
         if (reopenEditPanel) {
@@ -90,6 +112,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
         const name = String(fd.get("name") || "").trim();
         const salaryAmount = normalizeAmount(fd.get("salaryAmount"));
         const salaryStartDate = String(fd.get("salaryStartDate") || "").trim();
+        const salaryEndDate = String(fd.get("salaryEndDate") || "").trim();
         const salaryPayPeriodWeeks = Math.min(52, Math.max(1, Number(fd.get("salaryPayPeriodWeeks") || 1)));
 
         if (!name) return;
@@ -99,6 +122,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           if (state.mode === "work") {
             person.salaryAmount = salaryAmount;
             person.salaryStartDate = salaryStartDate;
+            person.salaryEndDate = salaryEndDate;
             person.salaryPayPeriodWeeks = salaryPayPeriodWeeks;
             delete person.salaryPayDay;
             person.salaryCurrency = person.salaryCurrency || findOpenStage(person.id)?.currency || "EUR";
@@ -120,6 +144,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             ...(state.mode === "work" ? {
               salaryAmount,
               salaryStartDate,
+              salaryEndDate,
               salaryPayPeriodWeeks,
               salaryCurrency: "EUR"
             } : {}),
