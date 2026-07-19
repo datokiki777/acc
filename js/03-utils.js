@@ -335,9 +335,10 @@ function getTopBalanceIds(people, limit = 3) {
 
 function getFilteredPeople() {
   const query = state.search.trim().toLowerCase();
+  const isSearching = query.length > 0;
   const wantArchived = state.personFilter === "archived";
   return state.people
-    .filter(person => !!person.archived === wantArchived)
+    .filter(person => isSearching || !!person.archived === wantArchived)
     .filter(person => (person.name || "").toLowerCase().includes(query))
     .sort((a, b) => personLastActivityTs(b) - personLastActivityTs(a));
 }

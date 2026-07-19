@@ -103,6 +103,10 @@ function renderPerson(person, topBalanceIds) {
   const totals = personTotals(person);
   const tagColor = person.tagColor || "";
   const isTopBalance = !!(topBalanceIds && topBalanceIds.has(person.id));
+  const isSearching = state.search.trim().length > 0;
+  const archivedChip = (person.archived && isSearching)
+    ? `<span class="person-tag-chip person-archived-chip">Archived</span>`
+    : "";
   const tagChip = (person.tagLabel || tagColor)
     ? `<span class="person-tag-chip" style="${tagColor ? `background:${tagColor}22;color:${tagColor};border-color:${tagColor}55;` : ""}">${tagColor ? `<span class="person-tag-dot" style="background:${tagColor}"></span>` : ""}${escapeHtml(person.tagLabel || "")}</span>`
     : "";
@@ -114,6 +118,7 @@ function renderPerson(person, topBalanceIds) {
             <div class="person-main">
               <div class="person-name-row">
                 <div class="person-name">${highlightMatch(person.name, state.search)}</div>
+                ${archivedChip}
                 ${tagChip}
               </div>
               <div class="subtext">
@@ -188,7 +193,12 @@ function updateEmptyStateText() {
   const textEl = document.getElementById("emptyStateText");
   const iconEl = document.getElementById("emptyStateIcon");
   if (!titleEl || !textEl || !iconEl) return;
-  if (state.personFilter === "archived") {
+  const query = state.search.trim();
+  if (query) {
+    iconEl.textContent = "🔍";
+    titleEl.textContent = "No matches";
+    textEl.textContent = `No one found for "${query}".`;
+  } else if (state.personFilter === "archived") {
     iconEl.textContent = "🗄️";
     titleEl.textContent = "No archived people";
     textEl.textContent = "People you archive will show up here.";
