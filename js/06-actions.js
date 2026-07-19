@@ -44,9 +44,10 @@ function setupLongPress(element, callback) {
   element.addEventListener("mouseleave", cancel);
 }
 
-function setupSwipeDelete(card, onDelete) {
+function setupSwipeActions(card, { onDelete, onArchiveToggle } = {}) {
   const content = card.querySelector(".swipe-content");
   if (!content) return;
+
   let deleteAction = card.querySelector(".swipe-delete-action");
   if (!deleteAction) {
     deleteAction = document.createElement("button");
@@ -55,12 +56,36 @@ function setupSwipeDelete(card, onDelete) {
     deleteAction.innerHTML = "<span>Delete</span>";
     card.appendChild(deleteAction);
   }
+
+  const hasArchive = typeof onArchiveToggle === "function";
+  let archiveAction = null;
+  if (hasArchive) {
+    archiveAction = card.querySelector(".swipe-archive-action");
+    if (!archiveAction) {
+      archiveAction = document.createElement("button");
+      archiveAction.type = "button";
+      archiveAction.className = "swipe-archive-action";
+      card.appendChild(archiveAction);
+    }
+    archiveAction.innerHTML = `<span>${onArchiveToggle._label || "Archive"}</span>`;
+  }
+
   const revealWidth = 96;
   let startX = 0, currentX = 0, dragging = false, startYSwipe = 0;
-  const setTranslate = x => { const safeX = Math.max(-revealWidth, Math.min(0, x)); content.style.transform = `translateX(${safeX}px)`; };
-  const openSwipe = () => { closeAllSwipes(card); card.classList.add("swipe-open"); content.style.transform = `translateX(-${revealWidth}px)`; };
+
+  const setTranslate = x => {
+    const min = -revealWidth;
+    const max = hasArchive ? revealWidth : 0;
+    const safeX = Math.max(min, Math.min(max, x));
+    content.style.transform = `translateX(${safeX}px)`;
+  };
+  const openSwipeLeft = () => { closeAllSwipes(card); card.classList.add("swipe-open"); content.style.transform = `translateX(-${revealWidth}px)`; };
+  const openSwipeRight = () => { closeAllSwipes(card); card.classList.add("swipe-open"); content.style.transform = `translateX(${revealWidth}px)`; };
   const closeSwipe = () => { card.classList.remove("swipe-open"); content.style.transform = ""; };
+
   deleteAction.onclick = e => { e.stopPropagation(); closeSwipe(); if (typeof onDelete === "function") onDelete(); };
+  if (archiveAction) archiveAction.onclick = e => { e.stopPropagation(); closeSwipe(); onArchiveToggle(); };
+
   card.addEventListener("touchstart", e => {
     if (shouldIgnoreGestureTarget(e.target)) return;
     const nearestSwipe = getNearestSwipeCard(e.target);
@@ -78,17 +103,23 @@ function setupSwipeDelete(card, onDelete) {
     currentX = point.clientX;
     const dx = currentX - startX;
     const dy = Math.abs(point.clientY - startYSwipe);
-    if (dx < -8 && Math.abs(dx) > dy * 1.5) { e.preventDefault(); setTranslate(dx); }
+    const movingLeft = dx < -8;
+    const movingRight = hasArchive && dx > 8;
+    if ((movingLeft || movingRight) && Math.abs(dx) > dy * 1.5) { e.preventDefault(); setTranslate(dx); }
   }, { passive: false });
   const endTouch = () => {
     if (!dragging) return;
     dragging = false;
     const dx = currentX - startX;
-    if (dx < -48) openSwipe(); else closeSwipe();
+    if (dx < -48) openSwipeLeft();
+    else if (hasArchive && dx > 48) openSwipeRight();
+    else closeSwipe();
   };
   card.addEventListener("touchend", endTouch);
   card.addEventListener("touchcancel", endTouch);
-  card.addEventListener("click", e => { if (card.classList.contains("swipe-open") && !e.target.closest(".swipe-delete-action")) closeSwipe(); });
+  card.addEventListener("click", e => {
+    if (card.classList.contains("swipe-open") && !e.target.closest(".swipe-delete-action") && !e.target.closest(".swipe-archive-action")) closeSwipe();
+  });
 }
 
 function getActionPayloadFromCard(card) {
@@ -148,6 +179,15 @@ async function togglePersonArchived(personId) {
   render();
 }
 
+function buildArchiveToggle(personId) {
+  const person = findPerson(personId);
+  if (!person) return null;
+  const isArchived = !!person.archived;
+  const fn = () => togglePersonArchived(personId);
+  fn._label = isArchived ? "📤 Unarchive" : "🗄️ Archive";
+  return fn;
+}
+
 function setupActionCard(card) {
   if (card.dataset.actionsBound === "1") return;
   card.dataset.actionsBound = "1";
@@ -163,14 +203,7 @@ function setupActionCard(card) {
 
     if (payload.type === "person") {
       onExportPerson = () => exportPersonPdf(payload.personId);
-
-      const person = findPerson(payload.personId);
-      if (person) {
-        const isArchived = !!person.archived;
-        const archiveFn = () => togglePersonArchived(payload.personId);
-        archiveFn._label = isArchived ? "📤 Unarchive" : "🗄️ Archive";
-        onArchiveToggle = archiveFn;
-      }
+      onArchiveToggle = buildArchiveToggle(payload.personId);
     }
 
     openQuickActions({
@@ -182,7 +215,10 @@ function setupActionCard(card) {
     });
   });
 
-  setupSwipeDelete(card, () => deleteByPayload(payload));
+  setupSwipeActions(card, {
+    onDelete: () => deleteByPayload(payload),
+    onArchiveToggle: payload.type === "person" ? buildArchiveToggle(payload.personId) : null
+  });
 }
 
 function openMainMenu() {

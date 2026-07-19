@@ -60,6 +60,43 @@
   opacity: 1;
 }
 
+.swipe-archive-action {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  border: none;
+  outline: none;
+  padding: 0;
+  opacity: 0;
+  background: linear-gradient(180deg, #5db4ff, #2f8fe0);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-align: center;
+  transition: opacity 0.14s ease;
+}
+
+.swipe-archive-action span {
+  pointer-events: none;
+}
+
+.swipe-card:not(.swipe-open) .swipe-archive-action {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.swipe-card.swipe-open .swipe-archive-action {
+  pointer-events: auto;
+  opacity: 1;
+}
+
 /* Animations */
 @keyframes fabGlow {
   0% {
