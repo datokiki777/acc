@@ -236,13 +236,6 @@ function openMainMenu() {
     "Menu",
     `
       <div class="menu-sheet-list">
-        <button type="button" class="sheet-item menu-sheet-item" id="menuStatsBtn">
-          <span class="sheet-item-title-row">
-            <span class="sheet-item-icon">📊</span>
-            <span class="sheet-item-title">Statistics</span>
-          </span>
-        </button>
-
         <button type="button" class="sheet-item menu-sheet-item" id="menuExportPersonBtn">
           <span class="sheet-item-title-row">
             <span class="sheet-item-icon">📄</span>
@@ -266,17 +259,9 @@ function openMainMenu() {
       </div>
     `,
     () => {
-      const statsBtn = document.getElementById("menuStatsBtn");
       const exportPersonBtn = document.getElementById("menuExportPersonBtn");
       const exportAllBtn = document.getElementById("menuExportAllBtn");
       const dataBackupBtn = document.getElementById("menuDataBackupBtn");
-
-      if (statsBtn) {
-        statsBtn.onclick = () => {
-          closeModal();
-          openStatsModal();
-        };
-      }
 
       if (exportPersonBtn) {
         exportPersonBtn.onclick = () => {

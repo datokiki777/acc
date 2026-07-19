@@ -76,6 +76,33 @@
 .topbar-search-wrap {
   max-width: 732px;
   margin: 10px auto 0;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.topbar-search-wrap .search-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-icon-btn {
+  flex-shrink: 0;
+  width: 46px;
+  min-width: 46px;
+  border: none;
+  border-radius: 15px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.14s ease;
+}
+
+.stats-icon-btn:active {
+  transform: scale(0.92);
 }
 
 .icon-btn {

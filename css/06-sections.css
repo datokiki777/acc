@@ -1597,6 +1597,73 @@
 
 /* ==================== Statistics Modal ==================== */
 
+.stats-scope-switch {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.stats-scope-btn {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.68);
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.stats-scope-btn.active {
+  background: linear-gradient(180deg, rgba(86, 146, 255, 0.95), rgba(47, 111, 228, 0.92));
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 18px rgba(47, 111, 228, 0.28);
+}
+
+.stats-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stats-insight-card {
+  padding: 12px 8px;
+  border-radius: 14px;
+  background: var(--gray-soft);
+  text-align: center;
+}
+
+.stats-insight-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-insight-value-name {
+  font-size: 13px;
+}
+
+.stats-insight-label {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .stats-modal-body {
   display: flex;
   flex-direction: column;

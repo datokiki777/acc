@@ -112,6 +112,8 @@ function animatePersonCard(card, expand) {
 if (searchInput) {
   searchInput.addEventListener("input", e => { state.search = e.target.value; render(); });
 }
+const statsIconBtn = document.getElementById("statsIconBtn");
+if (statsIconBtn) statsIconBtn.addEventListener("click", () => openStatsModal());
 fab.onclick = openMainAddMenu;
 if (menuBtn) {
   menuBtn.classList.remove("transfer-btn");

@@ -174,6 +174,27 @@ body.light-theme .person-filter-btn.active {
     0 6px 12px rgba(63, 125, 240, 0.14);
 }
 
+/* stats scope (Active/Archived/All) switch */
+body.light-theme .stats-scope-switch {
+  background: linear-gradient(180deg, #6f88ad, #536c90);
+  border: 1px solid rgba(170, 192, 225, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    0 8px 16px rgba(40, 58, 86, 0.12);
+}
+
+body.light-theme .stats-scope-btn {
+  color: rgba(255,255,255,0.82);
+}
+
+body.light-theme .stats-scope-btn.active {
+  background: linear-gradient(180deg, #9cc4ff, #6ea3f5);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.30),
+    0 6px 12px rgba(63, 125, 240, 0.14);
+}
+
 body.light-theme .theme-switch {
   background: linear-gradient(180deg, #16315d, #11284d);
   color: #eef4ff;
