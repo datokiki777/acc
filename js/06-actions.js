@@ -6,7 +6,7 @@ function closeAllSwipes(exceptCard = null) {
     if (exceptCard && card === exceptCard) return;
     const content = card.querySelector(".swipe-content");
     if (content) content.style.transform = "";
-    card.classList.remove("swipe-open");
+    card.classList.remove("swipe-open", "swipe-open-left", "swipe-open-right");
   });
 }
 
@@ -79,9 +79,9 @@ function setupSwipeActions(card, { onDelete, onArchiveToggle } = {}) {
     const safeX = Math.max(min, Math.min(max, x));
     content.style.transform = `translateX(${safeX}px)`;
   };
-  const openSwipeLeft = () => { closeAllSwipes(card); card.classList.add("swipe-open"); content.style.transform = `translateX(-${revealWidth}px)`; };
-  const openSwipeRight = () => { closeAllSwipes(card); card.classList.add("swipe-open"); content.style.transform = `translateX(${revealWidth}px)`; };
-  const closeSwipe = () => { card.classList.remove("swipe-open"); content.style.transform = ""; };
+  const openSwipeLeft = () => { closeAllSwipes(card); card.classList.add("swipe-open", "swipe-open-left"); content.style.transform = `translateX(-${revealWidth}px)`; };
+  const openSwipeRight = () => { closeAllSwipes(card); card.classList.add("swipe-open", "swipe-open-right"); content.style.transform = `translateX(${revealWidth}px)`; };
+  const closeSwipe = () => { card.classList.remove("swipe-open", "swipe-open-left", "swipe-open-right"); content.style.transform = ""; };
 
   deleteAction.onclick = e => { e.stopPropagation(); closeSwipe(); if (typeof onDelete === "function") onDelete(); };
   if (archiveAction) archiveAction.onclick = e => { e.stopPropagation(); closeSwipe(); onArchiveToggle(); };

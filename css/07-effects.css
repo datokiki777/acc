@@ -50,12 +50,12 @@
   pointer-events: none;
 }
 
-.swipe-card:not(.swipe-open) .swipe-delete-action {
+.swipe-card:not(.swipe-open-left) .swipe-delete-action {
   pointer-events: none;
   opacity: 0;
 }
 
-.swipe-card.swipe-open .swipe-delete-action {
+.swipe-card.swipe-open-left .swipe-delete-action {
   pointer-events: auto;
   opacity: 1;
 }
@@ -87,12 +87,12 @@
   pointer-events: none;
 }
 
-.swipe-card:not(.swipe-open) .swipe-archive-action {
+.swipe-card:not(.swipe-open-right) .swipe-archive-action {
   pointer-events: none;
   opacity: 0;
 }
 
-.swipe-card.swipe-open .swipe-archive-action {
+.swipe-card.swipe-open-right .swipe-archive-action {
   pointer-events: auto;
   opacity: 1;
 }

@@ -83,21 +83,6 @@
   opacity: 0.72;
 }
 
-.person-card.person-archived .person-name::after {
-  content: "Archived";
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  vertical-align: middle;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(230, 238, 250, 0.75);
-}
-
 .person-card.expanded {
   box-shadow:
     0 18px 40px rgba(0,0,0,0.60),
