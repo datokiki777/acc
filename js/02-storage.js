@@ -81,7 +81,7 @@ async function loadDataByMode(mode = state.mode) {
     }
 
     const parsed = JSON.parse(raw);
-    state.people = Array.isArray(parsed) ? parsed : [];
+    state.people = (Array.isArray(parsed) ? parsed : []).map(migratePersonToFlatEntries);
   } catch (error) {
     state.people = [];
   }

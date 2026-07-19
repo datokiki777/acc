@@ -73,12 +73,6 @@ window.addEventListener("popstate", async () => {
     return;
   }
 
-  if (state.statsExpanded) {
-    state.statsExpanded = false;
-    render();
-    return;
-  }
-
   const anyExpanded = state.people.some(p => p.expanded);
   if (anyExpanded) {
     state.people.forEach(p => {

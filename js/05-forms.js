@@ -1,8 +1,9 @@
 // ==================== 05-forms.js ====================
-// Form Modals (Add/Edit Person, Stage, Entry)
+// Form Modals (Add/Edit Person, Entry)
 
 function openPersonForm(personId = null, reopenEditPanel = false) {
   const person = personId ? findPerson(personId) : null;
+  const isNew = !person;
 
   openModal(
     person
@@ -22,6 +23,20 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             value="${person ? escapeHtml(person.name) : ""}"
           >
         </div>
+
+        ${isNew ? `
+        <div class="field">
+          <label for="personCurrency">Currency</label>
+          <input type="hidden" id="personCurrency" name="currency" value="EUR" />
+          <div class="currency-inline-picker">
+            <button type="button" class="currency-choice-btn active" data-person-currency-choice="EUR">€</button>
+            <button type="button" class="currency-choice-btn" data-person-currency-choice="USD">$</button>
+            <button type="button" class="currency-choice-btn" data-person-currency-choice="GEL">₾</button>
+            <button type="button" class="currency-choice-btn" data-person-currency-choice="CAD">CAD</button>
+          </div>
+          <div class="field-hint">Fixed once saved.</div>
+        </div>
+        ` : ""}
 
         ${state.mode === "work" ? `
         <div class="salary-form-block">
@@ -90,6 +105,18 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
       const cancelBtn = document.getElementById("cancelModalBtn");
       const salaryEndTodayBtn = document.getElementById("salaryEndTodayBtn");
       const salaryEndDateInput = document.getElementById("salaryEndDate");
+      const currencyInput = document.getElementById("personCurrency");
+      const currencyChoiceButtons = document.querySelectorAll("[data-person-currency-choice]");
+
+      currencyChoiceButtons.forEach(btn => {
+        btn.onclick = () => {
+          const nextCurrency = btn.dataset.personCurrencyChoice || "EUR";
+          if (currencyInput) currencyInput.value = nextCurrency;
+          currencyChoiceButtons.forEach(b => {
+            b.classList.toggle("active", b.dataset.personCurrencyChoice === nextCurrency);
+          });
+        };
+      });
 
       if (salaryEndTodayBtn && salaryEndDateInput) {
         salaryEndTodayBtn.onclick = () => {
@@ -125,7 +152,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             person.salaryEndDate = salaryEndDate;
             person.salaryPayPeriodWeeks = salaryPayPeriodWeeks;
             delete person.salaryPayDay;
-            person.salaryCurrency = person.salaryCurrency || findOpenStage(person.id)?.currency || "EUR";
+            person.salaryCurrency = person.salaryCurrency || personCurrency(person);
           }
           await saveData();
           render();
@@ -137,19 +164,23 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           }
         } else {
           const newId = uid();
+          const newCurrency = String(fd.get("currency") || "EUR");
 
           state.people.unshift({
             id: newId,
             name,
+            currency: newCurrency,
             ...(state.mode === "work" ? {
               salaryAmount,
               salaryStartDate,
               salaryEndDate,
               salaryPayPeriodWeeks,
-              salaryCurrency: "EUR"
+              salaryCurrency: newCurrency
             } : {}),
             expanded: false,
-            stages: []
+            archived: false,
+            createdAt: new Date().toISOString(),
+            entries: []
           });
 
           await saveData();
@@ -164,7 +195,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
                 card.scrollIntoView({ behavior: "smooth", block: "start" });
               }
 
-              openStageForm(newId, null, true);
+              openEntryForm(newId, null);
             });
           });
         }
@@ -173,162 +204,10 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
   );
 }
 
-function openStageForm(personId, stageId = null, openEntryAfterSave = false, reopenEditPanel = false, reopenOverviewPersonId = null) {
+function openEntryForm(personId, entryId = null) {
   const person = findPerson(personId);
-  const stage = stageId ? findStage(personId, stageId) : null;
-
+  const entry = entryId ? findEntry(personId, entryId) : null;
   if (!person) return;
-
-  if (!stage && findOpenStage(personId)) {
-    alert("This person already has an open stage.");
-    return;
-  }
-
-  openModal(
-    stage ? "Edit Stage" : "Add Stage",
-    `
-      <form class="form" id="stageForm">
-        <div class="field">
-          <label for="stageName">Stage Name</label>
-          <input
-        id="stageName"
-        name="name"
-        type="text"
-        maxlength="100"
-        placeholder="Example: Main Job"
-        value="${stage ? escapeHtml(stage.name) : ""}"
-         >
-        </div>
-
-        <div class="field">
-          <label for="stageCurrency">Currency</label>
-          <input
-               type="hidden"
-               id="stageCurrency"
-               name="currency"
-               value="${stage?.currency || "EUR"}"
-         />
-
-       <div class="currency-inline-picker">
-          <button type="button" class="currency-choice-btn ${((stage?.currency || "EUR") === "EUR") ? "active" : ""}" data-stage-currency-choice="EUR">€</button>
-          <button type="button" class="currency-choice-btn ${((stage?.currency || "EUR") === "USD") ? "active" : ""}" data-stage-currency-choice="USD">$</button>
-          <button type="button" class="currency-choice-btn ${((stage?.currency || "EUR") === "GEL") ? "active" : ""}" data-stage-currency-choice="GEL">₾</button>
-          <button type="button" class="currency-choice-btn ${((stage?.currency || "EUR") === "CAD") ? "active" : ""}" data-stage-currency-choice="CAD">CAD</button>
-            </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
-          <button type="submit" class="primary-btn">Save</button>
-        </div>
-      </form>
-    `,
-    () => {
-      const form = document.getElementById("stageForm");
-      const currencyInput = document.getElementById("stageCurrency");
-      const currencyChoiceButtons = document.querySelectorAll("[data-stage-currency-choice]");
-
-     currencyChoiceButtons.forEach(btn => {
-       btn.onclick = () => {
-     const nextCurrency = btn.dataset.stageCurrencyChoice || "EUR";
-     currencyInput.value = nextCurrency;
-
-    currencyChoiceButtons.forEach(b => {
-      b.classList.toggle("active", b.dataset.stageCurrencyChoice === nextCurrency);
-    });
-  };
-});
-      const cancelBtn = document.getElementById("cancelModalBtn");
-
-      cancelBtn.onclick = () => {
-        if (reopenOverviewPersonId) {
-          openOverviewPersonDetail(reopenOverviewPersonId);
-        } else if (reopenEditPanel) {
-          openEditStagesPanel();
-        } else {
-          closeModal();
-        }
-      };
-
-      form.onsubmit = async e => {
-        e.preventDefault();
-
-        const fd = new FormData(form);
-        const name = String(fd.get("name") || "").trim();
-        const note = "";
-        const currency = String(fd.get("currency") || "EUR");
-        const oldCurrency = stage ? stageCurrency(stage) : "EUR";
-        const hasEntries = !!(stage && (stage.entries || []).length);
-
-        let savedStageId = stageId;
-
-        if (stage && hasEntries && currency !== oldCurrency) {
-          confirmDelete(
-            "This stage already has entries. Do you really want to change the currency?",
-            async () => {
-              stage.name = name;
-              stage.note = note;
-              stage.currency = currency;
-
-              await saveData();
-              render();
-
-              if (openEntryAfterSave && savedStageId) {
-                openEntryForm(personId, savedStageId, null, reopenOverviewPersonId);
-              } else if (reopenOverviewPersonId) {
-                openOverviewPersonDetail(reopenOverviewPersonId);
-              } else if (reopenEditPanel) {
-                openEditStagesPanel();
-              } else {
-                closeModal();
-              }
-            },
-            false,
-            "Change"
-          );
-          return;
-        }
-
-        if (stage) {
-          stage.name = name;
-          stage.note = note;
-          stage.currency = currency;
-        } else {
-          person.expanded = false;
-
-          const newStage = {
-            id: uid(),
-            name,
-            note,
-            currency,
-            createdAt: todayStr(),
-            closed: false,
-            expanded: false,
-            entries: []
-          };
-
-          person.stages.unshift(newStage);
-          savedStageId = newStage.id;
-        }
-
-        await saveData();
-
-        if (openEntryAfterSave && savedStageId) {
-          openEntryForm(personId, savedStageId);
-        } else if (reopenEditPanel) {
-          openEditStagesPanel();
-        } else {
-          closeModal();
-        }
-      };
-    }
-  );
-}
-
-function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId = null) {
-  const stage = findStage(personId, stageId);
-  const entry = entryId ? findEntry(personId, stageId, entryId) : null;
-  if (!stage) return;
   const isWork = state.mode === "work";
   const entryCategory = isWork ? (entry?.category === "salary" ? "salary" : "gift") : "";
   const entryType = entryCategory === "salary" ? "Gave" : (entry?.type || "Gave");
@@ -399,7 +278,7 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
       const typeButtons = document.querySelectorAll("[data-entry-type]");
       const categoryInput = document.getElementById("entryCategory");
       const categoryButtons = document.querySelectorAll("[data-entry-category]");
-      cancelBtn.onclick = () => { if (reopenOverviewPersonId) openOverviewPersonDetail(reopenOverviewPersonId); else closeModal(); };
+      cancelBtn.onclick = () => closeModal();
       const setEntryType = nextType => {
         typeInput.value = nextType;
         typeButtons.forEach(b => {
@@ -451,11 +330,11 @@ function openEntryForm(personId, stageId, entryId = null, reopenOverviewPersonId
           if (isWork) entry.category = category;
           else delete entry.category;
         } else {
-          stage.entries.unshift({ id: uid(), amount, type, date, comment, ...(isWork ? { category } : {}) });
+          person.entries = person.entries || [];
+          person.entries.unshift({ id: uid(), amount, type, date, comment, ...(isWork ? { category } : {}) });
         }
         await saveData();
-        if (reopenOverviewPersonId) openOverviewPersonDetail(reopenOverviewPersonId);
-        else closeModal();
+        closeModal();
       };
     }
   );

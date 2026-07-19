@@ -173,18 +173,17 @@ function formatBytes(bytes) {
 
 async function collectDebugSnapshot() {
   const people = state.people || [];
-  let stagesTotal = 0;
-  let openStages = 0;
-  let closedStages = 0;
   let entriesTotal = 0;
+  let archivedTotal = 0;
+  const balanceTotals = {};
 
   people.forEach(person => {
-    (person.stages || []).forEach(stage => {
-      stagesTotal++;
-      if (stage.closed) closedStages++;
-      else openStages++;
-      entriesTotal += (stage.entries || []).length;
-    });
+    entriesTotal += (person.entries || []).length;
+    if (person.archived) archivedTotal++;
+    else {
+      const currency = personCurrency(person);
+      balanceTotals[currency] = (balanceTotals[currency] || 0) + personOpenBalance(person);
+    }
   });
 
   const sizeBytes = await getStorageSizeBytes();
@@ -193,13 +192,10 @@ async function collectDebugSnapshot() {
     time: new Date().toISOString(),
     mode: state.mode,
     people: people.length,
-    stagesTotal,
-    openStages,
-    closedStages,
+    archived: archivedTotal,
     entriesTotal,
     search: state.search,
-    openTotals: getOpenCurrencyTotals(people),
-    closedTotals: getClosedCurrencyTotals(people),
+    balanceTotals,
     storageUsed: formatBytes(sizeBytes),
     storageEngine: "IndexedDB",
     userAgent: navigator.userAgent,
@@ -217,17 +213,14 @@ async function logDebugSnapshot(label = "ACC DEBUG") {
   console.table({
     mode: snapshot.mode,
     people: snapshot.people,
-    stagesTotal: snapshot.stagesTotal,
-    openStages: snapshot.openStages,
-    closedStages: snapshot.closedStages,
+    archived: snapshot.archived,
     entriesTotal: snapshot.entriesTotal,
     search: snapshot.search,
     storageUsed: snapshot.storageUsed,
     online: snapshot.online,
     standalone: snapshot.standalone
   });
-  console.log("Open totals:", snapshot.openTotals);
-  console.log("Closed totals:", snapshot.closedTotals);
+  console.log("Balance totals:", snapshot.balanceTotals);
   console.log("Full snapshot:", snapshot);
   console.groupEnd();
 }
@@ -237,22 +230,17 @@ function validateDataShape() {
 
   (state.people || []).forEach((person, pIndex) => {
     if (!person.id) errors.push(`Person[${pIndex}] missing id`);
-    if (!Array.isArray(person.stages)) errors.push(`Person[${pIndex}] stages is not array`);
+    if (!person.currency) errors.push(`Person[${pIndex}] missing currency`);
+    if (!Array.isArray(person.entries)) errors.push(`Person[${pIndex}] entries is not array`);
 
-    (person.stages || []).forEach((stage, sIndex) => {
-      if (!stage.id) errors.push(`Person[${pIndex}] Stage[${sIndex}] missing id`);
-      if (!stage.currency) errors.push(`Person[${pIndex}] Stage[${sIndex}] missing currency`);
-      if (!Array.isArray(stage.entries)) errors.push(`Person[${pIndex}] Stage[${sIndex}] entries is not array`);
-
-      (stage.entries || []).forEach((entry, eIndex) => {
-        if (!entry.id) errors.push(`Person[${pIndex}] Stage[${sIndex}] Entry[${eIndex}] missing id`);
-        if (entry.type !== "Gave" && entry.type !== "Received") {
-          errors.push(`Person[${pIndex}] Stage[${sIndex}] Entry[${eIndex}] invalid type`);
-        }
-        if (Number.isNaN(Number(entry.amount))) {
-          errors.push(`Person[${pIndex}] Stage[${sIndex}] Entry[${eIndex}] invalid amount`);
-        }
-      });
+    (person.entries || []).forEach((entry, eIndex) => {
+      if (!entry.id) errors.push(`Person[${pIndex}] Entry[${eIndex}] missing id`);
+      if (entry.type !== "Gave" && entry.type !== "Received") {
+        errors.push(`Person[${pIndex}] Entry[${eIndex}] invalid type`);
+      }
+      if (Number.isNaN(Number(entry.amount))) {
+        errors.push(`Person[${pIndex}] Entry[${eIndex}] invalid amount`);
+      }
     });
   });
 
@@ -330,7 +318,6 @@ async function initApp() {
     expanded: false
   }));
 
-  state.statsExpanded = false;
   state.personFilter = "active";
   syncModeButtons();
   render();

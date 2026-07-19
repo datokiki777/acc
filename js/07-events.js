@@ -1,20 +1,6 @@
 // ==================== 07-events.js ====================
 // Event Binding and UI Listeners
 
-function bindStatsEvents() {
-  const overviewSearchInput = document.getElementById("overviewSearchInput");
-  if (overviewSearchInput && overviewSearchInput.dataset.bound !== "1") {
-    overviewSearchInput.dataset.bound = "1";
-    overviewSearchInput.onclick = e => e.stopPropagation();
-    overviewSearchInput.onfocus = e => e.stopPropagation();
-    overviewSearchInput.oninput = e => { e.stopPropagation(); state.search = e.target.value; refreshPeopleListsOnly(); };
-    overviewSearchInput.onkeydown = e => { if (e.key === "Backspace" && !overviewSearchInput.value) overviewSearchInput.blur(); };
-  }
-  document.querySelectorAll(".stats-person-item").forEach(item => {
-    item.onclick = e => { e.stopPropagation(); openOverviewPersonDetail(item.dataset.personId); };
-  });
-}
-
 function bindPremiumPressEffects() {
   document.querySelectorAll(".person-card").forEach(card => {
     if (card.dataset.pressBound === "1") return;
@@ -39,29 +25,6 @@ function bindPremiumPressEffects() {
     head.addEventListener("mouseup", pressEnd);
     head.addEventListener("mouseleave", pressEnd);
   });
-
-  const statsSummary = document.getElementById("statsSummaryToggle");
-  const statsWrap = document.querySelector(".stats-wrap");
-
-  if (statsSummary && statsWrap && statsSummary.dataset.pressBound !== "1") {
-    statsSummary.dataset.pressBound = "1";
-
-    const pressStart = () => {
-      statsWrap.style.transform = "translateY(1px) scale(0.992)";
-    };
-
-    const pressEnd = () => {
-      statsWrap.style.transform = "";
-    };
-
-    statsSummary.addEventListener("touchstart", pressStart, { passive: true });
-    statsSummary.addEventListener("touchend", pressEnd, { passive: true });
-    statsSummary.addEventListener("touchcancel", pressEnd, { passive: true });
-
-    statsSummary.addEventListener("mousedown", pressStart);
-    statsSummary.addEventListener("mouseup", pressEnd);
-    statsSummary.addEventListener("mouseleave", pressEnd);
-  }
 }
 
 function bindDynamicEvents() {
@@ -73,30 +36,18 @@ function bindDynamicEvents() {
       const card = el.closest(".person-card");
       if (!card) return;
       const willExpand = !person.expanded;
-      if (willExpand && state.statsExpanded) { state.statsExpanded = false; render(); return; }
       person.expanded = willExpand;
       await saveData();
       animatePersonCard(card, willExpand);
       if (willExpand) history.pushState({ cards: true }, "");
     };
   });
-  document.querySelectorAll("[data-add-stage]").forEach(el => {
-    el.onclick = e => { e.stopPropagation(); openStageForm(el.dataset.addStage); };
-  });
   document.querySelectorAll("[data-add-entry-person]").forEach(el => {
     el.onclick = e => {
       e.stopPropagation();
       const personId = el.dataset.addEntryPerson;
-      const openStage = findOpenStage(personId);
-      if (openStage) openEntryForm(personId, openStage.id);
-      else openStageForm(personId, null, true);
+      openEntryForm(personId);
     };
-  });
-  document.querySelectorAll("[data-open-next-stage]").forEach(el => {
-    el.onclick = e => { e.stopPropagation(); confirmCloseAndOpenNewStage(el.dataset.openNextStage); };
-  });
-  document.querySelectorAll("[data-edit-active-stage]").forEach(el => {
-    el.onclick = e => { e.stopPropagation(); confirmEditActiveStage(el.dataset.editActiveStage); };
   });
   document.querySelectorAll("[data-edit-salary]").forEach(el => {
     el.onclick = e => { e.stopPropagation(); openPersonForm(el.dataset.editSalary); };
@@ -190,8 +141,6 @@ importFile.addEventListener("change", async e => {
 
 document.addEventListener("click", e => {
   if (!e.target.closest(".swipe-card")) closeAllSwipes();
-  const overviewSearchInput = document.getElementById("overviewSearchInput");
-  if (overviewSearchInput && document.activeElement === overviewSearchInput && !e.target.closest("#overviewSearchInput") && !e.target.closest(".overview-search-box")) overviewSearchInput.blur();
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeAllSwipes(); });
 
@@ -215,7 +164,6 @@ async function switchMode(nextMode) {
   await saveMode();
   state.search = "";
   if (searchInput) searchInput.value = "";
-  state.statsExpanded = false;
   state.personFilter = "active";
 
   await loadDataByMode(state.mode);

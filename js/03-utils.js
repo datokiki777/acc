@@ -146,37 +146,67 @@ function entryTypeToggleContent(type, active) {
   return `<span class="type-toggle-money money-red ${active ? "active" : ""}">€</span>`;
 }
 
-function stageCurrency(stage) {
-  return stage?.currency || "EUR";
+// ---- Person / Entries (flat model — no stages) ----
+
+function personCurrency(person) {
+  return person?.currency || "EUR";
 }
 
-function stageBalance(stage) {
-  return (stage.entries || []).reduce((sum, entry) => {
-    return sum + entryEffect(entry.type, entry.amount);
-  }, 0);
+// One-time migration: old { person.stages: [{ currency, closed, entries }] }
+// becomes { person.currency, person.entries: [...] } (all stage entries flattened
+// and merged chronologically). Already-migrated people pass through unchanged.
+function migratePersonToFlatEntries(person) {
+  if (!person) return person;
+  if (!Array.isArray(person.stages)) {
+    return {
+      ...person,
+      currency: person.currency || "EUR",
+      entries: Array.isArray(person.entries) ? person.entries : []
+    };
+  }
+  const stages = person.stages;
+  const openStage = stages.find(s => !s.closed);
+  const currency = (openStage && openStage.currency) || (stages.length ? stages[stages.length - 1].currency : null) || "EUR";
+  const entries = [];
+  stages.forEach(stage => {
+    (stage.entries || []).forEach(entry => entries.push({ ...entry }));
+  });
+  entries.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const migrated = { ...person, currency, entries };
+  delete migrated.stages;
+  return migrated;
 }
 
-function stageWorkCategoryBalance(stage) {
-  return (stage?.entries || []).reduce((sum, entry) => {
-    if (!isSalaryEntry(entry) && !isGiftEntry(entry)) return sum;
-    return sum + entryEffect(entry.type, entry.amount);
-  }, 0);
+function isSalaryEntry(entry) {
+  return entry?.category === "salary" || /^\[Salary\]/i.test(String(entry?.comment || ""));
 }
 
-function stageTotals(stage) {
+function isGiftEntry(entry) {
+  return entry?.category === "gift";
+}
+
+function personTotals(person) {
   let gave = 0, received = 0;
-  (stage.entries || []).forEach(entry => {
+  (person.entries || []).forEach(entry => {
     const amount = normalizeAmount(entry.amount);
     if (entry.type === "Gave") gave += amount;
     if (entry.type === "Received") received += amount;
   });
-  return { gave, received, balance: stageBalance(stage) };
+  return { gave, received, balance: gave - received };
 }
 
+// Kept as `personOpenBalance` for call-site compatibility. In Work mode this
+// only totals salary/gift categorized entries (matches prior stage behavior);
+// in Personal mode it totals every entry.
 function personOpenBalance(person) {
-  return (person.stages || [])
-    .filter(stage => !stage.closed)
-    .reduce((sum, stage) => sum + (isWorkMode() ? stageWorkCategoryBalance(stage) : stageBalance(stage)), 0);
+  const entries = person?.entries || [];
+  if (isWorkMode()) {
+    return entries.reduce((sum, entry) => {
+      if (!isSalaryEntry(entry) && !isGiftEntry(entry)) return sum;
+      return sum + entryEffect(entry.type, entry.amount);
+    }, 0);
+  }
+  return entries.reduce((sum, entry) => sum + entryEffect(entry.type, entry.amount), 0);
 }
 
 function getPersonSalaryConfig(person) {
@@ -190,38 +220,25 @@ function getPersonSalaryConfig(person) {
     startDate,
     endDate,
     periodWeeks,
-    currency: person?.salaryCurrency || findOpenStage(person?.id)?.currency || "EUR"
+    currency: person?.salaryCurrency || personCurrency(person)
   };
 }
 
-function isSalaryEntry(entry) {
-  return entry?.category === "salary" || /^\[Salary\]/i.test(String(entry?.comment || ""));
-}
-
 function personSalaryPaid(person) {
-  return (person?.stages || []).reduce((sum, stage) => {
-    return sum + (stage.entries || []).reduce((entrySum, entry) => {
-      if (!isSalaryEntry(entry)) return entrySum;
-      if (entry.type !== "Gave") return entrySum;
-      return entrySum + normalizeAmount(entry.amount);
-    }, 0);
+  return (person?.entries || []).reduce((sum, entry) => {
+    if (!isSalaryEntry(entry)) return sum;
+    if (entry.type !== "Gave") return sum;
+    return sum + normalizeAmount(entry.amount);
   }, 0);
 }
 
-function isGiftEntry(entry) {
-  return entry?.category === "gift";
-}
-
 function personGiftSummary(person) {
-  const openStage = findOpenStage(person?.id);
-  const currency = person?.salaryCurrency || openStage?.currency || "EUR";
-  const totals = (person?.stages || []).reduce((sum, stage) => {
-    (stage.entries || []).forEach(entry => {
-      if (!isGiftEntry(entry)) return;
-      const amount = normalizeAmount(entry.amount);
-      if (entry.type === "Gave") sum.gave += amount;
-      if (entry.type === "Received") sum.received += amount;
-    });
+  const currency = person?.salaryCurrency || personCurrency(person);
+  const totals = (person?.entries || []).reduce((sum, entry) => {
+    if (!isGiftEntry(entry)) return sum;
+    const amount = normalizeAmount(entry.amount);
+    if (entry.type === "Gave") sum.gave += amount;
+    if (entry.type === "Received") sum.received += amount;
     return sum;
   }, { gave: 0, received: 0 });
   return {
@@ -281,83 +298,6 @@ function getOrderedCurrencyEntries(totalsMap) {
   });
 }
 
-function getOpenCurrencyTotals(people = state.people) {
-  const totals = {};
-  (people || []).forEach(person => {
-    (person.stages || [])
-      .filter(stage => !stage.closed)
-      .forEach(stage => {
-        const currency = stageCurrency(stage);
-        const balance = isWorkMode() ? stageWorkCategoryBalance(stage) : stageBalance(stage);
-        totals[currency] = (totals[currency] || 0) + balance;
-      });
-  });
-  return totals;
-}
-
-function getClosedCurrencyTotals(people = state.people) {
-  const totals = {};
-  (people || []).forEach(person => {
-    (person.stages || [])
-      .filter(stage => stage.closed)
-      .forEach(stage => {
-        const currency = stageCurrency(stage);
-        const balance = stageBalance(stage);
-        totals[currency] = (totals[currency] || 0) + balance;
-      });
-  });
-  return totals;
-}
-
-function getOverviewBalanceSummary(people = state.people) {
-  const totalsMap = getOpenCurrencyTotals(people);
-  const orderedEntries = getOrderedCurrencyEntries(totalsMap);
-  const nonZeroEntries = orderedEntries.filter(([, amount]) => Math.abs(Number(amount || 0)) > 0.000001);
-  const entries = nonZeroEntries.length ? nonZeroEntries : orderedEntries;
-  if (!entries.length) {
-    return { mixed: false, amount: 0, currency: "EUR", label: formatMoney(0, "EUR"), breakdown: [] };
-  }
-  if (entries.length === 1) {
-    const [currency, amount] = entries[0];
-    return { mixed: false, amount, currency, label: formatMoney(amount, currency), breakdown: entries };
-  }
-  const eurEntry = entries.find(([currency]) => currency === "EUR");
-  const primaryEntry = eurEntry || entries[0];
-  const [currency, amount] = primaryEntry;
-  return {
-    mixed: true,
-    amount,
-    currency,
-    label: `${formatMoney(amount, currency)} · Mix`,
-    breakdown: entries
-  };
-}
-
-function renderCurrencyBreakdown(entries, options = {}) {
-  if (!entries || !entries.length) return "";
-  const icon = options.icon ? `<span class="currency-breakdown-icon">${options.icon}</span>` : "";
-  return `
-    <div class="currency-breakdown">
-      ${icon}
-      <div class="currency-breakdown-chips">
-        ${entries.map(([currency, amount]) => `
-          <span class="currency-chip ${balanceClass(amount)}">
-            ${formatMoneyPlain(amount, currency)}
-          </span>
-        `).join("")}
-      </div>
-    </div>
-  `;
-}
-
-function closedStagesSummary(person) {
-  const closedStages = (person.stages || []).filter(stage => stage.closed);
-  if (!closedStages.length) return { count: 0, balance: 0, currency: "EUR" };
-  const currency = stageCurrency(closedStages[0]);
-  const balance = closedStages.reduce((sum, stage) => sum + stageBalance(stage), 0);
-  return { count: closedStages.length, balance, currency };
-}
-
 function shouldIgnoreGestureTarget(target) {
   return !!target.closest("button, input, textarea, select, a, .swipe-delete-action");
 }
@@ -367,20 +307,18 @@ function getNearestSwipeCard(target) {
 }
 
 function personLastActivityTs(person) {
-  const stages = person.stages || [];
+  const entries = person.entries || [];
   let latest = 0;
-  stages.forEach(stage => {
-    if (stage.createdAt) {
-      const ts = new Date(stage.createdAt).getTime();
+  entries.forEach(entry => {
+    if (entry.date) {
+      const ts = new Date(entry.date).getTime();
       if (!isNaN(ts) && ts > latest) latest = ts;
     }
-    (stage.entries || []).forEach(entry => {
-      if (entry.date) {
-        const ts = new Date(entry.date).getTime();
-        if (!isNaN(ts) && ts > latest) latest = ts;
-      }
-    });
   });
+  if (!latest && person.createdAt) {
+    const ts = new Date(person.createdAt).getTime();
+    if (!isNaN(ts)) latest = ts;
+  }
   return latest;
 }
 
@@ -395,6 +333,4 @@ function getFilteredPeople() {
 
 // Finders (used across many modules)
 function findPerson(personId) { return state.people.find(p => p.id === personId) || null; }
-function findStage(personId, stageId) { const p = findPerson(personId); return p ? (p.stages || []).find(s => s.id === stageId) || null : null; }
-function findEntry(personId, stageId, entryId) { const s = findStage(personId, stageId); return s ? (s.entries || []).find(e => e.id === entryId) || null : null; }
-function findOpenStage(personId) { const p = findPerson(personId); return p ? (p.stages || []).find(s => !s.closed) || null : null; }
+function findEntry(personId, entryId) { const p = findPerson(personId); return p ? (p.entries || []).find(e => e.id === entryId) || null : null; }

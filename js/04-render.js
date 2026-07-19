@@ -31,18 +31,17 @@ function runBalanceAnimations() {
   });
 }
 
-function renderEntry(personId, stageId, stage, entry, source = "main") {
+function renderEntry(personId, entry, currency, source = "main") {
   const effect = entryEffect(entry.type, entry.amount);
-  const currentCurrency = stageCurrency(stage);
   const categoryLabel = state.mode === "work" && (entry.category === "salary" || entry.category === "gift")
     ? `<span class="entry-category-chip entry-category-${escapeHtml(entry.category)}">${entry.category === "gift" ? "Other" : escapeHtml(entry.category)}</span>`
     : "";
   return `
-    <div class="entry-card swipe-card" data-action-type="entry" data-person-id="${personId}" data-stage-id="${stageId}" data-entry-id="${entry.id}" data-source="${source}">
+    <div class="entry-card swipe-card" data-action-type="entry" data-person-id="${personId}" data-entry-id="${entry.id}" data-source="${source}">
       <div class="swipe-content">
         <div class="entry-top">
           <div class="entry-type ${typeLabelClass(entry.type)}">${entryTypeVisual(entry.type)}${categoryLabel}</div>
-          <div class="entry-amount ${balanceClass(effect)}">${Number(entry.amount).toFixed(2)}${currencyLabel(currentCurrency)}</div>
+          <div class="entry-amount ${balanceClass(effect)}">${Number(entry.amount).toFixed(2)}${currencyLabel(currency)}</div>
         </div>
         ${entry.comment ? `<div class="entry-comment">${escapeHtml(entry.comment)}</div>` : ""}
         <div class="entry-meta">${formatDate(entry.date)}</div>
@@ -98,13 +97,10 @@ function renderWorkGiftPanel(person) {
 }
 
 function renderPerson(person) {
-  const openStage = findOpenStage(person.id);
-  const openStages = (person.stages || []).filter(s => !s.closed);
-  const closedStages = (person.stages || []).filter(stage => stage.closed);
-  const openBalance = personOpenBalance(person);
-  const entries = openStage ? (openStage.entries || []) : [];
-  const totals = openStage ? stageTotals(openStage) : { gave: 0, received: 0, balance: 0 };
-  const currentCurrency = openStage ? stageCurrency(openStage) : "EUR";
+  const currency = personCurrency(person);
+  const balance = personOpenBalance(person);
+  const entries = person.entries || [];
+  const totals = personTotals(person);
   return `
     <article class="person-card ${person.expanded ? "expanded" : ""} ${person.archived ? "person-archived" : ""}" data-person-id="${person.id}">
       <div class="person-head-swipe swipe-card" data-action-type="person" data-person-id="${person.id}">
@@ -113,11 +109,11 @@ function renderPerson(person) {
             <div class="person-main">
               <div class="person-name">${highlightMatch(person.name, state.search)}</div>
               <div class="subtext">
-                ${openStage ? escapeHtml(openStage.name) : "No open stage"} • ${currencyLabel(currentCurrency)} • ${openStages.length} open • ${closedStages.length} closed
+                ${currencyLabel(currency)} • ${entries.length} ${entries.length === 1 ? "entry" : "entries"}
               </div>
             </div>
-            <div class="balance ${balanceClass(openBalance)}" data-animated-balance data-value="${openBalance}" data-prev-value="${state.personBalancePrev[person.id] ?? 0}" data-currency="${currentCurrency}">
-              ${formatMoney(openBalance, currentCurrency)}
+            <div class="balance ${balanceClass(balance)}" data-animated-balance data-value="${balance}" data-prev-value="${state.personBalancePrev[person.id] ?? 0}" data-currency="${currency}">
+              ${formatMoney(balance, currency)}
             </div>
             <div class="stats-arrow ${person.expanded ? "open" : ""}">›</div>
           </div>
@@ -126,40 +122,20 @@ function renderPerson(person) {
       <div class="person-body">
         ${renderWorkSalaryPanel(person)}
         ${renderWorkGiftPanel(person)}
-        ${openStage ? `<div class="person-body-top-totals"><div class="totals-line"><span>↑ ${totals.gave.toFixed(2)}${currencyLabel(currentCurrency)}</span><span>↓ ${totals.received.toFixed(2)}${currencyLabel(currentCurrency)}</span><span class="${balanceClass(totals.balance)}">Net ${formatMoney(totals.balance, currentCurrency)}</span></div></div>` : ""}
+        ${entries.length ? `<div class="person-body-top-totals"><div class="totals-line"><span>↑ ${totals.gave.toFixed(2)}${currencyLabel(currency)}</span><span>↓ ${totals.received.toFixed(2)}${currencyLabel(currency)}</span><span class="${balanceClass(totals.balance)}">Net ${formatMoney(totals.balance, currency)}</span></div></div>` : ""}
         <div class="person-body-scroll">
           <div class="entry-list">
-            ${entries.length ? entries.map(entry => renderEntry(person.id, openStage.id, openStage, entry)).join("") : `<div class="empty-state mini-empty">No entries yet</div>`}
+            ${entries.length ? entries.map(entry => renderEntry(person.id, entry, currency)).join("") : `<div class="empty-state mini-empty">No entries yet</div>`}
           </div>
         </div>
         <div class="person-body-footer">
           <div class="person-actions">
-            ${openStage ? `<button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>` : `<button class="primary-btn" data-add-stage="${person.id}">+ Add Stage</button>`}
+            <button class="primary-btn" data-add-entry-person="${person.id}">+ Add Entry</button>
           </div>
-          ${openStage ? `<div class="quick-actions-row quick-actions-row-2"><button class="secondary-btn" data-open-next-stage="${person.id}">🔒 Open Stage</button><button class="secondary-btn" data-edit-active-stage="${person.id}">✏️ Edit</button></div>` : ""}
         </div>
       </div>
     </article>
   `;
-}
-
-function renderStatsPeopleList(filteredPeople) {
-  if (!filteredPeople.length) return `<div class="empty-state mini-empty">No people yet</div>`;
-  return filteredPeople.map(person => {
-    const openStage = findOpenStage(person.id);
-    const openCount = (person.stages || []).filter(stage => !stage.closed).length;
-    const closedCount = (person.stages || []).filter(stage => stage.closed).length;
-    const currentCurrency = openStage ? stageCurrency(openStage) : "EUR";
-    return `
-      <div class="sheet-item stats-person-item" data-person-id="${person.id}">
-        <div class="stats-person-head">
-          <span class="sheet-item-title">${escapeHtml(person.name)}</span>
-          <span class="stats-person-balance ${balanceClass(personOpenBalance(person))}">${formatMoney(personOpenBalance(person), currentCurrency)}</span>
-        </div>
-        <span class="sheet-item-sub">${openStage ? escapeHtml(openStage.name) : "No open stage"} • ${openCount} open • ${closedCount} closed</span>
-      </div>
-    `;
-  }).join("");
 }
 
 function renderStats() {
@@ -190,12 +166,6 @@ function adjustMainPadding() {
   if (!topbar || !mainEl) return;
   const h = topbar.getBoundingClientRect().height;
   mainEl.style.paddingTop = (h + 16) + "px";
-  const panel = document.getElementById("statsOverviewPanel");
-  if (panel && panel.classList.contains("active")) {
-    panel.style.top = h + "px";
-    panel.style.bottom = "0";
-    panel.style.height = "";
-  }
 }
 
 function syncFab() {
@@ -235,11 +205,6 @@ function refreshPeopleListsOnly() {
     bindPremiumPressEffects();
     runBalanceAnimations();
   }
-  const statsPeopleListEl = document.getElementById("statsPeopleList");
-  if (statsPeopleListEl) {
-    statsPeopleListEl.innerHTML = renderStatsPeopleList(filteredPeople);
-    bindStatsEvents();
-  }
 }
 
 function render() {
@@ -259,7 +224,6 @@ function render() {
   bindDynamicEvents();
   bindPremiumPressEffects();
   renderStats();
-  bindStatsEvents();
   runBalanceAnimations();
   requestAnimationFrame(adjustMainPadding);
   syncFab();

@@ -12,35 +12,26 @@ function buildPdfHtml(people, title = "ACC Export") {
   const red = isLight ? "#d64545" : "#ff6b6b";
   const gray = isLight ? "#7b8794" : "#9aaac4";
   const colorFor = val => Number(val) > 0 ? green : Number(val) < 0 ? red : gray;
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:24px;background:${bg};color:${text};font-family:system-ui,-apple-system,sans-serif;font-size:14px;}h1{font-size:22px;font-weight:900;margin:0 0 6px;}.sub{color:${muted};font-size:13px;margin-bottom:24px;}.person{background:${card};border-radius:16px;border:1px solid ${line};padding:16px;margin-bottom:20px;page-break-inside:avoid;}.person-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid ${line};}.person-name{font-size:18px;font-weight:900;}.balance-pill{font-size:16px;font-weight:900;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,0.06);}.section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${muted};margin:14px 0 8px;}.stage{border:1px solid ${line};border-radius:12px;margin-bottom:10px;overflow:hidden;}.stage-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(0,0,0,0.03);}.stage-name{font-weight:800;font-size:15px;}.stage-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,0.08);color:${muted};margin-left:8px;}.entry{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid ${line};}.entry-type{font-weight:700;font-size:13px;}.entry-right{text-align:right;}.entry-amount{font-weight:900;font-size:14px;}.entry-meta{font-size:12px;color:${muted};margin-top:2px;}.no-entries{padding:10px 14px;font-size:13px;color:${muted};}.totals{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:rgba(0,0,0,0.03);font-size:13px;color:${muted};border-top:1px solid ${line};}.totals span{font-weight:700;}.grand-total{display:flex;justify-content:space-between;padding:12px 14px;border-top:2px solid ${line};margin-top:4px;}.grand-label{font-weight:800;font-size:15px;}.grand-value{font-weight:900;font-size:16px;}@media print{body{background:#fff;}}</style></head><body><h1>${escapeHtml(title)}</h1><div class="sub">Generated ${new Date().toLocaleDateString("ka-GE")} • ${people.length} person(s)</div>`;
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;padding:24px;background:${bg};color:${text};font-family:system-ui,-apple-system,sans-serif;font-size:14px;}h1{font-size:22px;font-weight:900;margin:0 0 6px;}.sub{color:${muted};font-size:13px;margin-bottom:24px;}.person{background:${card};border-radius:16px;border:1px solid ${line};padding:16px;margin-bottom:20px;page-break-inside:avoid;}.person-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid ${line};}.person-name{font-size:18px;font-weight:900;}.archived-tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,0.08);color:${muted};margin-left:8px;vertical-align:middle;}.balance-pill{font-size:16px;font-weight:900;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,0.06);}.section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${muted};margin:14px 0 8px;}.entries-block{border:1px solid ${line};border-radius:12px;margin-bottom:10px;overflow:hidden;}.entry{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid ${line};}.entry:first-child{border-top:none;}.entry-type{font-weight:700;font-size:13px;}.entry-right{text-align:right;}.entry-amount{font-weight:900;font-size:14px;}.entry-meta{font-size:12px;color:${muted};margin-top:2px;}.no-entries{padding:10px 14px;font-size:13px;color:${muted};}.totals{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:rgba(0,0,0,0.03);font-size:13px;color:${muted};border-top:1px solid ${line};}.totals span{font-weight:700;}.grand-total{display:flex;justify-content:space-between;padding:12px 14px;border-top:2px solid ${line};margin-top:4px;}.grand-label{font-weight:800;font-size:15px;}.grand-value{font-weight:900;font-size:16px;}@media print{body{background:#fff;}}</style></head><body><h1>${escapeHtml(title)}</h1><div class="sub">Generated ${new Date().toLocaleDateString("ka-GE")} • ${people.length} person(s)</div>`;
   people.forEach(person => {
-    const openStages = (person.stages || []).filter(s => !s.closed);
-    const closedStages = (person.stages || []).filter(s => s.closed);
-    const openBal = personOpenBalance(person);
-    html += `<div class="person"><div class="person-header"><div class="person-name">${escapeHtml(person.name)}</div><div class="balance-pill" style="color:${colorFor(openBal)}">${formatMoney(openBal)}</div></div>`;
+    const bal = personOpenBalance(person);
+    const cur = personCurrency(person);
+    const totals = personTotals(person);
+    const entries = person.entries || [];
+    html += `<div class="person"><div class="person-header"><div class="person-name">${escapeHtml(person.name)}${person.archived ? `<span class="archived-tag">Archived</span>` : ""}</div><div class="balance-pill" style="color:${colorFor(bal)}">${formatMoney(bal, cur)}</div></div>`;
     if (person.note) html += `<div style="color:${muted};font-size:13px;margin-bottom:10px;">${escapeHtml(person.note)}</div>`;
-    const renderStageGroup = (stages, label) => {
-      if (!stages.length) return "";
-      let out = `<div class="section-title">${label}</div>`;
-      stages.forEach(stage => {
-        const bal = stageBalance(stage);
-        const cur = stageCurrency(stage);
-        const totals = stageTotals(stage);
-        out += `<div class="stage"><div class="stage-head"><div><span class="stage-name">${escapeHtml(stage.name)}</span><span class="stage-tag">${stage.closed ? "Closed" : "Open"}</span></div><div style="font-weight:900;color:${colorFor(bal)}">${formatMoney(bal, cur)}</div></div>`;
-        if ((stage.entries || []).length) {
-          stage.entries.forEach(entry => {
-            const ef = entry.type === "Gave" ? entry.amount : -entry.amount;
-            out += `<div class="entry"><div><div class="entry-type" style="color:${entry.type === "Gave" ? green : red}">${entry.type}</div>${entry.comment ? `<div style="font-size:12px;color:${muted};margin-top:2px;">${escapeHtml(entry.comment)}</div>` : ""}</div><div class="entry-right"><div class="entry-amount" style="color:${colorFor(ef)}">${normalizeAmount(entry.amount)}${currencyLabel(cur)}</div>Out <span>${normalizeAmount(totals.gave)}${currencyLabel(cur)}</span> &nbsp; In <span>${normalizeAmount(totals.received)}${currencyLabel(cur)}</span> &nbsp;<div class="entry-meta">${formatDate(entry.date)}</div></div></div>`;
-          });
-          out += `<div class="totals">Out <span>${totals.gave.toFixed(2)}${currencyLabel(cur)}</span> &nbsp; In <span>${totals.received.toFixed(2)}${currencyLabel(cur)}</span> &nbsp; Net <span style="color:${colorFor(bal)}">${formatMoney(bal, cur)}</span></div>`;
-        } else out += `<div class="no-entries">No entries</div>`;
-        out += `</div>`;
+    if (entries.length) {
+      html += `<div class="entries-block">`;
+      entries.forEach(entry => {
+        const ef = entry.type === "Gave" ? entry.amount : -entry.amount;
+        html += `<div class="entry"><div><div class="entry-type" style="color:${entry.type === "Gave" ? green : red}">${entry.type}</div>${entry.comment ? `<div style="font-size:12px;color:${muted};margin-top:2px;">${escapeHtml(entry.comment)}</div>` : ""}</div><div class="entry-right"><div class="entry-amount" style="color:${colorFor(ef)}">${normalizeAmount(entry.amount)}${currencyLabel(cur)}</div><div class="entry-meta">${formatDate(entry.date)}</div></div></div>`;
       });
-      return out;
-    };
-    html += renderStageGroup(openStages, "Open Stage");
-    html += renderStageGroup(closedStages, "Closed Stages");
-    html += `<div class="grand-total"><div class="grand-label">Total Balance</div><div class="grand-value" style="color:${colorFor(openBal)}">${formatMoney(openBal)}</div></div></div>`;
+      html += `<div class="totals">Out <span>${totals.gave.toFixed(2)}${currencyLabel(cur)}</span> &nbsp; In <span>${totals.received.toFixed(2)}${currencyLabel(cur)}</span> &nbsp; Net <span style="color:${colorFor(bal)}">${formatMoney(bal, cur)}</span></div>`;
+      html += `</div>`;
+    } else {
+      html += `<div class="no-entries">No entries</div>`;
+    }
+    html += `<div class="grand-total"><div class="grand-label">Total Balance</div><div class="grand-value" style="color:${colorFor(bal)}">${formatMoney(bal, cur)}</div></div></div>`;
   });
   html += `</body></html>`;
   return html;
@@ -57,8 +48,8 @@ function triggerPdfPrint(html) {
 
 async function exportAllPdf() {
   const allData = await getAllModeData();
-  const personalPeople = allData.personal || [];
-  const workPeople = allData.work || [];
+  const personalPeople = (allData.personal || []).map(migratePersonToFlatEntries);
+  const workPeople = (allData.work || []).map(migratePersonToFlatEntries);
   if (!personalPeople.length && !workPeople.length) { confirmDelete("No data to export.", () => {}, false, "OK"); return; }
   const combinedPeople = [
     ...personalPeople.map(p => ({ ...p, name: `[Personal] ${p.name || "Unnamed"}` })),
@@ -160,27 +151,17 @@ function getStorageStatus(usedBytes, quotaBytes, lastBackupDate) {
 }
 
 function getPersonalStats(people = []) {
-  const personCount = people.length;
-  const stageCount = people.reduce((sum, person) => sum + ((person.stages || []).length), 0);
-  const entryCount = people.reduce(
-    (sum, person) =>
-      sum + (person.stages || []).reduce((stageSum, stage) => stageSum + ((stage.entries || []).length), 0),
-    0
-  );
-
-  return { personCount, stageCount, entryCount };
+  const migrated = people.map(migratePersonToFlatEntries);
+  const personCount = migrated.length;
+  const entryCount = migrated.reduce((sum, person) => sum + ((person.entries || []).length), 0);
+  return { personCount, entryCount };
 }
 
 function getWorkStats(groups = []) {
-  const groupCount = groups.length;
-  const stageCount = groups.reduce((sum, group) => sum + ((group.stages || []).length), 0);
-  const entryCount = groups.reduce(
-    (sum, group) =>
-      sum + (group.stages || []).reduce((stageSum, stage) => stageSum + ((stage.entries || []).length), 0),
-    0
-  );
-
-  return { groupCount, stageCount, entryCount };
+  const migrated = groups.map(migratePersonToFlatEntries);
+  const groupCount = migrated.length;
+  const entryCount = migrated.reduce((sum, group) => sum + ((group.entries || []).length), 0);
+  return { groupCount, entryCount };
 }
 
 async function openDataBackupModal() {
@@ -206,13 +187,13 @@ async function openDataBackupModal() {
   <div class="backup-row">
     <span class="backup-label">👤 Personal</span>
     <span class="backup-dots"></span>
-    <span class="backup-value">${personalStats.personCount} p • ${personalStats.stageCount} s • ${personalStats.entryCount} e</span>
+    <span class="backup-value">${personalStats.personCount} p • ${personalStats.entryCount} e</span>
   </div>
 
   <div class="backup-row">
     <span class="backup-label">🏢 Work</span>
     <span class="backup-dots"></span>
-    <span class="backup-value">${workStats.groupCount} g • ${workStats.stageCount} s • ${workStats.entryCount} e</span>
+    <span class="backup-value">${workStats.groupCount} g • ${workStats.entryCount} e</span>
   </div>
 
   <div class="backup-row">
@@ -289,16 +270,7 @@ function cloneJson(value) {
 
 function normalizeImportedPeopleArray(arr) {
   if (!Array.isArray(arr)) return [];
-  return arr.map(person => ({
-    ...person,
-    expanded: false,
-    stages: Array.isArray(person.stages)
-      ? person.stages.map(stage => ({
-          ...stage,
-          entries: Array.isArray(stage.entries) ? stage.entries : []
-        }))
-      : []
-  }));
+  return arr.map(person => migratePersonToFlatEntries({ ...person, expanded: false }));
 }
 
 function entryFingerprint(entry) {
@@ -307,14 +279,6 @@ function entryFingerprint(entry) {
     Number(entry?.amount || 0),
     entry?.date || "",
     entry?.comment || ""
-  ].join("|");
-}
-
-function stageFingerprint(stage) {
-  return [
-    stage?.name || "",
-    stage?.closed ? "1" : "0",
-    stage?.currency || stageCurrency(stage) || ""
   ].join("|");
 }
 
@@ -385,79 +349,11 @@ function mergeEntriesArray(currentEntries = [], incomingEntries = []) {
   return result;
 }
 
-function mergeStageObjects(currentStage, incomingStage) {
-  const merged = { ...currentStage };
-
-  Object.keys(incomingStage || {}).forEach(key => {
-    if (key === "entries") return;
-
-    const incomingValue = incomingStage[key];
-    const currentValue = merged[key];
-
-    if (Array.isArray(incomingValue)) return;
-
-    if (typeof incomingValue === "object" && incomingValue !== null) {
-      merged[key] = cloneJson(incomingValue);
-      return;
-    }
-
-    if (!isNonEmptyValue(currentValue) && isNonEmptyValue(incomingValue)) {
-      merged[key] = incomingValue;
-      return;
-    }
-
-    if (key === "closed" && incomingValue === true) {
-      merged[key] = true;
-    }
-  });
-
-  merged.entries = mergeEntriesArray(currentStage?.entries || [], incomingStage?.entries || []);
-  return merged;
-}
-
-function mergeStagesArray(currentStages = [], incomingStages = []) {
-  const result = currentStages.map(stage => ({
-    ...stage,
-    entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
-  }));
-  const usedIndexes = new Set();
-
-  incomingStages.forEach(incomingStage => {
-    let matchIndex = -1;
-
-    if (incomingStage?.id) {
-      matchIndex = result.findIndex(stage => stage?.id === incomingStage.id);
-    }
-
-    if (matchIndex === -1) {
-      const incomingFp = stageFingerprint(incomingStage);
-      matchIndex = result.findIndex((stage, idx) => {
-        if (usedIndexes.has(idx)) return false;
-        return stageFingerprint(stage) === incomingFp;
-      });
-    }
-
-    if (matchIndex === -1) {
-      result.push({
-        ...incomingStage,
-        entries: Array.isArray(incomingStage.entries)
-          ? incomingStage.entries.map(entry => ({ ...entry }))
-          : []
-      });
-    } else {
-      result[matchIndex] = mergeStageObjects(result[matchIndex], incomingStage);
-      usedIndexes.add(matchIndex);
-    }
-  });
-
-  return result;
-}
-
 function mergePersonObjects(currentPerson, incomingPerson) {
   const merged = { ...currentPerson };
 
   Object.keys(incomingPerson || {}).forEach(key => {
-    if (key === "stages" || key === "expanded") return;
+    if (key === "entries" || key === "expanded") return;
 
     const incomingValue = incomingPerson[key];
     const currentValue = merged[key];
@@ -473,10 +369,14 @@ function mergePersonObjects(currentPerson, incomingPerson) {
       merged[key] = incomingValue;
       return;
     }
+
+    if (key === "archived" && incomingValue === true) {
+      merged.archived = true;
+    }
   });
 
   merged.expanded = false;
-  merged.stages = mergeStagesArray(currentPerson?.stages || [], incomingPerson?.stages || []);
+  merged.entries = mergeEntriesArray(currentPerson?.entries || [], incomingPerson?.entries || []);
 
   return merged;
 }
@@ -485,12 +385,7 @@ function mergePeopleArrays(currentPeople = [], incomingPeople = []) {
   const result = currentPeople.map(person => ({
     ...person,
     expanded: false,
-    stages: Array.isArray(person.stages)
-      ? person.stages.map(stage => ({
-          ...stage,
-          entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
-        }))
-      : []
+    entries: Array.isArray(person.entries) ? person.entries.map(entry => ({ ...entry })) : []
   }));
   const usedIndexes = new Set();
 
@@ -513,12 +408,7 @@ function mergePeopleArrays(currentPeople = [], incomingPeople = []) {
       result.push({
         ...incomingPerson,
         expanded: false,
-        stages: Array.isArray(incomingPerson.stages)
-          ? incomingPerson.stages.map(stage => ({
-              ...stage,
-              entries: Array.isArray(stage.entries) ? stage.entries.map(entry => ({ ...entry })) : []
-            }))
-          : []
+        entries: Array.isArray(incomingPerson.entries) ? incomingPerson.entries.map(entry => ({ ...entry })) : []
       });
     } else {
       result[matchIndex] = mergePersonObjects(result[matchIndex], incomingPerson);
@@ -678,8 +568,7 @@ function openTransferActionsModal() {
 }
 
 function openChoosePersonForPdf() {
-  openModal("Choose a Person", state.people.map(person => `<div class="sheet-item choose-person-pdf" data-person-id="${person.id}"><span class="sheet-item-title">${escapeHtml(person.name)}</span><span class="sheet-item-sub">${formatMoney(personOpenBalance(person))}</span></div>`).join(""), () => {
+  openModal("Choose a Person", state.people.map(person => `<div class="sheet-item choose-person-pdf" data-person-id="${person.id}"><span class="sheet-item-title">${escapeHtml(person.name)}</span><span class="sheet-item-sub">${formatMoney(personOpenBalance(person), personCurrency(person))}</span></div>`).join(""), () => {
     document.querySelectorAll(".choose-person-pdf").forEach(btn => { btn.onclick = () => { const personId = btn.dataset.personId; closeModal(); exportPersonPdf(personId); }; });
   });
 }
-
