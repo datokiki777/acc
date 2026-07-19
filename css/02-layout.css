@@ -73,6 +73,11 @@
   margin-top: 14px;
 }
 
+.topbar-search-wrap {
+  max-width: 732px;
+  margin: 10px auto 0;
+}
+
 .icon-btn {
   background: linear-gradient(180deg, #13243b, #0f1d31);
   border: 1px solid rgba(120, 150, 200, 0.15);

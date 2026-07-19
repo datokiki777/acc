@@ -17,6 +17,7 @@ const state = {
   overviewClosedExpanded: {},
   overviewOpenExpanded: {},
   statsExpanded: false,
+  personFilter: "active",
   personBalancePrev: {},
   totalBalancePrev: 0,
   longPressTimer: null,

@@ -106,7 +106,7 @@ function renderPerson(person) {
   const totals = openStage ? stageTotals(openStage) : { gave: 0, received: 0, balance: 0 };
   const currentCurrency = openStage ? stageCurrency(openStage) : "EUR";
   return `
-    <article class="person-card ${person.expanded ? "expanded" : ""}" data-person-id="${person.id}">
+    <article class="person-card ${person.expanded ? "expanded" : ""} ${person.archived ? "person-archived" : ""}" data-person-id="${person.id}">
       <div class="person-head-swipe swipe-card" data-action-type="person" data-person-id="${person.id}">
         <div class="swipe-content">
           <div class="person-head" data-toggle-person="${person.id}">
@@ -165,60 +165,23 @@ function renderStatsPeopleList(filteredPeople) {
 function renderStats() {
   const statsBar = document.getElementById("statsBar");
   if (!statsBar) return;
-  const peopleCount = state.people.length;
-  const balanceSummary = getOverviewBalanceSummary(state.people);
-  const closedTotalsMap = getClosedCurrencyTotals(state.people);
-  const closedBreakdown = getOrderedCurrencyEntries(closedTotalsMap).filter(([, amount]) => Math.abs(Number(amount || 0)) > 0.000001);
-  const sortedPeople = [...state.people].filter(person => (person.name || "").toLowerCase().includes(state.search.trim().toLowerCase())).sort((a, b) => personLastActivityTs(b) - personLastActivityTs(a));
+  const activeCount = state.people.filter(person => !person.archived).length;
+  const archivedCount = state.people.filter(person => !!person.archived).length;
+  const isArchived = state.personFilter === "archived";
   statsBar.innerHTML = `
-    <div class="stats-wrap">
-      <div class="stats-summary" id="statsSummaryToggle">
-        <div class="stats-summary-left">
-          <div class="stats-box"><div class="stats-title">${state.mode === "work" ? "Team" : "People"}</div><div class="stats-value">${peopleCount}</div></div>
-          <div class="stats-box">
-            <div class="stats-title">Balance</div>
-            ${balanceSummary.mixed ? `<div class="stats-value ${balanceClass(balanceSummary.amount)} stats-mixed-balance">${balanceSummary.label}</div>` : `<div class="stats-value ${balanceClass(balanceSummary.amount)}" data-animated-balance data-value="${balanceSummary.amount}" data-prev-value="${state.totalBalancePrev ?? 0}" data-currency="${balanceSummary.currency}">${formatMoney(balanceSummary.amount, balanceSummary.currency)}</div>`}
-          </div>
-        </div>
-        <div class="stats-arrow ${state.statsExpanded ? "open" : ""}">›</div>
-      </div>
+    <div class="person-filter-switch">
+      <button type="button" class="person-filter-btn ${!isArchived ? "active" : ""}" id="personFilterActiveBtn">
+        Active${activeCount ? `<span class="person-filter-count">${activeCount}</span>` : ""}
+      </button>
+      <button type="button" class="person-filter-btn ${isArchived ? "active" : ""}" id="personFilterArchivedBtn">
+        Archived${archivedCount ? `<span class="person-filter-count">${archivedCount}</span>` : ""}
+      </button>
     </div>
   `;
-  let overviewPanel = document.getElementById("statsOverviewPanel");
-  if (state.statsExpanded) {
-    if (!overviewPanel) {
-      overviewPanel = document.createElement("div");
-      overviewPanel.id = "statsOverviewPanel";
-      overviewPanel.className = "stats-overview-panel";
-      document.body.appendChild(overviewPanel);
-    }
-    overviewPanel.innerHTML = `
-      <div class="stats-overview-panel-fixed">
-        ${balanceSummary.breakdown.length > 1 ? `<div class="stats-breakdown-wrap">${renderCurrencyBreakdown(balanceSummary.breakdown, { icon: "🟢" })}</div>` : ""}
-        ${closedBreakdown.length ? `<div class="stats-breakdown-wrap stats-breakdown-wrap-closed">${renderCurrencyBreakdown(closedBreakdown, { icon: "🔒" })}</div>` : ""}
-        <div class="stats-search-wrap"><div class="search-box overview-search-box"><span class="search-icon">🔍</span><input type="text" id="overviewSearchInput" placeholder="Search by name..." autocomplete="off" value="${escapeHtml(state.search)}" /></div></div>
-      </div>
-      <div class="stats-overview-panel-scroll"><div id="statsPeopleList">${renderStatsPeopleList(sortedPeople)}</div></div>
-    `;
-    overviewPanel.style.display = "";
-    overviewPanel.classList.add("active");
-    requestAnimationFrame(adjustMainPadding);
-  } else {
-    if (overviewPanel) {
-      overviewPanel.classList.remove("active");
-      overviewPanel.innerHTML = "";
-    }
-  }
-  const toggle = document.getElementById("statsSummaryToggle");
-  if (toggle) {
-    toggle.onclick = e => {
-      if (e.target.closest("input") || e.target.closest(".stats-person-item") || e.target.closest(".overview-search-box")) return;
-      state.statsExpanded = !state.statsExpanded;
-      if (state.statsExpanded) history.pushState({ cards: true }, "");
-      render();
-    };
-  }
-  bindStatsEvents();
+  const activeBtn = document.getElementById("personFilterActiveBtn");
+  const archivedBtn = document.getElementById("personFilterArchivedBtn");
+  if (activeBtn) activeBtn.onclick = () => { if (state.personFilter !== "active") { state.personFilter = "active"; render(); } };
+  if (archivedBtn) archivedBtn.onclick = () => { if (state.personFilter !== "archived") { state.personFilter = "archived"; render(); } };
 }
 
 function adjustMainPadding() {
@@ -242,9 +205,26 @@ function syncFab() {
   else fab.classList.remove("fab-hidden");
 }
 
+function updateEmptyStateText() {
+  const titleEl = document.getElementById("emptyStateTitle");
+  const textEl = document.getElementById("emptyStateText");
+  const iconEl = document.getElementById("emptyStateIcon");
+  if (!titleEl || !textEl || !iconEl) return;
+  if (state.personFilter === "archived") {
+    iconEl.textContent = "🗄️";
+    titleEl.textContent = "No archived people";
+    textEl.textContent = "People you archive will show up here.";
+  } else {
+    iconEl.textContent = "📒";
+    titleEl.textContent = "No records yet";
+    textEl.textContent = "Tap the plus button below to add your first person.";
+  }
+}
+
 function refreshPeopleListsOnly() {
   const filteredPeople = getFilteredPeople();
   if (!filteredPeople.length) {
+    updateEmptyStateText();
     if (emptyStateEl) emptyStateEl.style.display = "block";
     peopleListEl.innerHTML = "";
     if (emptyStateEl) peopleListEl.appendChild(emptyStateEl);
@@ -265,6 +245,7 @@ function refreshPeopleListsOnly() {
 function render() {
   const filteredPeople = getFilteredPeople();
   if (!filteredPeople.length) {
+    updateEmptyStateText();
     if (emptyStateEl) emptyStateEl.style.display = "block";
     peopleListEl.innerHTML = "";
     if (emptyStateEl) peopleListEl.appendChild(emptyStateEl);

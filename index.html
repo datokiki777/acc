@@ -160,6 +160,13 @@
       </div>
 
       <div class="stats-bar" id="statsBar"></div>
+
+      <div class="topbar-search-wrap">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search by name..." autocomplete="off" />
+        </div>
+      </div>
     </header>
 
     <!-- =========================
@@ -168,9 +175,9 @@
     <main>
       <section class="people-list" id="peopleList">
         <div class="empty-state" id="emptyState">
-          <div class="empty-icon">📒</div>
-          <div class="empty-title">No records yet</div>
-          <div class="empty-text">Tap the plus button below to add your first person.</div>
+          <div class="empty-icon" id="emptyStateIcon">📒</div>
+          <div class="empty-title" id="emptyStateTitle">No records yet</div>
+          <div class="empty-text" id="emptyStateText">Tap the plus button below to add your first person.</div>
         </div>
       </section>
     </main>

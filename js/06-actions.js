@@ -132,6 +132,16 @@ function deleteByPayload(payload) {
   }
 }
 
+async function togglePersonArchived(personId) {
+  const person = findPerson(personId);
+  if (!person) return;
+  const willArchive = !person.archived;
+  person.archived = willArchive;
+  person.expanded = false;
+  await saveData();
+  render();
+}
+
 function setupActionCard(card) {
   if (card.dataset.actionsBound === "1") return;
   card.dataset.actionsBound = "1";
@@ -206,8 +216,18 @@ function setupActionCard(card) {
       }
     }
 
+    let onArchiveToggle = null;
+
     if (payload.type === "person") {
       onExportPerson = () => exportPersonPdf(payload.personId);
+
+      const person = findPerson(payload.personId);
+      if (person) {
+        const isArchived = !!person.archived;
+        const archiveFn = () => togglePersonArchived(payload.personId);
+        archiveFn._label = isArchived ? "📤 Unarchive" : "🗄️ Archive";
+        onArchiveToggle = archiveFn;
+      }
     }
 
     const allowEdit = !(payload.type === "stage" && payload.source === "overview");
@@ -218,6 +238,7 @@ function setupActionCard(card) {
       onRenameStage,
       onToggleStage,
       onExportPerson,
+      onArchiveToggle,
       onCancel: () => {
         if (payload.source === "overview") openOverviewPersonDetail(payload.personId);
       }
@@ -283,11 +304,12 @@ function openMainMenu() {
   );
 }
 
-function openQuickActions({ title = "", onEdit, onRenameStage, onToggleStage, onExportPerson, onCancel }) {
+function openQuickActions({ title = "", onEdit, onRenameStage, onToggleStage, onExportPerson, onArchiveToggle, onCancel }) {
   const hasEdit = typeof onEdit === "function";
 const hasRenameStage = typeof onRenameStage === "function";
 const hasStageToggle = typeof onToggleStage === "function";
 const hasExport = typeof onExportPerson === "function";
+const hasArchiveToggle = typeof onArchiveToggle === "function";
 let actionsHtml = "";
   if (!hasEdit && hasStageToggle) {
   actionsHtml = `
@@ -322,6 +344,11 @@ let actionsHtml = "";
         <button type="button" class="secondary-btn full-btn" id="quickExportPersonBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;">📄 Export PDF</button>
       </div>
     ` : ""}
+    ${hasArchiveToggle ? `
+      <div style="margin-bottom:10px;">
+        <button type="button" class="secondary-btn full-btn" id="quickArchiveToggleBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;"></button>
+      </div>
+    ` : ""}
     <div class="quick-actions-row ${hasEdit ? "quick-actions-row-2" : ""}" style="${hasEdit ? "" : "display:grid;grid-template-columns:1fr;"}">
       <button type="button" class="secondary-btn ${hasEdit ? "" : "full-btn"}" id="quickCancelBtn">Cancel</button>
       ${hasEdit ? `<button type="button" class="primary-btn" id="quickEditBtn">Edit</button>` : ""}
@@ -334,6 +361,7 @@ const editBtn = document.getElementById("quickEditBtn");
 const renameBtn = document.getElementById("quickRenameStageBtn");
 const toggleBtn = document.getElementById("quickToggleStageBtn");
 const exportBtn = document.getElementById("quickExportPersonBtn");
+const archiveBtn = document.getElementById("quickArchiveToggleBtn");
 
 if (cancelBtn) cancelBtn.onclick = () => { closeModal(); if (typeof onCancel === "function") onCancel(); };
 if (editBtn && hasEdit) editBtn.onclick = () => { closeModal(); onEdit(); };
@@ -343,6 +371,10 @@ if (toggleBtn && hasStageToggle) {
   toggleBtn.onclick = () => { closeModal(); onToggleStage(); };
 }
 if (exportBtn && hasExport) exportBtn.onclick = () => { closeModal(); onExportPerson(); };
+if (archiveBtn && hasArchiveToggle) {
+  archiveBtn.textContent = onArchiveToggle._label || "Archive";
+  archiveBtn.onclick = () => { closeModal(); onArchiveToggle(); };
+}
   });
 }
 

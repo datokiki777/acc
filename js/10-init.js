@@ -331,6 +331,7 @@ async function initApp() {
   }));
 
   state.statsExpanded = false;
+  state.personFilter = "active";
   syncModeButtons();
   render();
   maybeShowIosInstallPrompt();

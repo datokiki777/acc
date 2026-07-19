@@ -386,7 +386,9 @@ function personLastActivityTs(person) {
 
 function getFilteredPeople() {
   const query = state.search.trim().toLowerCase();
+  const wantArchived = state.personFilter === "archived";
   return state.people
+    .filter(person => !!person.archived === wantArchived)
     .filter(person => (person.name || "").toLowerCase().includes(query))
     .sort((a, b) => personLastActivityTs(b) - personLastActivityTs(a));
 }

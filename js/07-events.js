@@ -214,7 +214,9 @@ async function switchMode(nextMode) {
   state.mode = nextMode;
   await saveMode();
   state.search = "";
+  if (searchInput) searchInput.value = "";
   state.statsExpanded = false;
+  state.personFilter = "active";
 
   await loadDataByMode(state.mode);
   state.people = (state.people || []).map(p => ({
