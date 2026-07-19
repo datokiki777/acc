@@ -245,6 +245,13 @@
   padding: 0 10px 10px;
 }
 
+/* ===== Statistics modal ===== */
+/* Extra bottom room so the fixed back-arrow FAB never sits on top of
+   the last Top Balances item when the sheet is scrolled to the bottom. */
+#modalOverlay .sheet-body:has(.stats-modal-body) {
+  padding: 0 12px 96px;
+}
+
 #modalOverlay .backup-sheet {
   display: flex;
   flex-direction: column;
