@@ -167,6 +167,62 @@ function setupActionCard(card) {
   setupSwipeDelete(card, () => deleteByPayload(payload));
 }
 
+function openMainMenu() {
+  openModal(
+    "Menu",
+    `
+      <div class="menu-sheet-list">
+        <button type="button" class="sheet-item menu-sheet-item" id="menuExportPersonBtn">
+          <span class="sheet-item-title-row">
+            <span class="sheet-item-icon">📄</span>
+            <span class="sheet-item-title">Export Person PDF</span>
+          </span>
+        </button>
+
+        <button type="button" class="sheet-item menu-sheet-item" id="menuExportAllBtn">
+          <span class="sheet-item-title-row">
+            <span class="sheet-item-icon">🧾</span>
+            <span class="sheet-item-title">Export All PDF</span>
+          </span>
+        </button>
+
+        <button type="button" class="sheet-item menu-sheet-item menu-sheet-item-lg" id="menuDataBackupBtn">
+          <span class="sheet-item-title-row">
+            <span class="sheet-item-icon">💾</span>
+            <span class="sheet-item-title">Data & Backup</span>
+          </span>
+        </button>
+      </div>
+    `,
+    () => {
+      const exportPersonBtn = document.getElementById("menuExportPersonBtn");
+      const exportAllBtn = document.getElementById("menuExportAllBtn");
+      const dataBackupBtn = document.getElementById("menuDataBackupBtn");
+
+      if (exportPersonBtn) {
+        exportPersonBtn.onclick = () => {
+          closeModal();
+          openChoosePersonForPdf();
+        };
+      }
+
+      if (exportAllBtn) {
+        exportAllBtn.onclick = () => {
+          closeModal();
+          exportAllPdf();
+        };
+      }
+
+      if (dataBackupBtn) {
+        dataBackupBtn.onclick = () => {
+          closeModal();
+          openDataBackupModal();
+        };
+      }
+    }
+  );
+}
+
 function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle, onCancel }) {
   const hasEdit = typeof onEdit === "function";
   const hasExport = typeof onExportPerson === "function";
