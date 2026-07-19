@@ -189,6 +189,14 @@
   <button class="fab" id="fab" aria-label="Add">+</button>
 
   <!-- =========================
+       Undo Delete Toast
+  ========================= -->
+  <div class="undo-toast" id="undoToast" aria-hidden="true">
+    <span class="undo-toast-text" id="undoToastText"></span>
+    <button type="button" class="undo-toast-btn" id="undoToastBtn">Undo</button>
+  </div>
+
+  <!-- =========================
        Legacy hidden elements
        Kept for JS compatibility
   ========================= -->
@@ -299,6 +307,7 @@
   <script src="js/06-actions.js"></script>
   <script src="js/08-modals.js"></script>
   <script src="js/09-export.js"></script>
+  <script src="js/11-stats.js"></script>
 
 <script src="js/07-events.js"></script>
 <script src="js/10-init.js"></script>

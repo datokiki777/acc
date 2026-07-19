@@ -6,6 +6,7 @@ const WORK_STORAGE_KEY = "accounts-work-v1";
 const MODE_STORAGE_KEY = "accounts-mode-v1";
 const THEME_KEY = "accounts-theme";
 const DEBUG_KEY = "acc_debug";
+const TAG_COLOR_PALETTE = ["#5692ff", "#35c26b", "#ff6b6b", "#ffb84d", "#b98cff", "#4fd1c5", "#ff8fce", "#9aaac4"];
 
 // Global state
 const state = {

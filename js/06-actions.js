@@ -103,9 +103,16 @@ function openEditByPayload(payload) {
 function deleteByPayload(payload) {
   if (payload.type === "person") {
     confirmDelete("Delete this person? All entries will be deleted.", async () => {
-      state.people = state.people.filter(p => p.id !== payload.personId);
+      const index = state.people.findIndex(p => p.id === payload.personId);
+      if (index === -1) return;
+      const [removed] = state.people.splice(index, 1);
       await saveData();
-     render();
+      render();
+      showUndoToast(`Deleted ${removed.name || "person"}`, async () => {
+        state.people.splice(Math.min(index, state.people.length), 0, removed);
+        await saveData();
+        render();
+      });
     });
     return;
   }
@@ -113,9 +120,20 @@ function deleteByPayload(payload) {
     confirmDelete("Delete this entry?", async () => {
       const person = findPerson(payload.personId);
       if (!person) return;
-      person.entries = (person.entries || []).filter(e => e.id !== payload.entryId);
+      const entries = person.entries || [];
+      const index = entries.findIndex(e => e.id === payload.entryId);
+      if (index === -1) return;
+      const [removed] = entries.splice(index, 1);
       await saveData();
       render();
+      showUndoToast("Entry deleted", async () => {
+        const p = findPerson(payload.personId);
+        if (!p) return;
+        p.entries = p.entries || [];
+        p.entries.splice(Math.min(index, p.entries.length), 0, removed);
+        await saveData();
+        render();
+      });
     });
   }
 }
@@ -172,6 +190,13 @@ function openMainMenu() {
     "Menu",
     `
       <div class="menu-sheet-list">
+        <button type="button" class="sheet-item menu-sheet-item" id="menuStatsBtn">
+          <span class="sheet-item-title-row">
+            <span class="sheet-item-icon">📊</span>
+            <span class="sheet-item-title">Statistics</span>
+          </span>
+        </button>
+
         <button type="button" class="sheet-item menu-sheet-item" id="menuExportPersonBtn">
           <span class="sheet-item-title-row">
             <span class="sheet-item-icon">📄</span>
@@ -195,9 +220,17 @@ function openMainMenu() {
       </div>
     `,
     () => {
+      const statsBtn = document.getElementById("menuStatsBtn");
       const exportPersonBtn = document.getElementById("menuExportPersonBtn");
       const exportAllBtn = document.getElementById("menuExportAllBtn");
       const dataBackupBtn = document.getElementById("menuDataBackupBtn");
+
+      if (statsBtn) {
+        statsBtn.onclick = () => {
+          closeModal();
+          openStatsModal();
+        };
+      }
 
       if (exportPersonBtn) {
         exportPersonBtn.onclick = () => {

@@ -24,6 +24,23 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           >
         </div>
 
+        <div class="field">
+          <label for="personTagLabel">Tag <span class="field-optional">(optional)</span></label>
+          <input
+            id="personTagLabel"
+            name="tagLabel"
+            type="text"
+            maxlength="20"
+            placeholder="Example: Family, Work..."
+            value="${person?.tagLabel ? escapeHtml(person.tagLabel) : ""}"
+          >
+          <input type="hidden" id="personTagColor" name="tagColor" value="${person?.tagColor ? escapeHtml(person.tagColor) : ""}" />
+          <div class="tag-color-picker">
+            <button type="button" class="tag-color-swatch tag-color-none ${!person?.tagColor ? "active" : ""}" data-tag-color-choice="" aria-label="No color">✕</button>
+            ${TAG_COLOR_PALETTE.map(color => `<button type="button" class="tag-color-swatch ${person?.tagColor === color ? "active" : ""}" data-tag-color-choice="${color}" style="background:${color}" aria-label="${color}"></button>`).join("")}
+          </div>
+        </div>
+
         ${isNew ? `
         <div class="field">
           <label for="personCurrency">Currency</label>
@@ -107,6 +124,18 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
       const salaryEndDateInput = document.getElementById("salaryEndDate");
       const currencyInput = document.getElementById("personCurrency");
       const currencyChoiceButtons = document.querySelectorAll("[data-person-currency-choice]");
+      const tagColorInput = document.getElementById("personTagColor");
+      const tagColorButtons = document.querySelectorAll("[data-tag-color-choice]");
+
+      tagColorButtons.forEach(btn => {
+        btn.onclick = () => {
+          const nextColor = btn.dataset.tagColorChoice || "";
+          if (tagColorInput) tagColorInput.value = nextColor;
+          tagColorButtons.forEach(b => {
+            b.classList.toggle("active", (b.dataset.tagColorChoice || "") === nextColor);
+          });
+        };
+      });
 
       currencyChoiceButtons.forEach(btn => {
         btn.onclick = () => {
@@ -137,6 +166,8 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
 
         const fd = new FormData(form);
         const name = String(fd.get("name") || "").trim();
+        const tagLabel = String(fd.get("tagLabel") || "").trim();
+        const tagColor = String(fd.get("tagColor") || "").trim();
         const salaryAmount = normalizeAmount(fd.get("salaryAmount"));
         const salaryStartDate = String(fd.get("salaryStartDate") || "").trim();
         const salaryEndDate = String(fd.get("salaryEndDate") || "").trim();
@@ -146,6 +177,8 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
 
         if (person) {
           person.name = name;
+          person.tagLabel = tagLabel;
+          person.tagColor = tagColor;
           if (state.mode === "work") {
             person.salaryAmount = salaryAmount;
             person.salaryStartDate = salaryStartDate;
@@ -170,6 +203,8 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             id: newId,
             name,
             currency: newCurrency,
+            tagLabel,
+            tagColor,
             ...(state.mode === "work" ? {
               salaryAmount,
               salaryStartDate,

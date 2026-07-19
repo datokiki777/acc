@@ -98,6 +98,47 @@ function closeConfirm() {
   fab.classList.remove("fab-hidden");
 }
 
+// ==================== UNDO DELETE TOAST ====================
+
+let _undoPending = null; // { timeoutId }
+
+function clearUndoToast() {
+  if (_undoPending) {
+    clearTimeout(_undoPending.timeoutId);
+    _undoPending = null;
+  }
+  const toast = document.getElementById("undoToast");
+  if (toast) {
+    toast.classList.remove("show");
+    toast.setAttribute("aria-hidden", "true");
+  }
+}
+
+function showUndoToast(message, onUndo) {
+  // Only one undo can be pending at a time; finalize any previous one.
+  clearUndoToast();
+
+  const toast = document.getElementById("undoToast");
+  const textEl = document.getElementById("undoToastText");
+  const btn = document.getElementById("undoToastBtn");
+  if (!toast || !textEl || !btn) return;
+
+  textEl.textContent = message;
+  toast.classList.add("show");
+  toast.setAttribute("aria-hidden", "false");
+
+  btn.onclick = async () => {
+    clearUndoToast();
+    await onUndo();
+  };
+
+  const timeoutId = setTimeout(() => {
+    clearUndoToast();
+  }, 4500);
+
+  _undoPending = { timeoutId };
+}
+
 // ==================== RESTORE SOURCE PICKER ====================
 
 function askRestoreSource(options) {

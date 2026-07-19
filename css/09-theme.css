@@ -559,6 +559,11 @@ body.light-theme .fab.fab-back {
   box-shadow: 0 18px 34px rgba(47, 69, 96, 0.32);
 }
 
+body.light-theme .undo-toast {
+  background: linear-gradient(180deg, #3a4f6e, #2a3c56);
+  border: 1px solid rgba(170, 192, 225, 0.25);
+}
+
 body.light-theme .topbar .icon-btn,
 body.light-theme .theme-switch {
   background: linear-gradient(180deg, #7892b5, #5f7ea5);
