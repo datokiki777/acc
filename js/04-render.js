@@ -96,17 +96,18 @@ function renderWorkGiftPanel(person) {
   `;
 }
 
-function renderPerson(person) {
+function renderPerson(person, topBalanceIds) {
   const currency = personCurrency(person);
   const balance = personOpenBalance(person);
   const entries = person.entries || [];
   const totals = personTotals(person);
   const tagColor = person.tagColor || "";
+  const isTopBalance = !!(topBalanceIds && topBalanceIds.has(person.id));
   const tagChip = (person.tagLabel || tagColor)
     ? `<span class="person-tag-chip" style="${tagColor ? `background:${tagColor}22;color:${tagColor};border-color:${tagColor}55;` : ""}">${tagColor ? `<span class="person-tag-dot" style="background:${tagColor}"></span>` : ""}${escapeHtml(person.tagLabel || "")}</span>`
     : "";
   return `
-    <article class="person-card ${person.expanded ? "expanded" : ""} ${person.archived ? "person-archived" : ""}" data-person-id="${person.id}">
+    <article class="person-card ${person.expanded ? "expanded" : ""} ${person.archived ? "person-archived" : ""} ${isTopBalance ? "person-card-top" : ""}" data-person-id="${person.id}">
       <div class="person-head-swipe swipe-card" data-action-type="person" data-person-id="${person.id}">
         <div class="swipe-content">
           <div class="person-head" data-toggle-person="${person.id}">
@@ -207,7 +208,8 @@ function refreshPeopleListsOnly() {
     if (emptyStateEl) peopleListEl.appendChild(emptyStateEl);
   } else {
     if (emptyStateEl) emptyStateEl.style.display = "none";
-    peopleListEl.innerHTML = filteredPeople.map(renderPerson).join("");
+    const topBalanceIds = getTopBalanceIds(filteredPeople);
+    peopleListEl.innerHTML = filteredPeople.map(p => renderPerson(p, topBalanceIds)).join("");
     bindDynamicEvents();
     bindPremiumPressEffects();
     runBalanceAnimations();
@@ -227,7 +229,8 @@ function render() {
     return;
   }
   if (emptyStateEl) emptyStateEl.style.display = "none";
-  peopleListEl.innerHTML = filteredPeople.map(renderPerson).join("");
+  const topBalanceIds = getTopBalanceIds(filteredPeople);
+  peopleListEl.innerHTML = filteredPeople.map(p => renderPerson(p, topBalanceIds)).join("");
   bindDynamicEvents();
   bindPremiumPressEffects();
   renderStats();

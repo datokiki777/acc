@@ -194,6 +194,16 @@
   margin-bottom: 8px;
 }
 
+.empty-state:not(.mini-empty) .empty-icon {
+  display: inline-block;
+  animation: emptyIconFloat 3.2s ease-in-out infinite;
+}
+
+@keyframes emptyIconFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(-4deg); }
+}
+
 .empty-title {
   font-size: 18px;
   font-weight: 800;

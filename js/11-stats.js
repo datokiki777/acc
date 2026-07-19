@@ -81,8 +81,8 @@ function openStatsModal() {
   const topBalancesHtml = topBalances.length ? `
     <div class="stats-section-title">Top Balances</div>
     <div class="stats-top-list">
-      ${topBalances.map(m => `
-        <div class="stats-top-item">
+      ${topBalances.map((m, idx) => `
+        <div class="stats-top-item ${idx === 0 ? "stats-top-item-first" : ""}">
           <span class="stats-top-name">${escapeHtml(m.name)}</span>
           <span class="stats-top-balance ${balanceClass(m.balance)}">${formatMoney(m.balance, m.currency)}</span>
         </div>

@@ -322,6 +322,17 @@ function personLastActivityTs(person) {
   return latest;
 }
 
+function getTopBalanceIds(people, limit = 3) {
+  const ranked = people
+    .map(p => ({ id: p.id, abs: Math.abs(personOpenBalance(p)) }))
+    .filter(p => p.abs > 0.000001)
+    .sort((a, b) => b.abs - a.abs)
+    .slice(0, limit);
+  // Only worth highlighting when there's a meaningful list to stand out from.
+  if (people.length <= limit) return new Set();
+  return new Set(ranked.map(p => p.id));
+}
+
 function getFilteredPeople() {
   const query = state.search.trim().toLowerCase();
   const wantArchived = state.personFilter === "archived";

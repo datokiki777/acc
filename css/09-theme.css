@@ -109,6 +109,8 @@ body.light-theme {
   --red-soft: #f0d7d7;
   --gray: #66778d;
   --gray-soft: #d3dde7;
+  --gold: #e0a52c;
+  --gold-soft: rgba(224, 165, 44, 0.14);
   --shadow: 0 14px 28px rgba(20, 35, 60, 0.16);
 
   background:
