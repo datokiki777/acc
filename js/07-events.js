@@ -155,17 +155,16 @@ if (menuDelete) menuDelete.style.display = "none";
 
   function onScroll() {
     const currentY = window.scrollY || document.documentElement.scrollTop || 0;
-    const delta = currentY - lastScrollY;
     const isCollapsed = collapsible.classList.contains("topbar-collapsed");
     let nextCollapsed = isCollapsed;
 
     if (currentY <= REVEAL_NEAR_TOP) {
       nextCollapsed = false;
-    } else if (delta > 4 && currentY > COLLAPSE_AFTER) {
+    } else if (currentY > COLLAPSE_AFTER) {
       nextCollapsed = true;
-    } else if (delta < -4) {
-      nextCollapsed = false;
     }
+    // Between the two thresholds: keep whatever state it's already in,
+    // so small scroll wiggles (momentum/bounce) don't flip it back and forth.
 
     if (nextCollapsed !== isCollapsed) setCollapsed(nextCollapsed);
 

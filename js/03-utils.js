@@ -288,19 +288,35 @@ function personSalarySummary(person, date = new Date()) {
   // period, so those resets keep landing on due=0 right afterward.
   const accrued = config.accruedBaseline + normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
-  // For what's shown as owed, the currently in-progress period's target
-  // already counts — so paying in installments through the week reduces
-  // the shown balance right away, instead of staying at 0 until the
-  // period technically closes on its pay date.
-  const dueTarget = ended ? accrued : accrued + periodAmount;
-  const due = Math.max(0, dueTarget - paid);
-  // Once the current period's target is fully covered, "upcoming" previews
-  // the following period's amount as a soft forecast.
-  const upcoming = (!ended && due <= 0) ? periodAmount : 0;
-  const nextPayDate = addDays(config.anchorDate, (completedPeriods + 1) * periodDays);
+
+  // How many period-targets count toward the total as of today: on the
+  // exact pay-date day itself this must stay at the same count as the day
+  // before (not bump up an extra period) — ceil() handles that boundary
+  // correctly where floor()+1 would double-count it.
+  const periodsTargeted = days <= 0 ? 1 : Math.ceil(days / periodDays);
+  // Periods whose own pay date has actually been reached (<=today) —
+  // separate from periodsTargeted so the "just reached today" period
+  // doesn't immediately count as overdue.
+  const boundariesReached = completedPeriods;
+  const isPastDue = boundariesReached > 0 && days > boundariesReached * periodDays;
+
+  const dueTarget = config.accruedBaseline + normalizeAmount(periodAmount * (ended ? boundariesReached : periodsTargeted));
+  const remaining = Math.max(0, dueTarget - paid);
+  const overdueTarget = config.accruedBaseline + normalizeAmount(periodAmount * boundariesReached);
+  const overdueRemaining = Math.max(0, overdueTarget - paid);
+
+  // Red "Overdue" — only the matured (pay-date-passed) portion of the
+  // shortfall. Yellow "Upcoming" — whatever's left: the current period's
+  // target before its own pay date arrives, or a forward forecast once
+  // everything owed so far is covered.
+  const due = isPastDue ? Math.min(overdueRemaining, remaining) : 0;
+  let upcoming = remaining - due;
+  if (remaining <= 0 && !ended) upcoming = periodAmount;
+
+  const nextPayDate = addDays(config.anchorDate, periodsTargeted * periodDays);
   const daysUntilNextPay = ended ? null : daysUntil(nextPayDate, date);
-  // Forecast state only applies once nothing is currently owed — if `due` is
-  // already positive that's a real unpaid balance, not a forecast.
+  // Forecast state only applies once nothing is currently overdue — if
+  // `due` is already positive that's a real unpaid balance, not a forecast.
   const paySoon = !ended && due <= 0 && daysUntilNextPay !== null && daysUntilNextPay <= SALARY_PAY_SOON_DAYS;
   return {
     enabled: true,
