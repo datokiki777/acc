@@ -129,69 +129,26 @@ if (menuDelete) menuDelete.style.display = "none";
 
 // Collapse the Active/Archived + search row on scroll-down, reveal it on
 // scroll-up (or near the top) — the fixed menu/mode-switch row always stays.
-(function setupCollapsibleTopbar() {
-  const collapsible = document.getElementById("topbarCollapsible");
-  const topbar = document.querySelector(".topbar");
-  if (!collapsible || !topbar) return;
+(function setupSearchExpand() {
+  const searchBox = document.querySelector(".topbar-search-wrap .search-box");
+  if (!searchBox || !searchInput) return;
 
-  const searchBox = collapsible.querySelector(".search-box");
-
-  function syncMainPaddingDuringTransition(durationMs = 280) {
-    const mainEl = document.querySelector("main");
-    if (!mainEl) return;
-    const start = performance.now();
-    function step(now) {
-      const h = topbar.getBoundingClientRect().height;
-      mainEl.style.paddingTop = (h + 16) + "px";
-      if (now - start < durationMs) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+  function expand() {
+    searchBox.classList.add("search-expanded");
+    searchInput.focus();
   }
 
-  function setCompact(nextCompact) {
-    if (collapsible.classList.contains("topbar-compact") === nextCompact) return;
-    collapsible.classList.toggle("topbar-compact", nextCompact);
-    syncMainPaddingDuringTransition();
+  function collapseIfEmpty() {
+    if (!searchInput.value.trim()) searchBox.classList.remove("search-expanded");
   }
 
-  // Tapping the shrunken search icon expands the bar back and focuses input,
-  // instead of leaving search unreachable until you scroll to the top.
-  if (searchBox) {
-    searchBox.addEventListener("click", () => {
-      if (!collapsible.classList.contains("topbar-compact")) return;
-      setCompact(false);
-      setTimeout(() => { if (searchInput) searchInput.focus(); }, 260);
-    });
-  }
+  searchBox.addEventListener("click", e => {
+    if (searchBox.classList.contains("search-expanded")) return;
+    e.preventDefault();
+    expand();
+  });
 
-  let ticking = false;
-  const COMPACT_AFTER = 24;
-  const EXPAND_NEAR_TOP = 8;
-
-  function onScroll() {
-    const currentY = window.scrollY || document.documentElement.scrollTop || 0;
-    const isCompact = collapsible.classList.contains("topbar-compact");
-    let nextCompact = isCompact;
-
-    if (currentY <= EXPAND_NEAR_TOP) {
-      nextCompact = false;
-    } else if (currentY > COMPACT_AFTER) {
-      nextCompact = true;
-    }
-    // Between the two thresholds: keep whatever state it's already in,
-    // so small scroll wiggles (momentum/bounce) don't flip it back and forth.
-
-    if (nextCompact !== isCompact) setCompact(nextCompact);
-
-    ticking = false;
-  }
-
-  window.addEventListener("scroll", () => {
-    if (!ticking) {
-      requestAnimationFrame(onScroll);
-      ticking = true;
-    }
-  }, { passive: true });
+  searchInput.addEventListener("blur", collapseIfEmpty);
 })();
 
 confirmOverlay.addEventListener("click", e => { if (e.target === confirmOverlay) { closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); } });

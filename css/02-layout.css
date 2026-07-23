@@ -77,61 +77,60 @@
   transition: margin-top 0.25s ease;
 }
 
-/* Compact mode (scrolled down): shrink instead of hiding, so there's
-   always something tappable to get back to search/filters/stats. */
-.topbar-collapsible.topbar-compact #statsBar {
+.topbar-collapsible #statsBar {
   margin-top: 8px;
 }
 
-.topbar-collapsible.topbar-compact .person-filter-switch {
+/* Permanently compact filter tabs */
+.topbar-collapsible .person-filter-switch {
   padding: 2px;
   gap: 4px;
   margin-bottom: 6px;
-  transition: padding 0.25s ease, margin-bottom 0.25s ease;
 }
 
-.topbar-collapsible.topbar-compact .person-filter-btn {
+.topbar-collapsible .person-filter-btn {
   padding: 4px 0;
   font-size: 11px;
-  transition: padding 0.25s ease, font-size 0.25s ease;
 }
 
-.topbar-collapsible.topbar-compact .person-filter-count {
+.topbar-collapsible .person-filter-count {
   min-width: 15px;
   height: 15px;
   font-size: 9px;
-  transition: min-width 0.25s ease, height 0.25s ease, font-size 0.25s ease;
 }
 
-.topbar-collapsible.topbar-compact .topbar-search-wrap {
+.topbar-collapsible .topbar-search-wrap {
   margin-top: 6px;
 }
 
-.topbar-collapsible.topbar-compact .search-box {
+/* Search box: icon-only by default (a bit wider than a bare icon so it
+   doesn't feel cramped), expands in place on tap. */
+.search-box {
   flex: 0 0 auto;
-  width: 40px;
+  width: 56px;
   padding: 0;
   justify-content: center;
   overflow: hidden;
+  transition: width 0.22s ease, flex-grow 0.22s ease, padding 0.22s ease;
 }
 
-.topbar-collapsible .search-box {
-  transition: width 0.25s ease, flex-grow 0.25s ease, padding 0.25s ease;
-}
-
-.topbar-collapsible.topbar-compact .search-box #searchInput {
+.search-box #searchInput {
   width: 0;
   padding: 0;
   opacity: 0;
-}
-
-.topbar-collapsible .search-box #searchInput {
   transition: width 0.2s ease, opacity 0.15s ease;
 }
 
-.topbar-collapsible.topbar-compact .stats-icon-btn {
-  width: 40px;
-  min-width: 40px;
+.search-box.search-expanded {
+  flex: 1;
+  width: auto;
+  padding: 10px 13px;
+  justify-content: flex-start;
+}
+
+.search-box.search-expanded #searchInput {
+  width: 100%;
+  opacity: 1;
 }
 
 .topbar-search-wrap {
@@ -149,8 +148,8 @@
 
 .stats-icon-btn {
   flex-shrink: 0;
-  width: 54px;
-  min-width: 54px;
+  width: 56px;
+  min-width: 56px;
   border: 1px solid rgba(120, 165, 255, 0.30);
   border-radius: 16px;
   background: linear-gradient(180deg, #3f7de0, #2c5fc4);
