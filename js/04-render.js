@@ -61,15 +61,20 @@ function renderWorkSalaryPanel(person) {
       ? `<div class="salary-due-pill due">${formatMoneyPlain(salary.due, salary.currency)}</div>`
       : "",
     salary.upcoming > 0
-      ? `<div class="salary-due-pill upcoming">${formatMoneyPlain(salary.upcoming, salary.currency)}</div>`
+      ? `<div class="salary-due-pill upcoming ${salary.paySoon ? "pay-soon" : ""}">${formatMoneyPlain(salary.upcoming, salary.currency)}</div>`
       : ""
   ].join("");
+  // Forecast note only makes sense once nothing is currently owed (paid up)
+  // and there's still a next pay date ahead of us.
+  const forecastNote = (salary.due <= 0 && !salary.ended && salary.daysUntilNextPay !== null)
+    ? ` · next pay ${salary.daysUntilNextPay <= 0 ? "due now" : `in ${salary.daysUntilNextPay}d`}`
+    : "";
   return `
     <div class="salary-panel">
       <div class="salary-panel-head">
         <div>
           <div class="salary-panel-title">Payroll</div>
-          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}${salary.endDate ? ` · ends ${formatDate(salary.endDate)}` : ""}</div>
+          <div class="salary-panel-sub">${formatMoneyPlain(salary.monthly, salary.currency)} / month · ${formatMoneyPlain(salary.periodAmount, salary.currency)} every ${salary.periodWeeks} week${salary.periodWeeks === 1 ? "" : "s"}${salary.endDate ? ` · ends ${formatDate(salary.endDate)}` : ""}${forecastNote}</div>
         </div>
         <div class="salary-pill-stack">${statusPills || `<div class="salary-due-pill clear">Clear</div>`}</div>
       </div>

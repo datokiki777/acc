@@ -1478,6 +1478,12 @@
   background: rgba(255, 194, 82, 0.14);
 }
 
+.salary-due-pill.upcoming.pay-soon {
+  color: #ff9a9a;
+  border: 1px solid rgba(255, 110, 110, 0.34);
+  background: rgba(255, 80, 80, 0.13);
+}
+
 .salary-due-pill.clear {
   color: #62e090;
   border: 1px solid rgba(85, 220, 140, 0.28);

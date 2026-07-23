@@ -87,6 +87,20 @@ function minDateString(firstDateStr, secondDate = new Date()) {
   return first < second ? first : second;
 }
 
+// Signed day count to a target date: positive = still ahead, 0 = today,
+// negative = already past. Unlike daysSince, this is not clamped to zero,
+// so it can flag an overdue pay date.
+function daysUntil(dateStr, fromDate = new Date()) {
+  const target = parseLocalDate(dateStr);
+  if (!target) return 0;
+  const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  return Math.floor((target - from) / 86400000);
+}
+
+// Below this many days to the next pay date, the upcoming-pay forecast
+// switches from "normal accrual" (yellow) to "pay date approaching" (red).
+const SALARY_PAY_SOON_DAYS = 3;
+
 function balanceClass(value) {
   if (value > 0) return "green";
   if (value < 0) return "red";
@@ -259,7 +273,7 @@ function personGiftSummary(person) {
 function personSalarySummary(person, date = new Date()) {
   const config = getPersonSalaryConfig(person);
   if (!config) {
-    return { enabled: false, accrued: 0, paid: 0, due: 0, upcoming: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "", ended: false, endDate: "" };
+    return { enabled: false, accrued: 0, paid: 0, due: 0, upcoming: 0, currency: "EUR", days: 0, monthly: 0, periodWeeks: 1, periodAmount: 0, completedPeriods: 0, nextPayDate: "", daysUntilNextPay: null, paySoon: false, ended: false, endDate: "" };
   }
   const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const ended = !!config.endDate && parseLocalDate(config.endDate) <= today;
@@ -272,6 +286,11 @@ function personSalarySummary(person, date = new Date()) {
   const paid = personSalaryPaid(person);
   const due = Math.max(0, accrued - paid);
   const upcoming = ended ? 0 : periodAmount;
+  const nextPayDate = addDays(config.anchorDate, (completedPeriods + 1) * periodDays);
+  const daysUntilNextPay = ended ? null : daysUntil(nextPayDate, date);
+  // Forecast state only applies once nothing is currently owed — if `due` is
+  // already positive that's a real unpaid balance, not a forecast.
+  const paySoon = !ended && due <= 0 && daysUntilNextPay !== null && daysUntilNextPay <= SALARY_PAY_SOON_DAYS;
   return {
     enabled: true,
     accrued,
@@ -284,7 +303,9 @@ function personSalarySummary(person, date = new Date()) {
     periodWeeks: config.periodWeeks,
     periodAmount,
     completedPeriods,
-    nextPayDate: addDays(config.anchorDate, (completedPeriods + 1) * periodDays),
+    nextPayDate,
+    daysUntilNextPay,
+    paySoon,
     startDate: config.startDate,
     ended,
     endDate: config.endDate

@@ -1117,6 +1117,12 @@ body.light-theme .salary-due-pill.upcoming {
   background: rgba(245, 184, 46, 0.17);
 }
 
+body.light-theme .salary-due-pill.upcoming.pay-soon {
+  color: #c33c48;
+  border-color: rgba(195, 60, 72, 0.22);
+  background: rgba(244, 63, 94, 0.1);
+}
+
 body.light-theme .gift-panel {
   border-color: rgba(214, 155, 31, 0.24);
   background: linear-gradient(180deg, rgba(255, 250, 232, 0.96), rgba(248, 236, 202, 0.86));
