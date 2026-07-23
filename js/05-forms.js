@@ -226,43 +226,59 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             await applyPersonEdit();
           }
         } else {
-          const newId = uid();
-          const newCurrency = String(fd.get("currency") || "EUR");
+          const doCreate = async () => {
+            const newId = uid();
+            const newCurrency = String(fd.get("currency") || "EUR");
 
-          state.people.unshift({
-            id: newId,
-            name,
-            currency: newCurrency,
-            tagLabel,
-            tagColor,
-            ...(state.mode === "work" ? {
-              salaryAmount,
-              salaryStartDate,
-              salaryEndDate,
-              salaryPayPeriodWeeks,
-              salaryCurrency: newCurrency
-            } : {}),
-            expanded: false,
-            archived: false,
-            createdAt: new Date().toISOString(),
-            entries: []
-          });
+            state.people.unshift({
+              id: newId,
+              name,
+              currency: newCurrency,
+              tagLabel,
+              tagColor,
+              ...(state.mode === "work" ? {
+                salaryAmount,
+                salaryStartDate,
+                salaryEndDate,
+                salaryPayPeriodWeeks,
+                salaryCurrency: newCurrency
+              } : {}),
+              expanded: false,
+              archived: false,
+              createdAt: new Date().toISOString(),
+              entries: []
+            });
 
-          await saveData();
-          closeModal();
-
-          requestAnimationFrame(() => {
-            render();
+            await saveData();
+            closeModal();
 
             requestAnimationFrame(() => {
-              const card = document.querySelector(`[data-person-id="${newId}"]`);
-              if (card) {
-                card.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
+              render();
 
-              openEntryForm(newId, null);
+              requestAnimationFrame(() => {
+                const card = document.querySelector(`[data-person-id="${newId}"]`);
+                if (card) {
+                  card.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+
+                openEntryForm(newId, null);
+              });
             });
-          });
+          };
+
+          const normalizedName = name.trim().toLowerCase();
+          const archivedMatch = state.people.find(p => p.archived && (p.name || "").trim().toLowerCase() === normalizedName);
+
+          if (archivedMatch) {
+            confirmDelete(
+              `"${name}" is already archived. It's usually better to unarchive them instead, so their history stays in one place. Create a new person anyway?`,
+              doCreate,
+              false,
+              "Create Anyway"
+            );
+          } else {
+            await doCreate();
+          }
         }
       };
     }
