@@ -74,15 +74,64 @@
 }
 
 .topbar-collapsible {
-  overflow: hidden;
-  max-height: 220px;
-  opacity: 1;
-  transition: max-height 0.28s ease, opacity 0.22s ease, margin-top 0.28s ease;
+  transition: margin-top 0.25s ease;
 }
 
-.topbar-collapsible.topbar-collapsed {
-  max-height: 0;
+/* Compact mode (scrolled down): shrink instead of hiding, so there's
+   always something tappable to get back to search/filters/stats. */
+.topbar-collapsible.topbar-compact #statsBar {
+  margin-top: 8px;
+}
+
+.topbar-collapsible.topbar-compact .person-filter-switch {
+  padding: 2px;
+  gap: 4px;
+  margin-bottom: 6px;
+  transition: padding 0.25s ease, margin-bottom 0.25s ease;
+}
+
+.topbar-collapsible.topbar-compact .person-filter-btn {
+  padding: 4px 0;
+  font-size: 11px;
+  transition: padding 0.25s ease, font-size 0.25s ease;
+}
+
+.topbar-collapsible.topbar-compact .person-filter-count {
+  min-width: 15px;
+  height: 15px;
+  font-size: 9px;
+  transition: min-width 0.25s ease, height 0.25s ease, font-size 0.25s ease;
+}
+
+.topbar-collapsible.topbar-compact .topbar-search-wrap {
+  margin-top: 6px;
+}
+
+.topbar-collapsible.topbar-compact .search-box {
+  flex: 0 0 auto;
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.topbar-collapsible .search-box {
+  transition: width 0.25s ease, flex-grow 0.25s ease, padding 0.25s ease;
+}
+
+.topbar-collapsible.topbar-compact .search-box #searchInput {
+  width: 0;
+  padding: 0;
   opacity: 0;
+}
+
+.topbar-collapsible .search-box #searchInput {
+  transition: width 0.2s ease, opacity 0.15s ease;
+}
+
+.topbar-collapsible.topbar-compact .stats-icon-btn {
+  width: 40px;
+  min-width: 40px;
 }
 
 .topbar-search-wrap {
@@ -112,7 +161,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.14s ease;
+  transition: transform 0.14s ease, width 0.25s ease, min-width 0.25s ease;
 }
 
 .stats-icon-btn:active {

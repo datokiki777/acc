@@ -134,41 +134,55 @@ if (menuDelete) menuDelete.style.display = "none";
   const topbar = document.querySelector(".topbar");
   if (!collapsible || !topbar) return;
 
-  function heightForState(isCollapsed) {
-    const currentHeight = topbar.getBoundingClientRect().height;
-    const collapsibleHeight = collapsible.classList.contains("topbar-collapsed") ? 0 : collapsible.getBoundingClientRect().height;
-    const fixedHeight = currentHeight - collapsibleHeight;
-    return isCollapsed ? fixedHeight : fixedHeight + collapsible.scrollHeight;
-  }
+  const searchBox = collapsible.querySelector(".search-box");
 
-  function setCollapsed(nextCollapsed) {
-    const targetHeight = heightForState(nextCollapsed);
+  function syncMainPaddingDuringTransition(durationMs = 280) {
     const mainEl = document.querySelector("main");
-    if (mainEl) mainEl.style.paddingTop = (targetHeight + 16) + "px";
-    collapsible.classList.toggle("topbar-collapsed", nextCollapsed);
+    if (!mainEl) return;
+    const start = performance.now();
+    function step(now) {
+      const h = topbar.getBoundingClientRect().height;
+      mainEl.style.paddingTop = (h + 16) + "px";
+      if (now - start < durationMs) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
 
-  let lastScrollY = window.scrollY || 0;
+  function setCompact(nextCompact) {
+    if (collapsible.classList.contains("topbar-compact") === nextCompact) return;
+    collapsible.classList.toggle("topbar-compact", nextCompact);
+    syncMainPaddingDuringTransition();
+  }
+
+  // Tapping the shrunken search icon expands the bar back and focuses input,
+  // instead of leaving search unreachable until you scroll to the top.
+  if (searchBox) {
+    searchBox.addEventListener("click", () => {
+      if (!collapsible.classList.contains("topbar-compact")) return;
+      setCompact(false);
+      setTimeout(() => { if (searchInput) searchInput.focus(); }, 260);
+    });
+  }
+
   let ticking = false;
-  const COLLAPSE_AFTER = 24;
-  const REVEAL_NEAR_TOP = 8;
+  const COMPACT_AFTER = 24;
+  const EXPAND_NEAR_TOP = 8;
 
   function onScroll() {
     const currentY = window.scrollY || document.documentElement.scrollTop || 0;
-    const isCollapsed = collapsible.classList.contains("topbar-collapsed");
-    let nextCollapsed = isCollapsed;
+    const isCompact = collapsible.classList.contains("topbar-compact");
+    let nextCompact = isCompact;
 
-    if (currentY <= REVEAL_NEAR_TOP) {
-      nextCollapsed = false;
-    } else if (currentY > COLLAPSE_AFTER) {
-      nextCollapsed = true;
+    if (currentY <= EXPAND_NEAR_TOP) {
+      nextCompact = false;
+    } else if (currentY > COMPACT_AFTER) {
+      nextCompact = true;
     }
     // Between the two thresholds: keep whatever state it's already in,
     // so small scroll wiggles (momentum/bounce) don't flip it back and forth.
 
-    if (nextCollapsed !== isCollapsed) setCollapsed(nextCollapsed);
+    if (nextCompact !== isCompact) setCompact(nextCompact);
 
-    lastScrollY = currentY;
     ticking = false;
   }
 
