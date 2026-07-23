@@ -180,6 +180,17 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
           person.tagLabel = tagLabel;
           person.tagColor = tagColor;
           if (state.mode === "work") {
+            const previousPeriodWeeks = Math.min(52, Math.max(1, Number(person.salaryPayPeriodWeeks || person.salaryPayDay || 1)));
+            const wasConfigured = !!person.salaryAmount && !!person.salaryStartDate;
+            if (wasConfigured && previousPeriodWeeks !== salaryPayPeriodWeeks) {
+              // Bank whatever had already accrued under the old cadence, then
+              // start the new cadence counting forward from today — so an
+              // early one-off payment (e.g. a trial week) isn't lost or
+              // retroactively recalculated when switching someone onto the
+              // standard period everyone else is on.
+              person.salaryAccruedBaseline = personSalarySummary(person).accrued;
+              person.salaryPeriodAnchorDate = todayStr();
+            }
             person.salaryAmount = salaryAmount;
             person.salaryStartDate = salaryStartDate;
             person.salaryEndDate = salaryEndDate;

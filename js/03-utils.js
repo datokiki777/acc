@@ -220,6 +220,12 @@ function getPersonSalaryConfig(person) {
     startDate,
     endDate,
     periodWeeks,
+    // When the pay period changes mid-stream, the new cadence counts forward
+    // from the change date instead of retroactively rewriting history — see
+    // accruedBaseline below, which banks what had already accrued under the
+    // old schedule so it isn't lost in the switch.
+    anchorDate: person?.salaryPeriodAnchorDate || startDate,
+    accruedBaseline: normalizeAmount(person?.salaryAccruedBaseline || 0),
     currency: person?.salaryCurrency || personCurrency(person)
   };
 }
@@ -258,11 +264,11 @@ function personSalarySummary(person, date = new Date()) {
   const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const ended = !!config.endDate && parseLocalDate(config.endDate) <= today;
   const calculationDate = config.endDate ? minDateString(config.endDate, date) : date;
-  const days = daysSince(config.startDate, calculationDate);
+  const days = daysSince(config.anchorDate, calculationDate);
   const periodDays = config.periodWeeks * 7;
   const completedPeriods = Math.floor(days / periodDays);
   const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
-  const accrued = normalizeAmount(periodAmount * completedPeriods);
+  const accrued = config.accruedBaseline + normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
   const due = Math.max(0, accrued - paid);
   const upcoming = ended ? 0 : periodAmount;
@@ -278,7 +284,7 @@ function personSalarySummary(person, date = new Date()) {
     periodWeeks: config.periodWeeks,
     periodAmount,
     completedPeriods,
-    nextPayDate: addDays(config.startDate, (completedPeriods + 1) * periodDays),
+    nextPayDate: addDays(config.anchorDate, (completedPeriods + 1) * periodDays),
     startDate: config.startDate,
     ended,
     endDate: config.endDate
