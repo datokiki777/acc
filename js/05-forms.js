@@ -175,7 +175,7 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
 
         if (!name) return;
 
-        if (person) {
+        const applyPersonEdit = async () => {
           person.name = name;
           person.tagLabel = tagLabel;
           person.tagColor = tagColor;
@@ -205,6 +205,25 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
             openEditStagesPanel();
           } else {
             closeModal();
+          }
+        };
+
+        if (person) {
+          const previousPeriodWeeks = Math.min(52, Math.max(1, Number(person.salaryPayPeriodWeeks || person.salaryPayDay || 1)));
+          const wasConfigured = state.mode === "work" && !!person.salaryAmount && !!person.salaryStartDate;
+          const isChangingPeriod = wasConfigured && previousPeriodWeeks !== salaryPayPeriodWeeks;
+
+          if (isChangingPeriod) {
+            const bankedSoFar = personSalarySummary(person).accrued;
+            const bankedCurrency = person.salaryCurrency || personCurrency(person);
+            confirmDelete(
+              `Switch ${person.name}'s pay period from ${previousPeriodWeeks}w to ${salaryPayPeriodWeeks}w? ${formatMoneyPlain(bankedSoFar, bankedCurrency)} accrued so far will be locked in, and the new cycle starts counting from today — nothing is lost.`,
+              applyPersonEdit,
+              false,
+              "Switch"
+            );
+          } else {
+            await applyPersonEdit();
           }
         } else {
           const newId = uid();
