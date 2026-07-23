@@ -387,6 +387,11 @@ function getTopBalanceIds(people, limit = 3) {
   return new Set(ranked.map(p => p.id));
 }
 
+function tagColorRank(person) {
+  const idx = TAG_COLOR_PALETTE.indexOf(person.tagColor || "");
+  return idx === -1 ? TAG_COLOR_PALETTE.length : idx;
+}
+
 function getFilteredPeople() {
   const query = state.search.trim().toLowerCase();
   const isSearching = query.length > 0;
@@ -394,7 +399,11 @@ function getFilteredPeople() {
   return state.people
     .filter(person => isSearching || !!person.archived === wantArchived)
     .filter(person => (person.name || "").toLowerCase().includes(query))
-    .sort((a, b) => personLastActivityTs(b) - personLastActivityTs(a));
+    .sort((a, b) => {
+      const colorDiff = tagColorRank(a) - tagColorRank(b);
+      if (colorDiff !== 0) return colorDiff;
+      return personLastActivityTs(b) - personLastActivityTs(a);
+    });
 }
 
 // Finders (used across many modules)

@@ -223,83 +223,6 @@ function buildArchiveToggle(personId) {
   return fn;
 }
 
-// Combine two person records into one (e.g. someone left and came back under
-// a second record with the same name). `keepId` survives with its own name,
-// tag, and salary settings; `mergeAwayId`'s entries are appended and it is
-// deleted. Missing fields on the survivor are backfilled from the other side.
-async function mergeTwoPersons(keepId, mergeAwayId) {
-  const keep = findPerson(keepId);
-  const mergeAway = findPerson(mergeAwayId);
-  if (!keep || !mergeAway || keep.id === mergeAway.id) return;
-
-  keep.entries = [...(keep.entries || []), ...(mergeAway.entries || [])]
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-  if (!keep.tagLabel && mergeAway.tagLabel) keep.tagLabel = mergeAway.tagLabel;
-  if (!keep.tagColor && mergeAway.tagColor) keep.tagColor = mergeAway.tagColor;
-  if (!keep.salaryAmount && mergeAway.salaryAmount) {
-    keep.salaryAmount = mergeAway.salaryAmount;
-    keep.salaryStartDate = mergeAway.salaryStartDate;
-    keep.salaryEndDate = mergeAway.salaryEndDate;
-    keep.salaryPayPeriodWeeks = mergeAway.salaryPayPeriodWeeks;
-    keep.salaryCurrency = mergeAway.salaryCurrency;
-    if (mergeAway.salaryPeriodAnchorDate) keep.salaryPeriodAnchorDate = mergeAway.salaryPeriodAnchorDate;
-    if (mergeAway.salaryAccruedBaseline) keep.salaryAccruedBaseline = normalizeAmount(mergeAway.salaryAccruedBaseline);
-  }
-
-  state.people = state.people.filter(p => p.id !== mergeAway.id);
-  await saveData();
-  render();
-}
-
-function openMergeDuplicatePicker(personId) {
-  const current = findPerson(personId);
-  if (!current) return;
-  const normalizedName = (current.name || "").trim().toLowerCase();
-
-  const candidates = state.people
-    .filter(p => p.id !== personId)
-    .sort((a, b) => {
-      const aMatch = (a.name || "").trim().toLowerCase() === normalizedName ? 0 : 1;
-      const bMatch = (b.name || "").trim().toLowerCase() === normalizedName ? 0 : 1;
-      return aMatch - bMatch;
-    });
-
-  if (!candidates.length) {
-    confirmDelete("There's no one else to merge with.", () => {}, false, "OK");
-    return;
-  }
-
-  openModal("Merge Duplicate", `
-    <div class="inline-note" style="margin-bottom:12px;">
-      Choose who to merge into <strong>${escapeHtml(current.name)}</strong>. Their entries will be combined and the other record deleted.
-    </div>
-    <div class="sheet-list">
-      ${candidates.map(p => `
-        <div class="sheet-item choose-merge-target" data-person-id="${p.id}">
-          <span class="sheet-item-title">${escapeHtml(p.name)}${p.archived ? " (Archived)" : ""}</span>
-          <span class="sheet-item-sub">${(p.entries || []).length} entries · ${formatMoney(personOpenBalance(p), personCurrency(p))}</span>
-        </div>
-      `).join("")}
-    </div>
-  `, () => {
-    document.querySelectorAll(".choose-merge-target").forEach(btn => {
-      btn.onclick = () => {
-        const otherId = btn.dataset.personId;
-        const other = findPerson(otherId);
-        if (!other) return;
-        closeModal();
-        confirmDelete(
-          `Merge "${other.name}" into "${current.name}"? "${other.name}"'s entries will be added here and that record will be deleted. This can't be undone.`,
-          () => mergeTwoPersons(personId, otherId),
-          false,
-          "Merge"
-        );
-      };
-    });
-  });
-}
-
 function setupActionCard(card) {
   if (card.dataset.actionsBound === "1") return;
   card.dataset.actionsBound = "1";
@@ -312,12 +235,10 @@ function setupActionCard(card) {
   setupLongPress(swipeArea, () => {
     let onExportPerson = null;
     let onArchiveToggle = null;
-    let onMergeDuplicate = null;
 
     if (payload.type === "person") {
       onExportPerson = () => exportPersonPdf(payload.personId);
       onArchiveToggle = buildArchiveToggle(payload.personId);
-      onMergeDuplicate = () => openMergeDuplicatePicker(payload.personId);
     }
 
     openQuickActions({
@@ -325,7 +246,6 @@ function setupActionCard(card) {
       onEdit: () => openEditByPayload(payload),
       onExportPerson,
       onArchiveToggle,
-      onMergeDuplicate,
       onCancel: () => {}
     });
   });
@@ -392,11 +312,10 @@ function openMainMenu() {
   );
 }
 
-function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle, onMergeDuplicate, onCancel }) {
+function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle, onCancel }) {
   const hasEdit = typeof onEdit === "function";
   const hasExport = typeof onExportPerson === "function";
   const hasArchiveToggle = typeof onArchiveToggle === "function";
-  const hasMerge = typeof onMergeDuplicate === "function";
   const actionsHtml = `
     ${hasExport ? `
       <div style="margin-bottom:10px;">
@@ -406,11 +325,6 @@ function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle,
     ${hasArchiveToggle ? `
       <div style="margin-bottom:10px;">
         <button type="button" class="secondary-btn full-btn" id="quickArchiveToggleBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;"></button>
-      </div>
-    ` : ""}
-    ${hasMerge ? `
-      <div style="margin-bottom:10px;">
-        <button type="button" class="secondary-btn full-btn" id="quickMergeBtn" style="min-height:48px;border-radius:14px;font-weight:800;font-size:15px;">🔗 Merge Duplicate</button>
       </div>
     ` : ""}
     <div class="quick-actions-row ${hasEdit ? "quick-actions-row-2" : ""}" style="${hasEdit ? "" : "display:grid;grid-template-columns:1fr;"}">
@@ -423,7 +337,6 @@ function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle,
     const editBtn = document.getElementById("quickEditBtn");
     const exportBtn = document.getElementById("quickExportPersonBtn");
     const archiveBtn = document.getElementById("quickArchiveToggleBtn");
-    const mergeBtn = document.getElementById("quickMergeBtn");
 
     if (cancelBtn) cancelBtn.onclick = () => { closeModal(); if (typeof onCancel === "function") onCancel(); };
     if (editBtn && hasEdit) editBtn.onclick = () => { closeModal(); onEdit(); };
@@ -432,7 +345,6 @@ function openQuickActions({ title = "", onEdit, onExportPerson, onArchiveToggle,
       archiveBtn.textContent = onArchiveToggle._label || "Archive";
       archiveBtn.onclick = () => { closeModal(); onArchiveToggle(); };
     }
-    if (mergeBtn && hasMerge) mergeBtn.onclick = () => { closeModal(); onMergeDuplicate(); };
   });
 }
 

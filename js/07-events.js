@@ -153,7 +153,17 @@ if (menuDelete) menuDelete.style.display = "none";
 
 confirmOverlay.addEventListener("click", e => { if (e.target === confirmOverlay) { closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); } });
 confirmCancel.addEventListener("click", () => { closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); });
-confirmOk.addEventListener("click", () => { if (typeof state.confirmAction === "function") state.confirmAction(); closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); });
+confirmOk.addEventListener("click", () => {
+  const action = state.confirmAction;
+  const wasReopenEdit = state.reopenEditAfterConfirm;
+  if (typeof action === "function") action();
+  // If the action itself opened a new confirm (state.confirmAction now
+  // points somewhere else), leave that new one open instead of closing it.
+  if (state.confirmAction === action) {
+    closeConfirm();
+    if (wasReopenEdit) openEditStagesPanel();
+  }
+});
 
 importFile.addEventListener("change", async e => {
   const file = e.target.files?.[0];
