@@ -58,10 +58,10 @@ function renderWorkSalaryPanel(person) {
   }
   const statusPills = [
     salary.due > 0
-      ? `<div class="salary-due-pill due">${formatMoneyPlain(salary.due, salary.currency)}</div>`
+      ? `<div class="salary-pill-item"><span class="salary-pill-label">Owed now</span><div class="salary-due-pill due">${formatMoneyPlain(salary.due, salary.currency)}</div></div>`
       : "",
     salary.upcoming > 0
-      ? `<div class="salary-due-pill upcoming ${salary.paySoon ? "pay-soon" : ""}">${formatMoneyPlain(salary.upcoming, salary.currency)}</div>`
+      ? `<div class="salary-pill-item"><span class="salary-pill-label">${salary.paySoon ? "Due soon" : "Upcoming"}</span><div class="salary-due-pill upcoming ${salary.paySoon ? "pay-soon" : ""}">${formatMoneyPlain(salary.upcoming, salary.currency)}</div></div>`
       : ""
   ].join("");
   // Forecast note only makes sense once nothing is currently owed (paid up)
