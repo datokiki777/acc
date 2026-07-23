@@ -115,6 +115,10 @@ function renderPerson(person, topBalanceIds) {
   const tagChip = (person.tagLabel || tagColor)
     ? `<span class="person-tag-chip" style="${tagColor ? `background:${tagColor}22;color:${tagColor};border-color:${tagColor}55;` : ""}">${tagColor ? `<span class="person-tag-dot" style="background:${tagColor}"></span>` : ""}${escapeHtml(person.tagLabel || "")}</span>`
     : "";
+  const salaryDue = state.mode === "work" ? personSalarySummary(person).due : 0;
+  const overdueChip = salaryDue > 0
+    ? `<span class="person-tag-chip person-overdue-chip">⏰ Overdue</span>`
+    : "";
   return `
     <article class="person-card ${person.expanded ? "expanded" : ""} ${person.archived ? "person-archived" : ""} ${isTopBalance ? "person-card-top" : ""}" data-person-id="${person.id}">
       <div class="person-head-swipe swipe-card" data-action-type="person" data-person-id="${person.id}">
@@ -124,6 +128,7 @@ function renderPerson(person, topBalanceIds) {
               <div class="person-name-row">
                 <div class="person-name">${highlightMatch(person.name, state.search)}</div>
                 ${archivedChip}
+                ${overdueChip}
                 ${tagChip}
               </div>
               <div class="subtext">

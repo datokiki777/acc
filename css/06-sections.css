@@ -162,6 +162,13 @@
   color: var(--muted);
 }
 
+.person-overdue-chip {
+  color: #ff9a9a;
+  border-color: rgba(255, 110, 110, 0.34);
+  background: rgba(255, 80, 80, 0.14);
+  font-weight: 800;
+}
+
 .person-tag-dot {
   width: 7px;
   height: 7px;
