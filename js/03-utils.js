@@ -282,10 +282,21 @@ function personSalarySummary(person, date = new Date()) {
   const periodDays = config.periodWeeks * 7;
   const completedPeriods = Math.floor(days / periodDays);
   const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
+  // `accrued` = fully completed periods only. This stays the "what's
+  // definitively earned" figure used when banking a baseline on reset
+  // (pay-period switch, unarchive) — unaffected by the current in-progress
+  // period, so those resets keep landing on due=0 right afterward.
   const accrued = config.accruedBaseline + normalizeAmount(periodAmount * completedPeriods);
   const paid = personSalaryPaid(person);
-  const due = Math.max(0, accrued - paid);
-  const upcoming = ended ? 0 : periodAmount;
+  // For what's shown as owed, the currently in-progress period's target
+  // already counts — so paying in installments through the week reduces
+  // the shown balance right away, instead of staying at 0 until the
+  // period technically closes on its pay date.
+  const dueTarget = ended ? accrued : accrued + periodAmount;
+  const due = Math.max(0, dueTarget - paid);
+  // Once the current period's target is fully covered, "upcoming" previews
+  // the following period's amount as a soft forecast.
+  const upcoming = (!ended && due <= 0) ? periodAmount : 0;
   const nextPayDate = addDays(config.anchorDate, (completedPeriods + 1) * periodDays);
   const daysUntilNextPay = ended ? null : daysUntil(nextPayDate, date);
   // Forecast state only applies once nothing is currently owed — if `due` is

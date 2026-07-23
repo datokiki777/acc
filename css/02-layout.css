@@ -73,6 +73,18 @@
   margin-top: 14px;
 }
 
+.topbar-collapsible {
+  overflow: hidden;
+  max-height: 220px;
+  opacity: 1;
+  transition: max-height 0.28s ease, opacity 0.22s ease, margin-top 0.28s ease;
+}
+
+.topbar-collapsible.topbar-collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
 .topbar-search-wrap {
   max-width: 732px;
   margin: 10px auto 0;

@@ -271,10 +271,13 @@ function openPersonForm(personId = null, reopenEditPanel = false) {
 
           if (archivedMatch) {
             confirmDelete(
-              `"${name}" is already archived. It's usually better to unarchive them instead, so their history stays in one place. Create a new person anyway?`,
-              doCreate,
+              `"${name}" is already archived. Unarchive them instead of creating a new person?`,
+              async () => {
+                closeModal();
+                await togglePersonArchived(archivedMatch.id);
+              },
               false,
-              "Create Anyway"
+              "Unarchive"
             );
           } else {
             await doCreate();

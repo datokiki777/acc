@@ -127,6 +127,60 @@ if (menuEditStages) menuEditStages.style.display = "none";
 if (menuTransfer) menuTransfer.style.display = "none";
 if (menuDelete) menuDelete.style.display = "none";
 
+// Collapse the Active/Archived + search row on scroll-down, reveal it on
+// scroll-up (or near the top) — the fixed menu/mode-switch row always stays.
+(function setupCollapsibleTopbar() {
+  const collapsible = document.getElementById("topbarCollapsible");
+  const topbar = document.querySelector(".topbar");
+  if (!collapsible || !topbar) return;
+
+  function heightForState(isCollapsed) {
+    const currentHeight = topbar.getBoundingClientRect().height;
+    const collapsibleHeight = collapsible.classList.contains("topbar-collapsed") ? 0 : collapsible.getBoundingClientRect().height;
+    const fixedHeight = currentHeight - collapsibleHeight;
+    return isCollapsed ? fixedHeight : fixedHeight + collapsible.scrollHeight;
+  }
+
+  function setCollapsed(nextCollapsed) {
+    const targetHeight = heightForState(nextCollapsed);
+    const mainEl = document.querySelector("main");
+    if (mainEl) mainEl.style.paddingTop = (targetHeight + 16) + "px";
+    collapsible.classList.toggle("topbar-collapsed", nextCollapsed);
+  }
+
+  let lastScrollY = window.scrollY || 0;
+  let ticking = false;
+  const COLLAPSE_AFTER = 24;
+  const REVEAL_NEAR_TOP = 8;
+
+  function onScroll() {
+    const currentY = window.scrollY || document.documentElement.scrollTop || 0;
+    const delta = currentY - lastScrollY;
+    const isCollapsed = collapsible.classList.contains("topbar-collapsed");
+    let nextCollapsed = isCollapsed;
+
+    if (currentY <= REVEAL_NEAR_TOP) {
+      nextCollapsed = false;
+    } else if (delta > 4 && currentY > COLLAPSE_AFTER) {
+      nextCollapsed = true;
+    } else if (delta < -4) {
+      nextCollapsed = false;
+    }
+
+    if (nextCollapsed !== isCollapsed) setCollapsed(nextCollapsed);
+
+    lastScrollY = currentY;
+    ticking = false;
+  }
+
+  window.addEventListener("scroll", () => {
+    if (!ticking) {
+      requestAnimationFrame(onScroll);
+      ticking = true;
+    }
+  }, { passive: true });
+})();
+
 confirmOverlay.addEventListener("click", e => { if (e.target === confirmOverlay) { closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); } });
 confirmCancel.addEventListener("click", () => { closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); });
 confirmOk.addEventListener("click", () => { if (typeof state.confirmAction === "function") state.confirmAction(); closeConfirm(); if (state.reopenEditAfterConfirm) openEditStagesPanel(); });
