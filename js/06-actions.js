@@ -183,6 +183,31 @@ async function togglePersonArchived(personId) {
   const person = findPerson(personId);
   if (!person) return;
   const willArchive = !person.archived;
+
+  const isUnarchiving = !willArchive;
+  const hasSalary = state.mode === "work" && !!person.salaryAmount && !!person.salaryStartDate;
+
+  if (isUnarchiving && hasSalary) {
+    const summary = personSalarySummary(person);
+    confirmDelete(
+      `Welcome ${person.name} back! Their pay cycle keeps counting while archived, so this resets it to start fresh from today — the time they were away won't count as pay owed. (Already paid: ${formatMoneyPlain(summary.paid, summary.currency)})`,
+      async () => {
+        // Bank the baseline at exactly what's already been paid, so due
+        // comes out to 0 right now — the anchor moves to today, so archived
+        // time never gets counted as accrued in the first place.
+        person.salaryAccruedBaseline = summary.paid;
+        person.salaryPeriodAnchorDate = todayStr();
+        person.archived = false;
+        person.expanded = false;
+        await saveData();
+        render();
+      },
+      false,
+      "Unarchive & Reset"
+    );
+    return;
+  }
+
   person.archived = willArchive;
   person.expanded = false;
   await saveData();
