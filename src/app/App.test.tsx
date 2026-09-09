@@ -751,13 +751,13 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
-  it('shows the first 15 entries and collapses the rest into independently expandable chunks', async () => {
+  it('shows the first 10 entries and collapses the rest into independently expandable chunks', async () => {
     const user = userEvent.setup();
     const store = renderApp();
     await waitFor(() => expect(store.getState().initialized).toBe(true));
     await act(async () => {
       const person = await store.getState().addPerson(draft('Many entries'));
-      for (let i = 0; i < 17; i += 1) {
+      for (let i = 0; i < 12; i += 1) {
         await store.getState().addEntry(person.id, {
           amount: i + 1,
           type: 'Gave',
@@ -771,13 +771,13 @@ describe('ACC application', () => {
     await user.click(summary);
     const card = summary.closest('.person-card') as HTMLElement;
     await waitFor(() =>
-      expect(within(card).getAllByText(/entry-16|entry-2/).length).toBeGreaterThan(0),
+      expect(within(card).getAllByText(/entry-11|entry-2/).length).toBeGreaterThan(0),
     );
 
     // The two oldest entries (entry-0, entry-1) are collapsed behind one chunk toggle.
     expect(within(card).queryByText('entry-0')).not.toBeInTheDocument();
     expect(within(card).queryByText('entry-1')).not.toBeInTheDocument();
-    expect(within(card).getByText('entry-16')).toBeInTheDocument();
+    expect(within(card).getByText('entry-11')).toBeInTheDocument();
 
     const toggle = within(card).getByRole('button', { name: /Show 2 older entries/ });
     await user.click(toggle);

@@ -16,7 +16,7 @@ export type PersonSwipeAction = 'archive' | 'delete';
 const SWIPE_ACTION_WIDTH = 92;
 const SWIPE_OPEN_THRESHOLD = 46;
 const SWIPE_AXIS_THRESHOLD = 7;
-const ENTRY_CHUNK_SIZE = 15;
+const ENTRY_CHUNK_SIZE = 10;
 
 function moneyTone(value: number) {
   return value > 0 ? 'money-positive' : value < 0 ? 'money-negative' : 'money-neutral';
