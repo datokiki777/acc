@@ -201,7 +201,7 @@ a:focus-visible {
   gap: 6px;
   padding: max(7px, env(safe-area-inset-top)) 10px 7px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  background: var(--color-nav);
   backdrop-filter: blur(18px);
 }
 
@@ -2578,7 +2578,7 @@ a:focus-visible {
 /* ACC 2026 visual system */
 .app-header {
   border-bottom-color: color-mix(in srgb, var(--border) 82%, transparent);
-  background: color-mix(in srgb, var(--color-bg) 94%, transparent);
+  background: var(--color-nav);
   box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
   backdrop-filter: blur(20px) saturate(130%);
 }
