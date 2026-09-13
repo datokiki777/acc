@@ -360,7 +360,6 @@ export function App() {
       <StartupScreen />
       <div className="app-shell">
         <header className="app-header real-header">
-          <ModeSwitch mode={mode} onChange={(next) => void setMode(next)} />
           <div className="browse-controls-row">
             <label className="search-field">
               <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -416,6 +415,11 @@ export function App() {
         </main>
       </div>
 
+      {initialized && (
+        <div className="mode-switch-bar">
+          <ModeSwitch mode={mode} onChange={(next) => void setMode(next)} />
+        </div>
+      )}
       {initialized && (
         <button aria-label="Add" className="fab" onClick={() => setFabMenuOpen(true)} type="button">
           +
