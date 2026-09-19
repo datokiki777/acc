@@ -846,6 +846,12 @@ a:focus-visible {
   justify-content: flex-end;
 }
 
+.payroll-totals .money-pill {
+  min-height: 30px;
+  padding: 4px 11px;
+  font-size: 0.86rem;
+}
+
 .panel-grid,
 .stats-overview,
 .insight-grid {
