@@ -23,6 +23,7 @@ export function SalarySyncSheet() {
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
   );
   const sync = useAppStore((state) => state.syncSalary);
+  const openSheet = useAppStore((state) => state.openSheet);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const [error, setError] = useState('');
   const salary = person ? calculateSalary(person, new Date()) : null;
@@ -71,6 +72,13 @@ export function SalarySyncSheet() {
         <p className="inline-note">
           Earned but not yet paid: <strong>{formatMoney(owed, salary.currency, false)}</strong>
         </p>
+        <button
+          className="text-button"
+          onClick={() => openSheet('salary-history', person.id)}
+          type="button"
+        >
+          ✎ Correct or add a past salary change…
+        </button>
         <label className="field">
           <span>New cycle start date</span>
           <input autoComplete="off" type="date" {...register('newAnchorDate')} />

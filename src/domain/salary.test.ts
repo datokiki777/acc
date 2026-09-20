@@ -9,6 +9,7 @@ import {
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
+  replaySalaryHistory,
   resetSalaryWhenUnarchiving,
   syncPayDate,
 } from './salary-workflows';
@@ -378,6 +379,46 @@ describe('salary workflow parity', () => {
     // amount reduced by the unrelated pre-cycle payment.
     expect(result.due).toBe(0);
     expect(result.upcoming).toBe(1500);
+  });
+
+  it('replaySalaryHistory rebuilds the exact reported scenario (2000/month, then 3000 from 12/08)', () => {
+    const person = weeklySalaryPerson({
+      salaryStartDate: '2026-07-29',
+      salaryPayPeriodWeeks: 2,
+      entries: [],
+    });
+    const rebuilt = replaySalaryHistory(person, 2000, [
+      { effectiveDate: '2026-08-12', amount: 3000 },
+    ]);
+    expect(rebuilt.salaryAmount).toBe(3000);
+    expect(rebuilt.salaryPeriodAnchorDate).toBe('2026-08-12');
+    // 29/07-12/08 is exactly one completed 2-week period at the OLD 2000/month rate
+    // (periodAmount 1000) — that's what should be owed for it.
+    expect(rebuilt.salaryAccruedBaseline).toBe(1000);
+    expect(rebuilt.salaryHistory).toEqual([
+      { effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 },
+    ]);
+
+    const result = calculateSalary(rebuilt, date(2026, 8, 12));
+    expect(result.accrued).toBe(1000);
+  });
+
+  it('replaySalaryHistory correctly handles multiple changes and reordering', () => {
+    const person = weeklySalaryPerson({
+      salaryStartDate: '2026-01-01',
+      salaryPayPeriodWeeks: 2,
+      entries: [],
+    });
+    // Provided out of order on purpose — replay must sort by date itself.
+    const rebuilt = replaySalaryHistory(person, 1000, [
+      { effectiveDate: '2026-03-01', amount: 2000 },
+      { effectiveDate: '2026-02-01', amount: 1500 },
+    ]);
+    expect(rebuilt.salaryAmount).toBe(2000);
+    expect(rebuilt.salaryHistory).toEqual([
+      { effectiveDate: '2026-03-01', previousAmount: 1500, newAmount: 2000 },
+      { effectiveDate: '2026-02-01', previousAmount: 1000, newAmount: 1500 },
+    ]);
   });
 
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {

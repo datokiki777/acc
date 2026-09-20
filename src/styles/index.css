@@ -955,6 +955,19 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.salary-history-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.salary-history-edit-row .text-button {
+  min-height: 44px;
+  padding: 0 6px;
+  font-size: 1rem;
+}
+
 .payroll-totals-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

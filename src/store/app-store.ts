@@ -5,7 +5,9 @@ import {
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
+  replaySalaryHistory,
   resetSalaryWhenUnarchiving,
+  type SalaryTimelineChange,
   syncPayDate,
 } from '../domain/salary-workflows';
 import type {
@@ -37,7 +39,13 @@ import type { RestoreVerificationReport } from '../services/restore-verification
 
 export type PeopleFilter = 'active' | 'archived';
 export type SheetName =
-  'none' | 'person-form' | 'entry-form' | 'statistics' | 'backup' | 'salary-sync';
+  | 'none'
+  | 'person-form'
+  | 'entry-form'
+  | 'statistics'
+  | 'backup'
+  | 'salary-sync'
+  | 'salary-history';
 
 export interface TransientUiState {
   sheet: SheetName;
@@ -110,6 +118,11 @@ export interface AppStoreState {
     newAnchorDate: string,
     newAmount?: number,
     payDelayMode?: PayDelayMode,
+  ) => Promise<void>;
+  updateSalaryTimeline: (
+    personId: string,
+    initialAmount: number,
+    changes: SalaryTimelineChange[],
   ) => Promise<void>;
   importBackup: (
     inspection: Extract<BackupInspection, { valid: true }>,
@@ -541,6 +554,18 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
                     ...(payDelayMode === undefined ? {} : { payDelayMode }),
                   }),
                 )
+              : person,
+          );
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async updateSalaryTimeline(personId, initialAmount, changes) {
+        await withError(async () => {
+          const state = get();
+          const people = state.peopleByMode[state.mode].map((person) =>
+            person.id === personId
+              ? retainPersistedFields(person, replaySalaryHistory(person, initialAmount, changes))
               : person,
           );
           await persistModePeople(state.mode, people);

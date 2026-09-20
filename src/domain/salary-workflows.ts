@@ -3,6 +3,11 @@ import { normalizeAmount } from './entries';
 import { formatReferenceDate } from './pay-dates';
 import { calculateSalary, salaryPaidBefore } from './salary';
 
+function parseDateString(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1, 12);
+}
+
 export function applyPayPeriodChange(
   person: Person,
   nextPeriodWeeks: number,
@@ -45,6 +50,48 @@ export function applySalaryAmountChange(
   }
   next.salaryAmount = nextAmount;
   return next;
+}
+
+export interface SalaryTimelineChange {
+  effectiveDate: string;
+  amount: number;
+}
+
+/**
+ * Rebuilds a person's whole salary timeline from scratch: starting rate (from salaryStartDate)
+ * plus an ordered list of rate changes. Replays each change through applySalaryAmountChange in
+ * chronological order, so the final anchor/baseline/history end up exactly as if each change had
+ * been made for real, one at a time, in that order — letting a corrected or newly-added past
+ * change be reflected without manually re-deriving the banking math by hand.
+ */
+export function replaySalaryHistory(
+  person: Person,
+  initialAmount: number,
+  changes: SalaryTimelineChange[],
+): Person {
+  const sorted = [...changes].sort((first, second) =>
+    first.effectiveDate < second.effectiveDate
+      ? -1
+      : first.effectiveDate > second.effectiveDate
+        ? 1
+        : 0,
+  );
+  let current: Person = {
+    ...person,
+    entries: person.entries.map((entry) => ({ ...entry })),
+    salaryAmount: initialAmount,
+    salaryHistory: [],
+  };
+  delete current.salaryPeriodAnchorDate;
+  delete current.salaryAccruedBaseline;
+  for (const change of sorted) {
+    current = applySalaryAmountChange(
+      current,
+      change.amount,
+      parseDateString(change.effectiveDate),
+    );
+  }
+  return current;
 }
 
 export interface SyncPayDateInput {
