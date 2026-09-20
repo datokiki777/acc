@@ -146,6 +146,47 @@ describe('legacy-compatible backup services', () => {
     expect(roundTrip.normalized).toEqual(inspection.normalized);
   });
 
+  it('preserves salary history, baseline, and anchor date through a full export/import round trip', async () => {
+    const backup: ExportedBackupData = {
+      personal: [],
+      work: [
+        {
+          id: 'rati',
+          name: 'Rati',
+          currency: 'EUR',
+          entries: [],
+          salaryAmount: 3000,
+          salaryStartDate: '2026-07-29',
+          salaryPayPeriodWeeks: 2,
+          salaryPeriodAnchorDate: '2026-08-12',
+          salaryAccruedBaseline: 1000,
+          salaryHistory: [{ effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 }],
+        } as unknown as ExportedBackupData['work'][number],
+      ],
+      exportDate: REFERENCE_DATE.toISOString(),
+    };
+    const inspection = inspectBackupText(JSON.stringify(backup), 'salary-history.json');
+    if (!inspection.valid) throw new Error('Expected valid inspection');
+    await applyInspectedBackup(repository, inspection, 'replace', REFERENCE_DATE);
+
+    const exported = await createBackupExport(repository, REFERENCE_DATE);
+    const savedPerson = exported.work.find((person) => person.id === 'rati');
+    expect(savedPerson?.salaryHistory).toEqual([
+      { effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 },
+    ]);
+    expect(savedPerson?.salaryAccruedBaseline).toBe(1000);
+    expect(savedPerson?.salaryPeriodAnchorDate).toBe('2026-08-12');
+
+    // Re-import the export and confirm it still round-trips cleanly.
+    const roundTrip = inspectBackupText(JSON.stringify(exported), 'round-trip-2.json');
+    expect(roundTrip.valid).toBe(true);
+    if (!roundTrip.valid) throw new Error('Expected valid round trip');
+    const roundTripPerson = roundTrip.normalized.work.find((person) => person.id === 'rati');
+    expect(roundTripPerson?.salaryHistory).toEqual([
+      { effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 },
+    ]);
+  });
+
   it('detects checksum differences', () => {
     const expected: PersistedPerson = {
       id: 'person',

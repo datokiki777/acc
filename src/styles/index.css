@@ -1559,6 +1559,16 @@ a:focus-visible {
   color: var(--danger);
 }
 
+.cloud-restore-note {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 .toggle-field,
 .replace-confirm {
   display: flex;

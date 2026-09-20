@@ -50,6 +50,7 @@ export function BackupSheet() {
   const fetchCloudBackupPayload = useAppStore((state) => state.fetchCloudBackupPayload);
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [restoreSource, setRestoreSource] = useState<'file' | 'cloud' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
@@ -143,6 +144,7 @@ export function BackupSheet() {
     if (!file) return;
     setError('');
     setReplaceConfirmed(false);
+    setRestoreSource('file');
     setInspection(inspectBackupText(await file.text(), file.name));
   }
 
@@ -168,6 +170,7 @@ export function BackupSheet() {
     try {
       const payload = await fetchCloudBackupPayload(entryId);
       setReplaceConfirmed(false);
+      setRestoreSource('cloud');
       setInspection(inspectBackupText(payload, label));
       setCloudPickerOpen(false);
     } catch (caught) {
@@ -582,6 +585,13 @@ export function BackupSheet() {
           )}
           {inspection.valid && (
             <>
+              {restoreSource === 'cloud' && (
+                <p className="cloud-restore-note">
+                  This is a snapshot from a specific moment. <strong>Merge</strong> only adds what's
+                  missing — it won't remove anything added since then. To fully go back to this
+                  exact point in time, use <strong>Replace</strong> below.
+                </p>
+              )}
               <button
                 className="secondary-button full-button"
                 disabled={busy}
