@@ -73,6 +73,8 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
   const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
   const amountChanging =
     wasConfigured && input.newAmount !== undefined && person.salaryAmount !== input.newAmount;
+  const currentAnchor = person.salaryPeriodAnchorDate ?? person.salaryStartDate ?? '';
+  const dateChanging = wasConfigured && input.newAnchorDate !== currentAnchor;
 
   if (amountChanging) {
     // Amount is changing too: bank accrued-under-the-OLD-rate as of this date, so past periods
@@ -85,13 +87,17 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
     };
     next.salaryHistory = [record, ...(person.salaryHistory ?? [])].slice(0, 20);
     next.salaryAmount = input.newAmount as number;
-  } else {
-    // Amount unchanged: 'paid' (salaryPaid) is always a live sum over every salary entry, so a
-    // plain schedule recalibration needs no banked baseline at all — it just goes stale if
-    // banked, since 'paid' already reflects everything without needing a separate snapshot.
+    next.salaryPeriodAnchorDate = input.newAnchorDate;
+  } else if (!wasConfigured || dateChanging) {
+    // Only the schedule date is actually changing (or this is a first-time setup): 'paid' is
+    // always a live sum over every salary entry, so a plain recalibration needs no banked
+    // baseline at all — it just goes stale if banked.
     next.salaryAccruedBaseline = 0;
+    next.salaryPeriodAnchorDate = input.newAnchorDate;
   }
-  next.salaryPeriodAnchorDate = input.newAnchorDate;
+  // Otherwise neither the date nor the amount actually changed (e.g. this save only touched
+  // Payment Timing or added a one-time adjustment) — leave the anchor/baseline exactly as they
+  // were instead of silently resetting the whole schedule.
   if (input.payDelayMode !== undefined) next.salaryPayDelayMode = input.payDelayMode;
   return next;
 }

@@ -308,6 +308,43 @@ describe('salary workflow parity', () => {
     expect(synced.salaryPayDelayMode).toBe('2weeks');
   });
 
+  it('does not reset the schedule when only Payment Timing changes (the submitted date matches the current anchor)', () => {
+    // Reproduces the reported bug: an established payroll history where paid-to-date already
+    // exceeds what a freshly-reset (baseline=0, anchor=today) schedule would expect — if the
+    // anchor were wrongly reset here, 'upcoming' would incorrectly drop to 0 via the advance-
+    // payment-suppression rule, even though a real amount is genuinely owed on the next date.
+    const before = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-01',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      entries: [
+        entry({ id: 'e1', amount: 1500, category: 'salary', date: '2026-07-15' }),
+        entry({ id: 'e2', amount: 1500, category: 'salary', date: '2026-07-29' }),
+        entry({ id: 'e3', amount: 1500, category: 'salary', date: '2026-08-12' }),
+        entry({ id: 'e4', amount: 1500, category: 'salary', date: '2026-08-26' }),
+        entry({ id: 'e5', amount: 1500, category: 'salary', date: '2026-09-09' }),
+      ],
+    });
+    const beforeResult = calculateSalary(before, date(2026, 9, 23));
+    expect(beforeResult.upcoming).toBeGreaterThan(0);
+
+    // The sheet now defaults the date field to the person's current anchor (salaryStartDate
+    // here, since no anchor is set), so an unedited submission reports the same date back.
+    const synced = syncPayDate(before, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-07-01',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 23),
+      payDelayMode: '2weeks',
+    });
+    expect(synced.salaryPeriodAnchorDate).toBeUndefined();
+    expect(synced.salaryAccruedBaseline).toBeUndefined();
+
+    const afterResult = calculateSalary(synced, date(2026, 9, 23));
+    expect(afterResult.upcoming).toBe(beforeResult.upcoming);
+  });
+
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {
     const reset = resetSalaryWhenUnarchiving(
       weeklySalaryPerson({

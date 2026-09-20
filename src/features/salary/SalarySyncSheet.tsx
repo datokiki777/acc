@@ -36,7 +36,7 @@ export function SalarySyncSheet() {
   } = useForm<SyncForm>({
     defaultValues: {
       adjustmentAmount: owed,
-      newAnchorDate: localDateString(),
+      newAnchorDate: person?.salaryPeriodAnchorDate ?? person?.salaryStartDate ?? localDateString(),
       newAmount: person?.salaryAmount ?? 0,
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
     },
@@ -74,6 +74,7 @@ export function SalarySyncSheet() {
         <label className="field">
           <span>New cycle start date</span>
           <input autoComplete="off" type="date" {...register('newAnchorDate')} />
+          <small>Only resets the schedule if you change this date.</small>
         </label>
         <label className="field">
           <span>New monthly salary</span>
