@@ -239,7 +239,7 @@ describe('salary workflow parity', () => {
     expect(changed.salaryPeriodAnchorDate).toBeUndefined();
   });
 
-  it('adds the sync adjustment as a real entry, without banking a separate paid snapshot', () => {
+  it('adds the sync adjustment as a real entry, and banks pre-anchor paid history as the baseline', () => {
     const synced = syncPayDate(
       weeklySalaryPerson({ entries: [entry({ amount: 40, category: 'salary' })] }),
       {
@@ -255,10 +255,11 @@ describe('salary workflow parity', () => {
       category: 'salary',
       date: '2026-03-10',
     });
-    // Baseline stays 0 — 'paid' (live over all entries, including the one above) already
-    // reflects everything without needing a frozen snapshot that could go stale if an entry is
-    // edited later.
-    expect(synced.salaryAccruedBaseline).toBe(0);
+    // The pre-existing 40 entry (dated 2026-03-01, before the new anchor) is banked as baseline
+    // so it doesn't get netted against periods that start only from the new anchor onward. The
+    // adjustment entry itself is dated on the anchor date, so it's correctly excluded (not
+    // 'before' the anchor) and instead counts live toward the new cycle, same as before.
+    expect(synced.salaryAccruedBaseline).toBe(40);
     expect(synced.salaryPeriodAnchorDate).toBe('2026-03-10');
   });
 
@@ -343,6 +344,40 @@ describe('salary workflow parity', () => {
 
     const afterResult = calculateSalary(synced, date(2026, 9, 23));
     expect(afterResult.upcoming).toBe(beforeResult.upcoming);
+  });
+
+  it('banks pre-anchor paid history when re-anchoring, instead of netting it against the new cycle', () => {
+    // Reported scenario: worked one week (22/07-29/07) and was paid 750 for it, then switched to
+    // a new bi-weekly cycle anchored at 29/07. That 750 must not count as credit toward periods
+    // that only start from 29/07 — the upcoming period must still show its full amount.
+    const person = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-22',
+      salaryPayPeriodWeeks: 2,
+      entries: [
+        entry({ id: 'week-1', amount: 750, category: 'salary', date: '2026-07-25' }),
+        entry({ id: 'p1', amount: 1500, category: 'salary', date: '2026-08-05' }),
+        entry({ id: 'p2', amount: 1500, category: 'salary', date: '2026-08-19' }),
+        entry({ id: 'p3', amount: 1500, category: 'salary', date: '2026-09-02' }),
+      ],
+    });
+    const synced = syncPayDate(person, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-07-29',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 20),
+    });
+    // Only the pre-anchor entry (dated before 2026-07-29) is banked; the three post-anchor
+    // payments stay live and count toward the new cycle's periods as usual.
+    expect(synced.salaryAccruedBaseline).toBe(750);
+    expect(synced.salaryPeriodAnchorDate).toBe('2026-07-29');
+
+    const result = calculateSalary(synced, date(2026, 9, 20));
+    // 3 completed periods since 29/07 (1500 each = 4500), exactly covered by the 3 post-anchor
+    // payments (1500*3=4500) — so the 4th, upcoming period owes its full 1500, not a partial
+    // amount reduced by the unrelated pre-cycle payment.
+    expect(result.due).toBe(0);
+    expect(result.upcoming).toBe(1500);
   });
 
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {

@@ -49,6 +49,15 @@ export function salaryPaid(person: Pick<Person, 'entries'>): number {
   }, 0);
 }
 
+export function salaryPaidBefore(person: Pick<Person, 'entries'>, cutoffDate: string): number {
+  return person.entries.reduce((sum, entry) => {
+    if (!isSalaryEntry(entry) || !(entry.date < cutoffDate)) return sum;
+    if (entry.type === 'Gave') return sum + normalizeAmount(entry.amount);
+    if (entry.type === 'Received') return sum - normalizeAmount(entry.amount);
+    return sum;
+  }, 0);
+}
+
 export function earliestUnpaidPayDate(
   config: SalarySettings,
   completedPeriods: number,

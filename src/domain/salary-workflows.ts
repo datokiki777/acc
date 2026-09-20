@@ -1,7 +1,7 @@
 import type { Entry, PayDelayMode, Person, SalaryChangeRecord } from '../types/domain';
 import { normalizeAmount } from './entries';
 import { formatReferenceDate } from './pay-dates';
-import { calculateSalary } from './salary';
+import { calculateSalary, salaryPaidBefore } from './salary';
 
 export function applyPayPeriodChange(
   person: Person,
@@ -89,10 +89,12 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
     next.salaryAmount = input.newAmount as number;
     next.salaryPeriodAnchorDate = input.newAnchorDate;
   } else if (!wasConfigured || dateChanging) {
-    // Only the schedule date is actually changing (or this is a first-time setup): 'paid' is
-    // always a live sum over every salary entry, so a plain recalibration needs no banked
-    // baseline at all — it just goes stale if banked.
-    next.salaryAccruedBaseline = 0;
+    // Only the schedule date is actually changing (or this is a first-time setup): bank
+    // whatever was already paid before the new anchor date, so that history doesn't get netted
+    // against the new cycle's schedule — 'paid' is always a live, all-time sum with no date
+    // awareness, so without this, an old payment made before the new cycle started would
+    // silently count as credit toward periods that hadn't even begun yet.
+    next.salaryAccruedBaseline = salaryPaidBefore(person, input.newAnchorDate);
     next.salaryPeriodAnchorDate = input.newAnchorDate;
   }
   // Otherwise neither the date nor the amount actually changed (e.g. this save only touched

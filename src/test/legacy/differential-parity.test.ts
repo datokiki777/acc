@@ -347,9 +347,10 @@ describe('legacy differential parity', () => {
     expect(applyPayPeriodChange(fixture, 3, referenceDate)).toEqual(
       legacyHarness.applyPayPeriodChange(fixture, 3, referenceDate),
     );
-    // Intentional deviation from legacy: baseline no longer banks a snapshot of 'paid' (which is
-    // always live over all entries already) — that redundant snapshot went stale whenever an
-    // already-counted entry was edited afterward, under- or over-counting what's actually owed.
+    // Intentional deviation from legacy: baseline now banks whatever was paid *before* the new
+    // anchor date (here, the existing 40 entry dated 2026-03-01, before the 2026-03-10 anchor),
+    // instead of legacy's stale full-paid-snapshot — this keeps pre-cycle payments from being
+    // netted against periods that only start at the new anchor.
     expect(
       syncPayDate(fixture, {
         adjustmentAmount: 60.7,
@@ -359,7 +360,7 @@ describe('legacy differential parity', () => {
       }),
     ).toEqual({
       ...legacyHarness.syncPayDate(fixture, 60.7, '2026-03-10', 'sync', referenceDate),
-      salaryAccruedBaseline: 0,
+      salaryAccruedBaseline: 40,
     });
     // Intentional deviation from legacy: unarchiving now also clears salaryEndDate, since
     // archiving now auto-sets it (see endSalaryWhenArchiving) and it must not linger and
