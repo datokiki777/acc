@@ -8,13 +8,18 @@ import { formatDate, formatMoney, localDateString } from '../../utils/format';
 interface TimelineRow {
   id: string;
   effectiveDate: string;
-  amount: number;
+  amountText: string;
 }
 
 function makeRowId(): string {
   return (
     globalThis.crypto?.randomUUID?.() ?? `row-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
+}
+
+function parseAmount(text: string): number {
+  const value = Number(text);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
 export function SalaryHistorySheet() {
@@ -38,14 +43,19 @@ export function SalaryHistorySheet() {
       ),
     [person],
   );
-  const [initialAmount, setInitialAmount] = useState(() =>
-    sortedHistory.length > 0 ? sortedHistory[0]!.previousAmount : (person?.salaryAmount ?? 0),
+  // Kept as raw text while editing (not coerced to a number on every keystroke) so the field can
+  // actually be cleared and retyped — a controlled input whose value snaps back to a forced
+  // number (e.g. 0 for an empty string) fights the user's typing instead of letting them clear it.
+  const [initialAmountText, setInitialAmountText] = useState(() =>
+    String(
+      sortedHistory.length > 0 ? sortedHistory[0]!.previousAmount : (person?.salaryAmount ?? 0),
+    ),
   );
   const [rows, setRows] = useState<TimelineRow[]>(() =>
     sortedHistory.map((change) => ({
       id: makeRowId(),
       effectiveDate: change.effectiveDate,
-      amount: change.newAmount,
+      amountText: String(change.newAmount),
     })),
   );
 
@@ -55,7 +65,11 @@ export function SalaryHistorySheet() {
   function addRow() {
     setRows((current) => [
       ...current,
-      { id: makeRowId(), effectiveDate: localDateString(), amount: person?.salaryAmount ?? 0 },
+      {
+        id: makeRowId(),
+        effectiveDate: localDateString(),
+        amountText: String(person?.salaryAmount ?? 0),
+      },
     ]);
   }
 
@@ -77,8 +91,11 @@ export function SalaryHistorySheet() {
     try {
       await updateTimeline(
         person!.id,
-        initialAmount,
-        rows.map(({ effectiveDate, amount }) => ({ effectiveDate, amount })),
+        parseAmount(initialAmountText),
+        rows.map(({ effectiveDate, amountText }) => ({
+          effectiveDate,
+          amount: parseAmount(amountText),
+        })),
       );
       closeAfterSave();
     } catch (caught) {
@@ -101,10 +118,10 @@ export function SalaryHistorySheet() {
             autoComplete="off"
             inputMode="decimal"
             min={0}
-            onChange={(event) => setInitialAmount(Number(event.target.value))}
+            onChange={(event) => setInitialAmountText(event.target.value)}
             step={1}
             type="number"
-            value={initialAmount}
+            value={initialAmountText}
           />
         </label>
         {rows.map((row) => (
@@ -119,10 +136,10 @@ export function SalaryHistorySheet() {
               autoComplete="off"
               inputMode="decimal"
               min={0}
-              onChange={(event) => updateRow(row.id, { amount: Number(event.target.value) })}
+              onChange={(event) => updateRow(row.id, { amountText: event.target.value })}
               step={1}
               type="number"
-              value={row.amount}
+              value={row.amountText}
             />
             <button
               aria-label="Remove this change"

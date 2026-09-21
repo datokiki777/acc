@@ -796,6 +796,54 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
+  it('lets a pre-filled amount field in Manage Salary History be fully cleared and retyped', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    let personId = '';
+    await act(async () => {
+      await store.getState().setMode('work');
+      const person = await store.getState().addPerson({
+        ...draft('Clear field target'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-29',
+        salaryPayPeriodWeeks: 2,
+      });
+      personId = person.id;
+    });
+
+    const summary = await findPersonSummary('Clear field target');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+    await user.click(
+      within(syncDialog).getByRole('button', { name: /Correct or add a past salary change/ }),
+    );
+
+    const historyDialog = await screen.findByRole('dialog', { name: 'Manage Salary History' });
+    // Starting salary is pre-filled with 3000 (the person's current rate, no history yet).
+    const startingSalaryInput = historyDialog.querySelector(
+      'input[type="number"]',
+    ) as HTMLInputElement;
+    expect(startingSalaryInput.value).toBe('3000');
+
+    // Clearing it fully, then typing a fresh number, must result in exactly that number — not a
+    // value stuck prefixed with a leftover 0 (e.g. '02000') because the field snapped back to 0
+    // on every keystroke instead of allowing a truly empty intermediate state.
+    await user.clear(startingSalaryInput);
+    expect(startingSalaryInput.value).toBe('');
+    await user.type(startingSalaryInput, '2000');
+    expect(startingSalaryInput.value).toBe('2000');
+
+    await user.click(within(historyDialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const person = store.getState().peopleByMode.work.find((p) => p.id === personId);
+      expect(person?.salaryAmount).toBe(2000);
+    });
+  }, 15_000);
+
   it('shows the first 10 entries and collapses the rest into independently expandable chunks', async () => {
     const user = userEvent.setup();
     const store = renderApp();
