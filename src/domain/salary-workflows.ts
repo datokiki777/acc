@@ -58,6 +58,31 @@ export interface SalaryTimelineChange {
 }
 
 /**
+ * If the person's current baseline was set by a plain schedule re-anchor (no salaryHistory entry
+ * at that exact anchor date — i.e. it's just salaryPaidBefore(entries, anchor), not a banked
+ * theoretical accrual under an old rate), recompute it fresh from the current entries. This is
+ * what makes that kind of baseline self-healing: editing or deleting a pre-anchor entry after the
+ * fact (e.g. removing a placeholder payment that predates the real cycle) keeps the schedule
+ * correct instead of silently going stale, since the baseline was never really 'owed' data of its
+ * own — it only ever existed to cancel out those specific entries in the math.
+ *
+ * An amount-change-triggered baseline (there IS a history entry at the anchor date) is left
+ * alone: that number represents a theoretical accrual under a rate that no longer applies and
+ * isn't derivable from entries at all.
+ */
+export function recalibratePreAnchorBaseline(person: Person): Person {
+  const anchor = person.salaryPeriodAnchorDate;
+  if (!anchor) return person;
+  const bankedByAmountChange = (person.salaryHistory ?? []).some(
+    (change) => change.effectiveDate === anchor,
+  );
+  if (bankedByAmountChange) return person;
+  const recalculated = salaryPaidBefore(person, anchor);
+  if (recalculated === (person.salaryAccruedBaseline ?? 0)) return person;
+  return { ...person, salaryAccruedBaseline: recalculated };
+}
+
+/**
  * Rebuilds a person's whole salary timeline from scratch: starting rate (from salaryStartDate)
  * plus an ordered list of rate changes. Replays each change through applySalaryAmountChange in
  * chronological order, so the final anchor/baseline/history end up exactly as if each change had

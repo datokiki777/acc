@@ -9,6 +9,7 @@ import {
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
+  recalibratePreAnchorBaseline,
   replaySalaryHistory,
   resetSalaryWhenUnarchiving,
   syncPayDate,
@@ -419,6 +420,44 @@ describe('salary workflow parity', () => {
       { effectiveDate: '2026-03-01', previousAmount: 1500, newAmount: 2000 },
       { effectiveDate: '2026-02-01', previousAmount: 1000, newAmount: 1500 },
     ]);
+  });
+
+  it('recalibratePreAnchorBaseline keeps a plain re-anchor baseline in sync after a pre-anchor entry is deleted', () => {
+    // Reported scenario: a placeholder 10 entry existed before re-anchoring to the real cycle
+    // (banking it as baseline, per the earlier fix), then that entry gets deleted later.
+    const withPlaceholder = weeklySalaryPerson({
+      salaryStartDate: '2026-07-22',
+      salaryPayPeriodWeeks: 2,
+      entries: [entry({ id: 'placeholder', amount: 10, category: 'salary', date: '2026-07-25' })],
+    });
+    const reanchored = syncPayDate(withPlaceholder, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-07-29',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 7, 29),
+    });
+    expect(reanchored.salaryAccruedBaseline).toBe(10);
+
+    // Now the placeholder entry is deleted — baseline must follow, not stay stuck at 10.
+    const afterDelete = { ...reanchored, entries: [] };
+    const recalibrated = recalibratePreAnchorBaseline(afterDelete);
+    expect(recalibrated.salaryAccruedBaseline).toBe(0);
+  });
+
+  it('recalibratePreAnchorBaseline leaves an amount-change-banked baseline untouched', () => {
+    const person = weeklySalaryPerson({
+      salaryStartDate: '2026-07-29',
+      salaryPayPeriodWeeks: 2,
+      entries: [],
+    });
+    const changed = replaySalaryHistory(person, 2000, [
+      { effectiveDate: '2026-08-12', amount: 3000 },
+    ]);
+    expect(changed.salaryAccruedBaseline).toBe(1000);
+    // No entries at all to derive anything from, and there IS a history entry at the anchor date
+    // — this baseline is a theoretical old-rate accrual, not entry-derived, so it must stay put.
+    const recalibrated = recalibratePreAnchorBaseline(changed);
+    expect(recalibrated.salaryAccruedBaseline).toBe(1000);
   });
 
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {

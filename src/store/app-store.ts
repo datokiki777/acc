@@ -5,6 +5,7 @@ import {
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
+  recalibratePreAnchorBaseline,
   replaySalaryHistory,
   resetSalaryWhenUnarchiving,
   type SalaryTimelineChange,
@@ -465,7 +466,15 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
           const state = get();
           const created = entryFromDraft(draft, createId());
           const people = state.peopleByMode[state.mode].map((person) =>
-            person.id === personId ? { ...person, entries: [created, ...person.entries] } : person,
+            person.id === personId
+              ? retainPersistedFields(
+                  person,
+                  recalibratePreAnchorBaseline({
+                    ...person,
+                    entries: [created, ...person.entries],
+                  }),
+                )
+              : person,
           );
           await persistModePeople(state.mode, people);
           return created;
@@ -477,12 +486,17 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
           const state = get();
           const people = state.peopleByMode[state.mode].map((person) =>
             person.id === personId
-              ? {
-                  ...person,
-                  entries: person.entries.map((entry) =>
-                    entry.id === entryId ? { ...entry, ...entryFromDraft(draft, entryId) } : entry,
-                  ),
-                }
+              ? retainPersistedFields(
+                  person,
+                  recalibratePreAnchorBaseline({
+                    ...person,
+                    entries: person.entries.map((entry) =>
+                      entry.id === entryId
+                        ? { ...entry, ...entryFromDraft(draft, entryId) }
+                        : entry,
+                    ),
+                  }),
+                )
               : person,
           );
           await persistModePeople(state.mode, people);
@@ -498,7 +512,13 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             if (person.id !== personId) return person;
             removedIndex = person.entries.findIndex((entry) => entry.id === entryId);
             removed = person.entries[removedIndex];
-            return { ...person, entries: person.entries.filter((entry) => entry.id !== entryId) };
+            return retainPersistedFields(
+              person,
+              recalibratePreAnchorBaseline({
+                ...person,
+                entries: person.entries.filter((entry) => entry.id !== entryId),
+              }),
+            );
           });
           if (!removed || removedIndex < 0) return;
           await persistModePeople(state.mode, people);
@@ -527,7 +547,10 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             if (!target) return;
             const entries = [...target.entries];
             entries.splice(Math.min(undo.index, entries.length), 0, undo.entry);
-            people[personIndex] = { ...target, entries };
+            people[personIndex] = retainPersistedFields(
+              target,
+              recalibratePreAnchorBaseline({ ...target, entries }),
+            );
           }
           await persistModePeople(undo.mode, people);
           set({ undoAction: null });

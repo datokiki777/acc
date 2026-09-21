@@ -262,6 +262,33 @@ describe('Zustand application actions', () => {
     expect(changed.salaryAccruedBaseline).toBeGreaterThan(0);
   });
 
+  it('recalibrates a plain re-anchor baseline after the pre-anchor entry it banked is deleted', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+
+    const placeholder = await store.getState().addEntry(employee.id, {
+      amount: 10,
+      type: 'Gave',
+      date: '2026-07-05',
+      comment: '',
+      category: 'salary',
+    });
+
+    // Re-anchoring to a later date banks the placeholder as baseline (a plain schedule
+    // correction, not an amount change).
+    await store.getState().syncSalary(employee.id, 0, '2026-07-15');
+    const reanchored = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
+    expect(reanchored.salaryAccruedBaseline).toBe(10);
+
+    // Deleting that entry afterward must bring the baseline back down, not leave it stale.
+    await store.getState().deleteEntry(employee.id, placeholder.id);
+    const afterDelete = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
+    expect(afterDelete.salaryAccruedBaseline).toBe(0);
+  });
+
   it('reloads persisted application data in a new store', async () => {
     const first = makeStore();
     await first.getState().initialize();
