@@ -881,6 +881,38 @@ describe('ACC application', () => {
     expect(within(card).queryByText('entry-0')).not.toBeInTheDocument();
   });
 
+  it('shows entries in date order, not insertion order, so a backdated entry lands in its correct spot', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      const person = await store.getState().addPerson(draft('Dated target'));
+      // Added in this order: recent, middle, then a backdated one last — insertion order would
+      // put 'backdated' first (most recently added); date order must put it last instead.
+      await store
+        .getState()
+        .addEntry(person.id, { amount: 10, type: 'Gave', date: '2026-09-20', comment: 'recent' });
+      await store
+        .getState()
+        .addEntry(person.id, { amount: 20, type: 'Gave', date: '2026-09-10', comment: 'middle' });
+      await store.getState().addEntry(person.id, {
+        amount: 30,
+        type: 'Gave',
+        date: '2026-08-01',
+        comment: 'backdated',
+      });
+    });
+
+    const summary = await findPersonSummary('Dated target');
+    await user.click(summary);
+    const card = summary.closest('.person-card') as HTMLElement;
+    await waitFor(() => expect(within(card).getByText('recent')).toBeInTheDocument());
+
+    const commentNodes = card.querySelectorAll('.entry-comment');
+    const order = Array.from(commentNodes).map((node) => node.textContent);
+    expect(order).toEqual(['recent', 'middle', 'backdated']);
+  });
+
   it('lets picking a Top Balances row filter the chart to that person, and toggling clears it', async () => {
     const user = userEvent.setup();
     const store = renderApp();

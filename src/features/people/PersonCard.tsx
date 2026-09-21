@@ -81,10 +81,13 @@ export function PersonCard({
             currency: person.salaryCurrency ?? person.currency,
           }
       : null;
-  const visibleEntries = person.entries.slice(0, ENTRY_CHUNK_SIZE);
+  const sortedEntries = [...person.entries].sort((first, second) =>
+    first.date < second.date ? 1 : first.date > second.date ? -1 : 0,
+  );
+  const visibleEntries = sortedEntries.slice(0, ENTRY_CHUNK_SIZE);
   const olderEntryChunks: PersistedEntry[][] = [];
-  for (let start = ENTRY_CHUNK_SIZE; start < person.entries.length; start += ENTRY_CHUNK_SIZE) {
-    olderEntryChunks.push(person.entries.slice(start, start + ENTRY_CHUNK_SIZE));
+  for (let start = ENTRY_CHUNK_SIZE; start < sortedEntries.length; start += ENTRY_CHUNK_SIZE) {
+    olderEntryChunks.push(sortedEntries.slice(start, start + ENTRY_CHUNK_SIZE));
   }
   function renderEntry(entry: PersistedEntry) {
     const effect = entryEffect(entry.type, entry.amount);
