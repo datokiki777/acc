@@ -8,7 +8,7 @@ import { calculateSalary } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
-import { formatMoney, localDateString } from '../../utils/format';
+import { formatDate, formatMoney, localDateString } from '../../utils/format';
 
 interface SyncForm {
   adjustmentAmount: number;
@@ -45,8 +45,30 @@ export function SalarySyncSheet() {
     },
   });
   const payDelayMode = useWatch({ control, name: 'payDelayMode' });
+  const watchedAnchorDate = useWatch({ control, name: 'newAnchorDate' });
+  const watchedPeriodWeeks = useWatch({ control, name: 'periodWeeks' });
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
+
+  const previewPeriodWeeks =
+    Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
+      ? watchedPeriodWeeks
+      : Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
+  const previewAnchor = watchedAnchorDate || person.salaryStartDate || localDateString();
+  const previewPerson = {
+    ...person,
+    salaryPeriodAnchorDate: previewAnchor,
+    salaryAccruedBaseline: 0,
+    salaryPayPeriodWeeks: previewPeriodWeeks,
+  };
+  const previewDueDate = calculateSalary(
+    { ...previewPerson, salaryPayDelayMode: 'none' },
+    new Date(),
+  ).nextPayDate;
+  const previewPayDate = calculateSalary(
+    { ...previewPerson, salaryPayDelayMode: payDelayMode },
+    new Date(),
+  ).nextPayDate;
 
   const submit = handleSubmit(async (values) => {
     if (!values.newAnchorDate) {
@@ -121,10 +143,25 @@ export function SalarySyncSheet() {
           options={PAY_DELAY_OPTIONS}
           value={payDelayMode}
         />
-        <p className="inline-note">
-          Payment timing only shifts <em>when</em> a period becomes due (a delay after it ends) — it
-          doesn't change how often periods happen. Use Pay period above for that.
-        </p>
+        <div className="schedule-preview">
+          <div>
+            <small>Period ends</small>
+            <strong>{formatDate(previewDueDate)}</strong>
+          </div>
+          <div>
+            <small>You'll be paid</small>
+            <strong className={previewDueDate !== previewPayDate ? 'is-delayed' : undefined}>
+              {formatDate(previewPayDate)}
+            </strong>
+          </div>
+        </div>
+        {previewDueDate !== previewPayDate && (
+          <p className="inline-note">
+            Payment timing adds a delay <em>on top of</em> the pay period above — it doesn't change
+            how often periods happen. Pick "No delay" if you just want to be paid the day each
+            period ends.
+          </p>
+        )}
         <label className="field">
           <span>One-time adjustment</span>
           <input

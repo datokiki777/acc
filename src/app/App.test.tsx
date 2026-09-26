@@ -786,6 +786,35 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
+  it('shows a live preview that separates the period-end date from the actual pay date when a delay applies', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Preview target'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-09-09',
+        salaryPayPeriodWeeks: 2,
+      });
+    });
+
+    const summary = await findPersonSummary('Preview target');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+
+    const preview = syncDialog.querySelector('.schedule-preview') as HTMLElement;
+    expect(preview).toBeInTheDocument();
+    expect(within(preview).getByText('Period ends')).toBeInTheDocument();
+    expect(within(preview).getByText("You'll be paid")).toBeInTheDocument();
+    const [periodEndsValue, paidByValue] = preview.querySelectorAll('strong');
+    expect(periodEndsValue?.textContent).toMatch(/\d{2}\.\d{2}\.\d{4}/);
+    expect(paidByValue?.textContent).toMatch(/\d{2}\.\d{2}\.\d{4}/);
+  }, 15_000);
+
   it('rebuilds the salary timeline from the Manage Salary History editor, reachable from Change Salary', async () => {
     const user = userEvent.setup();
     const store = renderApp();
