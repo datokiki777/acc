@@ -15,6 +15,7 @@ interface SyncForm {
   newAnchorDate: string;
   newAmount: number;
   payDelayMode: PayDelayMode;
+  periodWeeks: number;
 }
 
 export function SalarySyncSheet() {
@@ -40,6 +41,7 @@ export function SalarySyncSheet() {
       newAnchorDate: person?.salaryPeriodAnchorDate ?? person?.salaryStartDate ?? localDateString(),
       newAmount: person?.salaryAmount ?? 0,
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
+      periodWeeks: Number(person?.salaryPayPeriodWeeks ?? person?.salaryPayDay ?? 2),
     },
   });
   const payDelayMode = useWatch({ control, name: 'payDelayMode' });
@@ -53,12 +55,14 @@ export function SalarySyncSheet() {
     }
     try {
       const newAmount = Number(values.newAmount);
+      const currentPeriodWeeks = Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
       await sync(
         person.id,
         values.adjustmentAmount,
         values.newAnchorDate,
         Number.isFinite(newAmount) && newAmount > 0 ? newAmount : undefined,
         values.payDelayMode,
+        values.periodWeeks !== currentPeriodWeeks ? values.periodWeeks : undefined,
       );
       closeAfterSave();
     } catch (caught) {
@@ -96,12 +100,31 @@ export function SalarySyncSheet() {
           />
           <small>Applies from the date above onward. Leave as-is to keep the current rate.</small>
         </label>
+        <label className="field">
+          <span>Pay period (weeks)</span>
+          <input
+            autoComplete="off"
+            inputMode="numeric"
+            max={52}
+            min={1}
+            step={1}
+            type="number"
+            {...register('periodWeeks', { valueAsNumber: true })}
+          />
+          <small>
+            How often salaries recur — 2 means every 2 weeks, going forward from the date above.
+          </small>
+        </label>
         <PickerField
           label="Payment timing"
           onChange={(next) => setValue('payDelayMode', next as PayDelayMode, { shouldDirty: true })}
           options={PAY_DELAY_OPTIONS}
           value={payDelayMode}
         />
+        <p className="inline-note">
+          Payment timing only shifts <em>when</em> a period becomes due (a delay after it ends) — it
+          doesn't change how often periods happen. Use Pay period above for that.
+        </p>
         <label className="field">
           <span>One-time adjustment</span>
           <input

@@ -751,6 +751,41 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
+  it('changes the pay period cadence through the Change Salary form', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    let personId = '';
+    await act(async () => {
+      await store.getState().setMode('work');
+      const person = await store.getState().addPerson({
+        ...draft('Cadence target'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-08-06',
+        salaryPayPeriodWeeks: 1,
+      });
+      personId = person.id;
+    });
+
+    const summary = await findPersonSummary('Cadence target');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+
+    const periodField = within(syncDialog).getByRole('spinbutton', {
+      name: /Pay period/,
+    });
+    await user.clear(periodField);
+    await user.type(periodField, '2');
+    await user.click(within(syncDialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const person = store.getState().peopleByMode.work.find((p) => p.id === personId);
+      expect(person?.salaryPayPeriodWeeks).toBe(2);
+    });
+  }, 15_000);
+
   it('rebuilds the salary timeline from the Manage Salary History editor, reachable from Change Salary', async () => {
     const user = userEvent.setup();
     const store = renderApp();

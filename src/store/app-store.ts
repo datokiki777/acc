@@ -119,6 +119,7 @@ export interface AppStoreState {
     newAnchorDate: string,
     newAmount?: number,
     payDelayMode?: PayDelayMode,
+    periodWeeks?: number,
   ) => Promise<void>;
   updateSalaryTimeline: (
     personId: string,
@@ -561,24 +562,40 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         set({ undoAction: null });
       },
 
-      async syncSalary(personId, adjustmentAmount, newAnchorDate, newAmount, payDelayMode) {
+      async syncSalary(
+        personId,
+        adjustmentAmount,
+        newAnchorDate,
+        newAmount,
+        payDelayMode,
+        periodWeeks,
+      ) {
         await withError(async () => {
           const state = get();
-          const people = state.peopleByMode[state.mode].map((person) =>
-            person.id === personId
-              ? retainPersistedFields(
-                  person,
-                  syncPayDate(person, {
-                    adjustmentAmount,
-                    newAnchorDate,
-                    adjustmentEntryId: createId(),
-                    referenceDate: now(),
-                    ...(newAmount === undefined ? {} : { newAmount }),
-                    ...(payDelayMode === undefined ? {} : { payDelayMode }),
-                  }),
-                )
-              : person,
-          );
+          const referenceDate = now();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            let next: Person = person;
+            let effectiveAnchorDate = newAnchorDate;
+            const currentPeriodWeeks = Number(
+              person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1,
+            );
+            if (periodWeeks !== undefined && periodWeeks !== currentPeriodWeeks) {
+              next = applyPayPeriodChange(next, periodWeeks, referenceDate);
+              effectiveAnchorDate = next.salaryPeriodAnchorDate ?? effectiveAnchorDate;
+            }
+            return retainPersistedFields(
+              person,
+              syncPayDate(next, {
+                adjustmentAmount,
+                newAnchorDate: effectiveAnchorDate,
+                adjustmentEntryId: createId(),
+                referenceDate,
+                ...(newAmount === undefined ? {} : { newAmount }),
+                ...(payDelayMode === undefined ? {} : { payDelayMode }),
+              }),
+            );
+          });
           await persistModePeople(state.mode, people);
         });
       },

@@ -289,6 +289,63 @@ describe('Zustand application actions', () => {
     expect(afterDelete.salaryAccruedBaseline).toBe(0);
   });
 
+  it('changes the pay period cadence via Change Salary, banking the old period/rate and re-anchoring to today', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    // salaryDraft() starts on a 1-week period at 400/month.
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+    expect(Number(employee.salaryPayPeriodWeeks)).toBe(1);
+
+    await store
+      .getState()
+      .syncSalary(employee.id, 0, employee.salaryStartDate!, undefined, undefined, 2);
+
+    const changed = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
+    expect(changed.salaryPayPeriodWeeks).toBe(2);
+    // Re-anchored to today (the reference date) since the period itself changed.
+    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-06');
+  });
+
+  it('reported scenario: changing Payment Timing must not silently keep an old, wrong period length', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store
+      .getState()
+      .addPerson({ ...salaryDraft(), salaryAmount: 3000, salaryStartDate: '2026-08-06' });
+    const employee = store.getState().peopleByMode.work[0]!;
+    // Starts on a 1-week period — changing ONLY Payment Timing must leave this untouched (this
+    // documents the actual, correct behavior: Payment Timing and Pay period are independent).
+    expect(Number(employee.salaryPayPeriodWeeks)).toBe(1);
+
+    await store
+      .getState()
+      .syncSalary(employee.id, 0, employee.salaryStartDate!, undefined, '2weeks');
+    const timingOnly = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
+    expect(timingOnly.salaryPayPeriodWeeks).toBe(1);
+
+    // Now actually set the intended 2-week cadence via the new Pay period field, alongside
+    // Payment Timing in the same submission — both must apply correctly together. The person
+    // starts exactly on the reference date, so there's no pre-existing accrual to bank (baseline
+    // stays 0), isolating the period-change effect cleanly.
+    await store
+      .getState()
+      .syncSalary(employee.id, 0, timingOnly.salaryStartDate!, undefined, '2weeks', 2);
+    const both = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
+    expect(both.salaryPayPeriodWeeks).toBe(2);
+    expect(both.salaryPayDelayMode).toBe('2weeks');
+    expect(both.salaryAccruedBaseline).toBe(0);
+
+    // One full 2-week period at 3000/month is 1500 — not 3000 (a leftover monthly-equivalent
+    // misreading, or the old 1-week period's amount of 750, would both be wrong here).
+    const referenceDate = new Date(`${both.salaryPeriodAnchorDate}T12:00:00`);
+    referenceDate.setDate(referenceDate.getDate() + 14);
+    const result = calculateSalary(both, referenceDate);
+    expect(result.upcoming + result.due).toBe(1500);
+  });
+
   it('reloads persisted application data in a new store', async () => {
     const first = makeStore();
     await first.getState().initialize();
