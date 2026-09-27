@@ -137,13 +137,26 @@ interface Installment {
 }
 
 /**
+ * Nearest-week value of a leftover span of days (never exact days) — used for the partial period
+ * left behind when a segment is cut short by the next one taking over, or by the end date. Half a
+ * week rounds up, matching how a person would eyeball 'closer to which week is this'.
+ */
+function roundToNearestWeek(days: number): number {
+  return Math.round(days / 7);
+}
+
+/**
  * Walks the whole timeline and produces the list of period installments (period-end date, its
  * own delayed pay date, and its amount) up to the relevant cutoff — the end date if the person
  * has finished, or far enough past 'today' to always include at least one still-upcoming
  * installment otherwise (a long payment delay can otherwise leave every generated installment
- * already in the past). Each segment only contributes its own FULLY COMPLETED periods once the
- * next segment takes over — a re-anchor is always a clean cut, matching how it always worked
- * here, never a continuation of the previous segment's partial period.
+ * already in the past). Each segment contributes its own FULLY COMPLETED periods, plus — when
+ * the next segment takes over (or the end date lands) partway through what would have been one
+ * more period — a single extra installment for that leftover stretch, valued at its NEAREST WEEK
+ * (not exact days) and already completed, due right when the cut happened. This is what makes a
+ * re-anchor a real accounting event rather than a place days can quietly vanish: every day is
+ * either a full period, part of this nearest-week remainder, or too small a sliver (under half a
+ * week) to matter.
  */
 function buildInstallments(
   timeline: SalaryTimelineEntry[],
@@ -161,22 +174,37 @@ function buildInstallments(
     const nextSegmentStart = isLastSegment ? null : timeline[index + 1]!.effectiveDate;
     let periodCount: number;
     let completedCount: number;
+    let cutoffDate: string | null = null;
 
     if (!isLastSegment) {
       const span = daysBetweenDates(segment.effectiveDate, nextSegmentStart!);
       periodCount = Math.max(0, Math.floor(span / periodDays));
       completedCount = periodCount;
+      cutoffDate = nextSegmentStart;
     } else if (ended) {
       const span = daysBetweenDates(segment.effectiveDate, endDate);
       periodCount = Math.max(0, Math.floor(span / periodDays));
       completedCount = periodCount;
+      cutoffDate = endDate;
     } else {
       const span = daysBetweenDates(segment.effectiveDate, referenceDateString);
       completedCount = Math.max(0, Math.floor(span / periodDays));
-      // period-end + delay is always >= referenceDate at k=periodsTargeted by construction
-      // (periodsTargeted*periodDays >= span, and delay only pushes the date later) — no need to
-      // search further for a still-future installment here.
-      periodCount = span <= 0 ? 1 : Math.ceil(span / periodDays);
+      // Exactly one not-yet-completed installment is added — but only when it's actually needed
+      // as the forward-looking 'what's next' placeholder: when there's no completed installment
+      // whose own (possibly delayed) pay date is still in the future to serve that role already.
+      // Without this check, a payment delay left the still-in-progress period showing alongside
+      // the just-finished one that's simply awaiting its delayed pay date — the same 'next
+      // payment' counted twice.
+      const lastCompletedPayDate =
+        completedCount > 0
+          ? computeSalaryPayDate(
+              addDays(segment.effectiveDate, completedCount * periodDays),
+              segment.payDelayMode,
+            )
+          : null;
+      const needsForecastInstallment =
+        completedCount === 0 || compareDateStrings(lastCompletedPayDate!, referenceDateString) < 0;
+      periodCount = needsForecastInstallment ? completedCount + 1 : completedCount;
     }
 
     const amount = periodAmountFor(segment.amount, segment.periodWeeks);
@@ -184,6 +212,22 @@ function buildInstallments(
       const periodEndDate = addDays(segment.effectiveDate, k * periodDays);
       const payDate = computeSalaryPayDate(periodEndDate, segment.payDelayMode);
       installments.push({ periodEndDate, payDate, amount, completed: k <= completedCount });
+    }
+
+    if (cutoffDate) {
+      const lastFullPeriodEnd = addDays(segment.effectiveDate, completedCount * periodDays);
+      const remainderDays = daysBetweenDates(lastFullPeriodEnd, cutoffDate);
+      const remainderWeeks = roundToNearestWeek(remainderDays);
+      if (remainderWeeks > 0) {
+        const remainderAmount = periodAmountFor(segment.amount, remainderWeeks);
+        const payDate = computeSalaryPayDate(cutoffDate, segment.payDelayMode);
+        installments.push({
+          periodEndDate: cutoffDate,
+          payDate,
+          amount: remainderAmount,
+          completed: true,
+        });
+      }
     }
   }
   return installments;

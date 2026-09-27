@@ -576,11 +576,51 @@ describe('reported scenarios: end-to-end regression coverage', () => {
       effectiveDate: '2026-07-29',
       referenceDate: date(2026, 7, 29),
     });
-    expect(calculateSalary(reanchored, date(2026, 7, 29)).accrued).toBe(0);
+    // The re-anchor cuts the first segment 7 days in — its nearest-week remainder (1 week) is
+    // credited immediately as its own completed installment: 400 * (1/4) = 100.
+    expect(calculateSalary(reanchored, date(2026, 7, 29)).accrued).toBe(100);
 
     const afterDelete = { ...reanchored, entries: [] };
     const before = calculateSalary(reanchored, date(2026, 8, 12));
     const after = calculateSalary(afterDelete, date(2026, 8, 12));
     expect(after.paid).toBe(before.paid - 10);
+  });
+
+  it('Eliko: a same-terms re-anchor 7 days in credits that week instead of losing it', () => {
+    const eliko = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-22',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      entries: [{ id: 'lump', amount: 5250, type: 'Gave', date: '2026-07-22', category: 'salary' }],
+    });
+    const reanchored = applyChangeSalary(eliko, {
+      effectiveDate: '2026-07-29',
+      referenceDate: date(2026, 7, 29),
+    });
+    const result = calculateSalary(reanchored, date(2026, 9, 27));
+    // 1 credited week (750) + 4 completed 2-week periods (6000) = 6750 accrued; paid 5250 →
+    // 1500 due, with the still-open period (2250 upcoming... wait, one more period) upcoming.
+    expect(result.accrued).toBe(6750);
+    expect(result.due).toBe(1500);
+    expect(result.upcoming).toBe(1500);
+  });
+
+  it('Giorgi: Upcoming never double-counts the still-open period alongside the finished one awaiting its delay', () => {
+    const giorgi = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
+      entries: [],
+    });
+    // 09/09 -> 23/09 is one finished period (paid 07/10, still in the future); 23/09 -> 07/10 is
+    // the second period, still in progress as of 27/09 — it hasn't been earned yet and must not
+    // appear anywhere in due/upcoming.
+    const result = calculateSalary(giorgi, date(2026, 9, 27));
+    expect(result.accrued).toBe(1500);
+    expect(result.due).toBe(0);
+    expect(result.upcoming).toBe(1500);
+    expect(result.nextPayDate).toBe('2026-10-07');
   });
 });
