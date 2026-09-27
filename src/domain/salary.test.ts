@@ -6,6 +6,7 @@ import {
   salaryPaid,
 } from './salary';
 import {
+  applyChangeSalary,
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
@@ -496,6 +497,40 @@ describe('salary workflow parity', () => {
       ],
     });
     expect(calculateSalary(person, date(2026, 9, 26)).nextPayDate).toBe('2026-10-21');
+  });
+
+  it('applyChangeSalary: a period change re-anchors to the chosen New cycle start date, not today — fixing the actual reported 21/10 bug', () => {
+    // The true root cause of the reported bug: changing Pay period via Change Salary always
+    // re-anchored to 'today' (whenever it happened to be saved/previewed) instead of the New
+    // cycle start date the person typed (09/09). With a long-running employee's large lifetime
+    // paid total, re-anchoring to the wrong date threw the whole schedule off by extra periods.
+    const before = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-22',
+      salaryPeriodAnchorDate: '2026-07-29',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: 'none',
+      entries: [{ id: 'old1', amount: 5240, type: 'Gave', date: '2026-08-01', category: 'salary' }],
+    });
+    const after = applyChangeSalary(before, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-09-09',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 26),
+      payDelayMode: '2weeks',
+      periodWeeks: 2,
+    });
+    expect(after.salaryPeriodAnchorDate).toBe('2026-09-09');
+    for (const [month, day] of [
+      [9, 20],
+      [9, 23],
+      [9, 26],
+      [9, 30],
+      [10, 1],
+    ] as const) {
+      expect(calculateSalary(after, date(2026, month, day)).nextPayDate).toBe('2026-10-07');
+    }
   });
 
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {

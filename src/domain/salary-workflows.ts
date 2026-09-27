@@ -176,6 +176,29 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
   return next;
 }
 
+export interface ChangeSalaryInput extends SyncPayDateInput {
+  periodWeeks?: number;
+}
+
+/**
+ * The single entry point for the whole Change Salary form: an optional pay-period change,
+ * applied first (using the chosen New cycle start date as its effective date — not always
+ * 'today' — so a period change genuinely takes effect from the date the person typed), followed
+ * by the rest of syncPayDate on top of that. The live preview in the Change Salary sheet calls
+ * this exact function with the currently-watched form values, so what's shown before saving is
+ * guaranteed to match what actually gets saved — no separate, potentially-drifting calculation.
+ */
+export function applyChangeSalary(person: Person, input: ChangeSalaryInput): Person {
+  let next: Person = person;
+  let effectiveAnchorDate = input.newAnchorDate;
+  const currentPeriodWeeks = Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1);
+  if (input.periodWeeks !== undefined && input.periodWeeks !== currentPeriodWeeks) {
+    next = applyPayPeriodChange(next, input.periodWeeks, parseDateString(input.newAnchorDate));
+    effectiveAnchorDate = next.salaryPeriodAnchorDate ?? effectiveAnchorDate;
+  }
+  return syncPayDate(next, { ...input, newAnchorDate: effectiveAnchorDate });
+}
+
 export function resetSalaryWhenUnarchiving(person: Person, referenceDate: Date): Person {
   return {
     ...person,

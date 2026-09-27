@@ -6,6 +6,7 @@ import { PickerField } from '../../components/PickerField';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { calculateSalary } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
+import { applyChangeSalary } from '../../domain/salary-workflows';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
 import { formatDate, formatMoney, localDateString } from '../../utils/format';
@@ -50,23 +51,22 @@ export function SalarySyncSheet() {
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
 
-  const previewPeriodWeeks =
-    Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
-      ? watchedPeriodWeeks
-      : Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
   const previewAnchor = watchedAnchorDate || person.salaryStartDate || localDateString();
-  const previewPerson = {
-    ...person,
-    salaryPeriodAnchorDate: previewAnchor,
-    salaryAccruedBaseline: 0,
-    salaryPayPeriodWeeks: previewPeriodWeeks,
+  const previewInput = {
+    adjustmentAmount: 0,
+    newAnchorDate: previewAnchor,
+    adjustmentEntryId: 'preview',
+    referenceDate: new Date(),
+    ...(Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
+      ? { periodWeeks: watchedPeriodWeeks }
+      : {}),
   };
   const previewDueDate = calculateSalary(
-    { ...previewPerson, salaryPayDelayMode: 'none' },
+    applyChangeSalary(person, { ...previewInput, payDelayMode: 'none' }),
     new Date(),
   ).nextPayDate;
   const previewPayDate = calculateSalary(
-    { ...previewPerson, salaryPayDelayMode: payDelayMode },
+    applyChangeSalary(person, { ...previewInput, payDelayMode }),
     new Date(),
   ).nextPayDate;
 

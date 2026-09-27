@@ -2,6 +2,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import type { AppRepository } from '../db/repository';
 import {
+  applyChangeSalary,
   applyPayPeriodChange,
   applySalaryAmountChange,
   endSalaryWhenArchiving,
@@ -9,7 +10,6 @@ import {
   replaySalaryHistory,
   resetSalaryWhenUnarchiving,
   type SalaryTimelineChange,
-  syncPayDate,
 } from '../domain/salary-workflows';
 import type {
   AppMode,
@@ -573,29 +573,22 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         await withError(async () => {
           const state = get();
           const referenceDate = now();
-          const people = state.peopleByMode[state.mode].map((person) => {
-            if (person.id !== personId) return person;
-            let next: Person = person;
-            let effectiveAnchorDate = newAnchorDate;
-            const currentPeriodWeeks = Number(
-              person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1,
-            );
-            if (periodWeeks !== undefined && periodWeeks !== currentPeriodWeeks) {
-              next = applyPayPeriodChange(next, periodWeeks, referenceDate);
-              effectiveAnchorDate = next.salaryPeriodAnchorDate ?? effectiveAnchorDate;
-            }
-            return retainPersistedFields(
-              person,
-              syncPayDate(next, {
-                adjustmentAmount,
-                newAnchorDate: effectiveAnchorDate,
-                adjustmentEntryId: createId(),
-                referenceDate,
-                ...(newAmount === undefined ? {} : { newAmount }),
-                ...(payDelayMode === undefined ? {} : { payDelayMode }),
-              }),
-            );
-          });
+          const people = state.peopleByMode[state.mode].map((person) =>
+            person.id === personId
+              ? retainPersistedFields(
+                  person,
+                  applyChangeSalary(person, {
+                    adjustmentAmount,
+                    newAnchorDate,
+                    adjustmentEntryId: createId(),
+                    referenceDate,
+                    ...(newAmount === undefined ? {} : { newAmount }),
+                    ...(payDelayMode === undefined ? {} : { payDelayMode }),
+                    ...(periodWeeks === undefined ? {} : { periodWeeks }),
+                  }),
+                )
+              : person,
+          );
           await persistModePeople(state.mode, people);
         });
       },

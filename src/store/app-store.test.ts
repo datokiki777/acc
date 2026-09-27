@@ -289,7 +289,7 @@ describe('Zustand application actions', () => {
     expect(afterDelete.salaryAccruedBaseline).toBe(0);
   });
 
-  it('changes the pay period cadence via Change Salary, banking the old period/rate and re-anchoring to today', async () => {
+  it('changes the pay period cadence via Change Salary, re-anchoring to the chosen date (not always today)', async () => {
     const store = makeStore();
     await store.getState().initialize();
     await store.getState().setMode('work');
@@ -304,8 +304,10 @@ describe('Zustand application actions', () => {
 
     const changed = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
     expect(changed.salaryPayPeriodWeeks).toBe(2);
-    // Re-anchored to today (the reference date) since the period itself changed.
-    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-06');
+    // Re-anchored to the date that was actually passed in (the person's own salaryStartDate
+    // here), NOT the reference date ('today') — this is the fix for the reported bug where a
+    // period change always re-anchored to today regardless of what date was chosen in the form.
+    expect(changed.salaryPeriodAnchorDate).toBe(employee.salaryStartDate);
   });
 
   it('reported scenario: changing Payment Timing must not silently keep an old, wrong period length', async () => {
