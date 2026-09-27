@@ -167,6 +167,17 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
   };
 }
 
+/**
+ * Whether a salaried person still has money owed to or from them (due or upcoming) as of the
+ * reference date. Used to keep an archived person ('finished working') visible in the Active list
+ * until their final payment is actually settled, instead of the outstanding balance silently
+ * disappearing into the Archived tab along with them.
+ */
+export function hasOutstandingSalaryBalance(person: Person, referenceDate: Date): boolean {
+  const result = calculateSalary(person, referenceDate);
+  return result.enabled && (result.due > 0 || result.upcoming > 0);
+}
+
 export interface GiftSummary {
   gave: number;
   received: number;

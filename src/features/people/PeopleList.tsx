@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { PersistedPerson } from '../../types/persistence';
+import { hasOutstandingSalaryBalance } from '../../domain/salary';
 import { sortPeopleByTagAndActivity } from '../../domain/people-sort';
 import { useAppStore } from '../../store/hooks';
 import { PersonCard, type PersonSwipeAction } from './PersonCard';
@@ -22,7 +23,15 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
   const filter = useAppStore((state) => state.filter);
   const filtered = sortPeopleByTagAndActivity(
     people
-      .filter((person) => search || Boolean(person.archived) === (filter === 'archived'))
+      .filter((person) => {
+        if (search) return true;
+        const isArchived = Boolean(person.archived);
+        if (filter === 'archived') return isArchived;
+        // 'active': normal non-archived people, plus an archived ('finished working') salaried
+        // person who still has an unpaid balance — they stay visible until it's actually settled
+        // instead of the outstanding amount disappearing into Archived along with them.
+        return !isArchived || (mode === 'work' && hasOutstandingSalaryBalance(person, new Date()));
+      })
       .filter((person) => person.name.toLowerCase().includes(search)),
   );
   useEffect(() => {

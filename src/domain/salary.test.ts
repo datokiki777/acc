@@ -3,6 +3,7 @@ import {
   earliestUnpaidPayDate,
   getSalarySettings,
   giftSummary,
+  hasOutstandingSalaryBalance,
   salaryPaid,
 } from './salary';
 import {
@@ -676,5 +677,38 @@ describe('salary workflow parity', () => {
     const result = calculateSalary(corrected, date(2026, 8, 13));
     expect(result.paid).toBe(100);
     expect(result.due).toBe(900);
+  });
+
+  it('hasOutstandingSalaryBalance: true for an ended employee with an unpaid final period, false once paid', () => {
+    const stillOwed = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-29',
+      salaryPeriodAnchorDate: '2026-07-29',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      salaryEndDate: '2026-09-23',
+      entries: [
+        { id: 'p1', amount: 1500, type: 'Gave', date: '2026-08-12', category: 'salary' },
+        { id: 'p2', amount: 1500, type: 'Gave', date: '2026-08-26', category: 'salary' },
+        { id: 'p3', amount: 1500, type: 'Gave', date: '2026-09-09', category: 'salary' },
+      ],
+    });
+    expect(hasOutstandingSalaryBalance(stillOwed, date(2026, 9, 26))).toBe(true);
+
+    const settled = {
+      ...stillOwed,
+      entries: [
+        ...stillOwed.entries,
+        {
+          id: 'final',
+          amount: 1500,
+          type: 'Gave' as const,
+          date: '2026-09-26',
+          category: 'salary' as const,
+        },
+      ],
+    };
+    expect(hasOutstandingSalaryBalance(settled, date(2026, 9, 26))).toBe(false);
   });
 });

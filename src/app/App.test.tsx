@@ -785,6 +785,46 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
+  it('keeps an archived (finished working) salaried person visible in Active until their balance is fully paid', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    let personId = '';
+    await act(async () => {
+      await store.getState().setMode('work');
+      // Started well in the past with a 1-week period and no entries at all, so there's
+      // definitely an unpaid balance by the time this test runs, regardless of today's exact date.
+      const created = await store.getState().addPerson({
+        ...draft('Finished worker'),
+        salaryEnabled: true,
+        salaryAmount: 400,
+        salaryStartDate: '2026-01-01',
+        salaryPayPeriodWeeks: 1,
+      });
+      personId = created.id;
+      await store.getState().toggleArchive(personId);
+    });
+
+    // Still shows under the default Active filter — the outstanding balance keeps them visible.
+    expect(await findPersonSummary('Finished worker')).toBeInTheDocument();
+
+    // Fully settle the balance with one large payment.
+    await act(async () => {
+      await store.getState().addEntry(personId, {
+        amount: 100000,
+        type: 'Gave',
+        date: new Date().toISOString().slice(0, 10),
+        comment: '',
+        category: 'salary',
+      });
+    });
+
+    // Now that it's settled, they disappear from Active (still findable under Archived).
+    await waitFor(() => expect(screen.queryByText('Finished worker')).not.toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Archived/ }));
+    expect(await findPersonSummary('Finished worker')).toBeInTheDocument();
+  }, 15_000);
+
   it('changes the pay period cadence through the Change Salary form', async () => {
     const user = userEvent.setup();
     const store = renderApp();

@@ -8,6 +8,7 @@ import { ModeSwitch } from '../components/ModeSwitch';
 import { PersonPickerSheet } from '../components/PersonPickerSheet';
 import { StartupScreen } from '../components/StartupScreen';
 import { UndoToast } from '../components/UndoToast';
+import { hasOutstandingSalaryBalance } from '../domain/salary';
 import { BackupSheet } from '../features/import-export/BackupSheet';
 import { PeopleList } from '../features/people/PeopleList';
 import { PersonFormSheet } from '../features/people/PersonFormSheet';
@@ -128,7 +129,11 @@ export function App() {
     entryPersonPickerOpenRef.current = entryPersonPickerOpen;
   }, [entryPersonPickerOpen]);
 
-  const activeCount = people.filter((person) => !person.archived).length;
+  const stillOwedArchived = people.filter(
+    (person) =>
+      person.archived && mode === 'work' && hasOutstandingSalaryBalance(person, new Date()),
+  );
+  const activeCount = people.filter((person) => !person.archived).length + stillOwedArchived.length;
   const archivedCount = people.filter((person) => person.archived).length;
   const activeDestination: AppDestination =
     sheet === 'statistics' ? 'statistics' : sheet === 'backup' ? 'backup' : 'home';
