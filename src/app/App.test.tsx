@@ -858,6 +858,44 @@ describe('ACC application', () => {
     expect(paidByValue?.textContent).toMatch(/\d{2}\.\d{2}\.\d{4}/);
   }, 15_000);
 
+  it('the schedule preview always shows the first period from the chosen date, independent of what today happens to be', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Deterministic preview target'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        // Deliberately a start date well in the past relative to whenever this test runs, so a
+        // 'today'-dependent preview would show a much later period than the very first one.
+        salaryStartDate: '2020-01-01',
+        salaryPayPeriodWeeks: 2,
+      });
+    });
+
+    const summary = await findPersonSummary('Deterministic preview target');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+    const preview = syncDialog.querySelector('.schedule-preview') as HTMLElement;
+
+    // The very first 2-week period from 2020-01-01 ends 2020-01-15, regardless of today's date.
+    const [periodEndsValue] = preview.querySelectorAll('strong');
+    expect(periodEndsValue?.textContent).toBe('15.01.2020');
+
+    // Changing Pay period must reactively change this, distinctly from the (today-independent)
+    // value above.
+    const periodField = within(syncDialog).getByRole('spinbutton', { name: /Pay period/ });
+    await user.clear(periodField);
+    await user.type(periodField, '1');
+    await waitFor(() => {
+      const [updated] = preview.querySelectorAll('strong');
+      expect(updated?.textContent).toBe('08.01.2020');
+    });
+  }, 15_000);
+
   it('rebuilds the salary timeline from the Manage Salary History editor, reachable from Change Salary', async () => {
     const user = userEvent.setup();
     const store = renderApp();

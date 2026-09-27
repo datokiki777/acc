@@ -4,9 +4,9 @@ import { useForm, useWatch } from 'react-hook-form';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PickerField } from '../../components/PickerField';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
+import { addDays, computeSalaryPayDate } from '../../domain/pay-dates';
 import { calculateSalary } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
-import { applyChangeSalary } from '../../domain/salary-workflows';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
 import { formatDate, formatMoney, localDateString } from '../../utils/format';
@@ -52,23 +52,17 @@ export function SalarySyncSheet() {
   if (!person || !salary) return null;
 
   const previewAnchor = watchedAnchorDate || person.salaryStartDate || localDateString();
-  const previewInput = {
-    adjustmentAmount: 0,
-    newAnchorDate: previewAnchor,
-    adjustmentEntryId: 'preview',
-    referenceDate: new Date(),
-    ...(Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
-      ? { periodWeeks: watchedPeriodWeeks }
-      : {}),
-  };
-  const previewDueDate = calculateSalary(
-    applyChangeSalary(person, { ...previewInput, payDelayMode: 'none' }),
-    new Date(),
-  ).nextPayDate;
-  const previewPayDate = calculateSalary(
-    applyChangeSalary(person, { ...previewInput, payDelayMode }),
-    new Date(),
-  ).nextPayDate;
+  const previewPeriodWeeks =
+    Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
+      ? watchedPeriodWeeks
+      : Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
+  // Deliberately independent of 'today': always the FIRST period from the chosen start date, so
+  // the preview stays a stable, predictable readout of "date + period + timing" alone — it won't
+  // silently jump ahead to a later period just because today happens to already be past the
+  // first one (which was confusing: the same period length could show different-looking results
+  // depending on which day you happened to be looking at it).
+  const previewDueDate = addDays(previewAnchor, previewPeriodWeeks * 7);
+  const previewPayDate = computeSalaryPayDate(previewDueDate, payDelayMode);
 
   const submit = handleSubmit(async (values) => {
     if (!values.newAnchorDate) {
