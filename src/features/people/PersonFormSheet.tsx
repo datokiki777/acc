@@ -8,8 +8,7 @@ import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { TAG_COLORS } from '../../domain/tag-colors';
 import type { PersonDraft } from '../../store/app-store';
 import { useAppStore } from '../../store/hooks';
-import type { Currency, PayDelayMode } from '../../types/domain';
-import { localDateString } from '../../utils/format';
+import type { Currency } from '../../types/domain';
 
 const CURRENCY_OPTIONS: { value: Currency; label: string }[] = [
   { value: 'EUR', label: 'EUR €' },
@@ -18,33 +17,18 @@ const CURRENCY_OPTIONS: { value: Currency; label: string }[] = [
   { value: 'CAD', label: 'CAD C$' },
 ];
 
-import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
-
-const personSchema = z
-  .object({
-    name: z.string().trim().min(1, 'Name is required').max(80),
-    currency: z.enum(['EUR', 'USD', 'GEL', 'CAD']),
-    tagLabel: z.string().trim().max(20),
-    tagColor: z.string(),
-    salaryEnabled: z.boolean(),
-    salaryAmount: z.number().min(0),
-    salaryStartDate: z.string(),
-    salaryEndDate: z.string(),
-    salaryPayPeriodWeeks: z.number().int().min(1).max(52),
-    salaryPayDelayMode: z.enum(['none', '2weeks', '4weeks', 'firstOfMonth']),
-  })
-  .superRefine((value, context) => {
-    if (value.salaryEnabled && value.salaryAmount < 1) {
-      context.addIssue({ code: 'custom', path: ['salaryAmount'], message: 'Salary is required' });
-    }
-    if (value.salaryEnabled && !value.salaryStartDate) {
-      context.addIssue({
-        code: 'custom',
-        path: ['salaryStartDate'],
-        message: 'Start date is required',
-      });
-    }
-  });
+const personSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+  currency: z.enum(['EUR', 'USD', 'GEL', 'CAD']),
+  tagLabel: z.string().trim().max(20),
+  tagColor: z.string(),
+  salaryEnabled: z.boolean(),
+  salaryAmount: z.number().min(0),
+  salaryStartDate: z.string(),
+  salaryEndDate: z.string(),
+  salaryPayPeriodWeeks: z.number().int().min(1).max(52),
+  salaryPayDelayMode: z.enum(['none', '2weeks', '4weeks', 'firstOfMonth']),
+});
 
 export function PersonFormSheet() {
   const mode = useAppStore((state) => state.mode);
@@ -52,11 +36,10 @@ export function PersonFormSheet() {
   const personId = useAppStore((state) => state.ui.personId);
   const addPerson = useAppStore((state) => state.addPerson);
   const editPerson = useAppStore((state) => state.editPerson);
+  const openSheet = useAppStore((state) => state.openSheet);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const existing = people.find((person) => person.id === personId);
   const [formError, setFormError] = useState('');
-  const [pendingSalaryChange, setPendingSalaryChange] = useState<PersonDraft | null>(null);
-  const [effectiveDate, setEffectiveDate] = useState(localDateString());
   const {
     control,
     register,
@@ -80,20 +63,9 @@ export function PersonFormSheet() {
   const salaryEnabled = useWatch({ control, name: 'salaryEnabled' });
   const tagColor = useWatch({ control, name: 'tagColor' });
   const currency = useWatch({ control, name: 'currency' });
-  const salaryPayDelayMode = useWatch({ control, name: 'salaryPayDelayMode' });
   useUnsavedForm(isDirty);
 
   const wasSalaried = Boolean(existing?.salaryAmount && existing.salaryStartDate);
-
-  async function savePerson(data: PersonDraft) {
-    try {
-      if (existing) await editPerson(existing.id, data);
-      else await addPerson(data);
-      closeAfterSave();
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Could not save');
-    }
-  }
 
   const submit = handleSubmit(async (raw) => {
     const result = personSchema.safeParse(raw);
@@ -101,18 +73,26 @@ export function PersonFormSheet() {
       setFormError(result.error.issues[0]?.message ?? 'Check the form');
       return;
     }
-    if (existing && wasSalaried && result.data.salaryAmount !== existing.salaryAmount) {
-      setEffectiveDate(localDateString());
-      setPendingSalaryChange(result.data);
-      return;
+    try {
+      const newlyEnabled = result.data.salaryEnabled && !wasSalaried;
+      let savedId: string;
+      if (existing) {
+        await editPerson(existing.id, result.data);
+        savedId = existing.id;
+      } else {
+        savedId = (await addPerson(result.data)).id;
+      }
+      if (newlyEnabled) {
+        // Amount, start date, and schedule are no longer collected here — Change Salary is the
+        // one place that configures a salary, including for the very first time.
+        openSheet('salary-sync', savedId);
+      } else {
+        closeAfterSave();
+      }
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Could not save');
     }
-    await savePerson(result.data);
   });
-
-  const confirmSalaryChange = async () => {
-    if (!pendingSalaryChange) return;
-    await savePerson({ ...pendingSalaryChange, salaryAmountEffectiveDate: effectiveDate });
-  };
 
   return (
     <BottomSheet
@@ -191,49 +171,18 @@ export function PersonFormSheet() {
               <span>Salaried employee</span>
               <input type="checkbox" {...register('salaryEnabled')} />
             </label>
-            {salaryEnabled && (
-              <div className="salary-form-fields">
-                <label className="field">
-                  <span>Monthly salary</span>
-                  <input
-                    autoComplete="off"
-                    inputMode="decimal"
-                    min={0}
-                    step={1}
-                    type="number"
-                    {...register('salaryAmount', { valueAsNumber: true })}
-                  />
-                </label>
-                <label className="field">
-                  <span>Salary start date</span>
-                  <input autoComplete="off" type="date" {...register('salaryStartDate')} />
-                </label>
-                <label className="field">
-                  <span>Pay period (weeks)</span>
-                  <input
-                    autoComplete="off"
-                    inputMode="numeric"
-                    min={1}
-                    max={52}
-                    type="number"
-                    {...register('salaryPayPeriodWeeks', { valueAsNumber: true })}
-                  />
-                </label>
-                <PickerField
-                  label="Payment timing"
-                  onChange={(next) =>
-                    setValue('salaryPayDelayMode', next as PayDelayMode, { shouldDirty: true })
-                  }
-                  options={PAY_DELAY_OPTIONS}
-                  value={salaryPayDelayMode}
-                />
-                <label className="field">
-                  <span>
-                    Salary end date <small>optional</small>
-                  </span>
-                  <input autoComplete="off" type="date" {...register('salaryEndDate')} />
-                </label>
-              </div>
+            {salaryEnabled && wasSalaried && (
+              <label className="field">
+                <span>
+                  Salary end date <small>optional</small>
+                </span>
+                <input autoComplete="off" type="date" {...register('salaryEndDate')} />
+              </label>
+            )}
+            {salaryEnabled && !wasSalaried && (
+              <p className="inline-note">
+                Save, then set the monthly amount, start date, and schedule in Change Salary.
+              </p>
             )}
           </>
         )}
@@ -252,40 +201,6 @@ export function PersonFormSheet() {
           </button>
         </div>
       </form>
-      {pendingSalaryChange && (
-        <BottomSheet onClose={() => setPendingSalaryChange(null)} title="Apply new salary from…">
-          <p className="inline-note">
-            Periods and amounts before this date keep the old salary and accounting. The new salary
-            only applies to periods starting on or after it.
-          </p>
-          <label className="field">
-            <span>Effective date</span>
-            <input
-              autoComplete="off"
-              onChange={(event) => setEffectiveDate(event.target.value)}
-              type="date"
-              value={effectiveDate}
-            />
-          </label>
-          <div className="form-actions">
-            <button
-              className="secondary-button"
-              onClick={() => setPendingSalaryChange(null)}
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              className="primary-button"
-              disabled={!effectiveDate}
-              onClick={() => void confirmSalaryChange()}
-              type="button"
-            >
-              Save
-            </button>
-          </div>
-        </BottomSheet>
-      )}
     </BottomSheet>
   );
 }

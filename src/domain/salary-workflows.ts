@@ -168,6 +168,14 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
     // silently count as credit toward periods that hadn't even begun yet.
     next.salaryAccruedBaseline = salaryPaidBefore(person, input.newAnchorDate);
     next.salaryPeriodAnchorDate = input.newAnchorDate;
+    if (!wasConfigured) {
+      // First-time setup: there's no separate 'Salary start date' field anywhere anymore — the
+      // chosen date IS the start date, and the amount must be set here too (this used to only
+      // ever run on an already-configured person, whose amount was set elsewhere).
+      next.salaryAmount = input.newAmount ?? person.salaryAmount ?? 0;
+      next.salaryStartDate = input.newAnchorDate;
+      next.salaryCurrency = next.salaryCurrency ?? next.currency;
+    }
   }
   // Otherwise neither the date nor the amount actually changed (e.g. this save only touched
   // Payment Timing or added a one-time adjustment) — leave the anchor/baseline exactly as they

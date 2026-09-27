@@ -50,6 +50,7 @@ export function SalarySyncSheet() {
   const watchedPeriodWeeks = useWatch({ control, name: 'periodWeeks' });
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
+  const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
 
   const previewAnchor = watchedAnchorDate || person.salaryStartDate || localDateString();
   const previewPeriodWeeks =
@@ -66,17 +67,21 @@ export function SalarySyncSheet() {
 
   const submit = handleSubmit(async (values) => {
     if (!values.newAnchorDate) {
-      setError('New cycle date is required');
+      setError(wasConfigured ? 'New cycle date is required' : 'Start date is required');
+      return;
+    }
+    const newAmount = Number(values.newAmount);
+    if (!wasConfigured && !(Number.isFinite(newAmount) && newAmount > 0)) {
+      setError('Monthly salary is required');
       return;
     }
     try {
-      const newAmount = Number(values.newAmount);
       const currentPeriodWeeks = Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
       await sync(
         person.id,
         values.adjustmentAmount,
         values.newAnchorDate,
-        Number.isFinite(newAmount) && newAmount > 0 ? newAmount : undefined,
+        !wasConfigured || (Number.isFinite(newAmount) && newAmount > 0) ? newAmount : undefined,
         values.payDelayMode,
         values.periodWeeks !== currentPeriodWeeks ? values.periodWeeks : undefined,
       );
@@ -87,25 +92,29 @@ export function SalarySyncSheet() {
   });
 
   return (
-    <BottomSheet onClose={requestClose} title="Change Salary">
+    <BottomSheet onClose={requestClose} title={wasConfigured ? 'Change Salary' : 'Set Up Salary'}>
       <form autoComplete="off" className="form-grid" onSubmit={(event) => void submit(event)}>
-        <p className="inline-note">
-          Earned but not yet paid: <strong>{formatMoney(owed, salary.currency, false)}</strong>
-        </p>
-        <button
-          className="text-button"
-          onClick={() => openSheet('salary-history', person.id)}
-          type="button"
-        >
-          ✎ Correct or add a past salary change…
-        </button>
+        {wasConfigured && (
+          <p className="inline-note">
+            Earned but not yet paid: <strong>{formatMoney(owed, salary.currency, false)}</strong>
+          </p>
+        )}
+        {wasConfigured && (
+          <button
+            className="text-button"
+            onClick={() => openSheet('salary-history', person.id)}
+            type="button"
+          >
+            ✎ Correct or add a past salary change…
+          </button>
+        )}
         <label className="field">
-          <span>New cycle start date</span>
+          <span>{wasConfigured ? 'New cycle start date' : 'Salary start date'}</span>
           <input autoComplete="off" type="date" {...register('newAnchorDate')} />
-          <small>Only resets the schedule if you change this date.</small>
+          {wasConfigured && <small>Only resets the schedule if you change this date.</small>}
         </label>
         <label className="field">
-          <span>New monthly salary</span>
+          <span>{wasConfigured ? 'New monthly salary' : 'Monthly salary'}</span>
           <input
             autoComplete="off"
             inputMode="decimal"
@@ -114,7 +123,9 @@ export function SalarySyncSheet() {
             type="number"
             {...register('newAmount', { valueAsNumber: true })}
           />
-          <small>Applies from the date above onward. Leave as-is to keep the current rate.</small>
+          {wasConfigured && (
+            <small>Applies from the date above onward. Leave as-is to keep the current rate.</small>
+          )}
         </label>
         <label className="field">
           <span>Pay period (weeks)</span>
@@ -156,21 +167,23 @@ export function SalarySyncSheet() {
             period ends.
           </p>
         )}
-        <label className="field">
-          <span>One-time adjustment</span>
-          <input
-            autoComplete="off"
-            inputMode="decimal"
-            min={0}
-            step={1}
-            type="number"
-            {...register('adjustmentAmount', { valueAsNumber: true })}
-          />
-          <small>
-            Records an extra payment today, if you type an amount here. Leave at 0 to add nothing —
-            this won't happen automatically.
-          </small>
-        </label>
+        {wasConfigured && (
+          <label className="field">
+            <span>One-time adjustment</span>
+            <input
+              autoComplete="off"
+              inputMode="decimal"
+              min={0}
+              step={1}
+              type="number"
+              {...register('adjustmentAmount', { valueAsNumber: true })}
+            />
+            <small>
+              Records an extra payment today, if you type an amount here. Leave at 0 to add nothing
+              — this won't happen automatically.
+            </small>
+          </label>
+        )}
         {error && <p className="form-error">{error}</p>}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">

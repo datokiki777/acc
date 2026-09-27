@@ -15,7 +15,7 @@ import {
   resetSalaryWhenUnarchiving,
   syncPayDate,
 } from './salary-workflows';
-import { date, entry, weeklySalaryPerson, workPerson } from '../test/fixtures/golden';
+import { date, entry, person, weeklySalaryPerson, workPerson } from '../test/fixtures/golden';
 
 describe('salary calculation parity', () => {
   it('returns a disabled result without amount and start date', () => {
@@ -531,6 +531,29 @@ describe('salary workflow parity', () => {
     ] as const) {
       expect(calculateSalary(after, date(2026, month, day)).nextPayDate).toBe('2026-10-07');
     }
+  });
+
+  it('applyChangeSalary can fully configure a brand-new, never-salaried person (amount + start date + period + timing)', () => {
+    const fresh = person({ entries: [] });
+    const configured = applyChangeSalary(fresh, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-09-09',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 9),
+      newAmount: 3000,
+      payDelayMode: '2weeks',
+      periodWeeks: 2,
+    });
+    expect(configured.salaryAmount).toBe(3000);
+    expect(configured.salaryStartDate).toBe('2026-09-09');
+    expect(configured.salaryPeriodAnchorDate).toBe('2026-09-09');
+    expect(configured.salaryPayPeriodWeeks).toBe(2);
+    expect(configured.salaryPayDelayMode).toBe('2weeks');
+    expect(configured.salaryAccruedBaseline).toBe(0);
+
+    const result = calculateSalary(configured, date(2026, 9, 9));
+    expect(result.enabled).toBe(true);
+    expect(result.periodAmount).toBe(1500);
   });
 
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {

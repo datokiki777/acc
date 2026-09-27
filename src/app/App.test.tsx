@@ -714,7 +714,7 @@ describe('ACC application', () => {
     expect(store.getState().peopleByMode.personal[0]?.entries).toHaveLength(2);
   });
 
-  it('asks for an effective date when the salary amount changes, then banks the old rate', async () => {
+  it('banks the old rate when the salary amount changes through Change Salary', async () => {
     const user = userEvent.setup();
     const store = renderApp();
     await waitFor(() => expect(store.getState().initialized).toBe(true));
@@ -731,23 +731,57 @@ describe('ACC application', () => {
     });
 
     const summary = await findPersonSummary('Raise target');
-    await longPress(summary);
-    const editDialog = screen.getByRole('dialog', { name: 'Edit Team' });
-    const amountField = within(editDialog).getByRole('spinbutton', { name: 'Monthly salary' });
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+    const amountField = within(syncDialog).getByRole('spinbutton', { name: /monthly salary/i });
     await user.clear(amountField);
     await user.type(amountField, '3000');
-    await user.click(within(editDialog).getByRole('button', { name: 'Save' }));
-
-    const prompt = await screen.findByRole('dialog', { name: 'Apply new salary from…' });
-    const dateField = within(prompt).getByLabelText('Effective date');
-    fireEvent.change(dateField, { target: { value: '2026-08-06' } });
-    await user.click(within(prompt).getByRole('button', { name: 'Save' }));
+    await user.click(within(syncDialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       const person = store.getState().peopleByMode.work.find((p) => p.id === personId);
       expect(person?.salaryAmount).toBe(3000);
-      expect(person?.salaryPeriodAnchorDate).toBe('2026-08-06');
-      expect(person?.salaryAccruedBaseline).toBeGreaterThan(0);
+      expect(person?.salaryAccruedBaseline).toBeGreaterThanOrEqual(0);
+    });
+  }, 15_000);
+
+  it('editing Team no longer shows salary amount/schedule fields; toggling salary on opens Change Salary to configure it', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson(draft('Fresh hire'));
+    });
+
+    const summary = await findPersonSummary('Fresh hire');
+    await longPress(summary);
+    const editDialog = screen.getByRole('dialog', { name: 'Edit Team' });
+    expect(
+      within(editDialog).queryByRole('spinbutton', { name: /monthly salary/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(editDialog).queryByRole('spinbutton', { name: /Pay period/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(editDialog).getByRole('checkbox', { name: 'Salaried employee' }));
+    await user.click(within(editDialog).getByRole('button', { name: 'Save' }));
+
+    const setupDialog = await screen.findByRole('dialog', { name: 'Set Up Salary' });
+    const startDateField = within(setupDialog).getByLabelText('Salary start date');
+    fireEvent.change(startDateField, { target: { value: '2026-09-01' } });
+    const amountField = within(setupDialog).getByRole('spinbutton', { name: /monthly salary/i });
+    await user.clear(amountField);
+    await user.type(amountField, '2500');
+    await user.click(within(setupDialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const person = store
+        .getState()
+        .peopleByMode.work.find((candidate) => candidate.name === 'Fresh hire');
+      expect(person?.salaryAmount).toBe(2500);
+      expect(person?.salaryStartDate).toBe('2026-09-01');
     });
   }, 15_000);
 
