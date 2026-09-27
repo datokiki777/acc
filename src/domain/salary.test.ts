@@ -711,4 +711,92 @@ describe('salary workflow parity', () => {
     };
     expect(hasOutstandingSalaryBalance(settled, date(2026, 9, 26))).toBe(false);
   });
+
+  it('reported scenario (Rati): a large baked-in baseline from a period-change re-anchor must not make earliestUnpaidPayDate think a period is already paid', () => {
+    // Re-anchoring via a pay period change banks a (correct, large) theoretical baseline. The bug:
+    // earliestUnpaidPayDate compared raw all-time paid against periodAmount to guess how many
+    // periods were 'already paid', with no idea that a big chunk of that paid total was already
+    // accounted for by the baseline — so it thought periods were settled when they weren't, and
+    // skipped ahead to the wrong period's delayed pay date once calendar time reached the correct
+    // date (07/10 was actually still pending, not settled).
+    const before = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-29',
+      salaryPeriodAnchorDate: '2026-07-29',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: 'none',
+      entries: [{ id: 'old1', amount: 4000, type: 'Gave', date: '2026-08-15', category: 'salary' }],
+    });
+    const after = applyChangeSalary(before, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-09-09',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 9),
+      payDelayMode: '2weeks',
+      periodWeeks: 2,
+    });
+    expect(after.salaryAccruedBaseline).toBe(4500);
+    // The exact day the payment is due, nextPayDate must still read today's due date, not have
+    // already jumped ahead to the next period's own delayed date.
+    expect(calculateSalary(after, date(2026, 10, 7)).nextPayDate).toBe('2026-10-07');
+    expect(calculateSalary(after, date(2026, 10, 7)).due).toBe(0);
+    // One day later, it's genuinely overdue, and now correctly looks ahead to the next period.
+    expect(calculateSalary(after, date(2026, 10, 8)).due).toBeGreaterThan(0);
+    expect(calculateSalary(after, date(2026, 10, 8)).nextPayDate).toBe('2026-11-04');
+  });
+
+  it('reported scenario (Dima): an ended employee with a period-change baseline still shows the final period owed', () => {
+    const before = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-08-12',
+      salaryPeriodAnchorDate: '2026-08-12',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: 'none',
+      entries: [
+        { id: 'p1', amount: 500, type: 'Gave', date: '2026-08-19', category: 'salary' },
+        { id: 'p2', amount: 500, type: 'Gave', date: '2026-08-26', category: 'salary' },
+        { id: 'p3', amount: 500, type: 'Gave', date: '2026-09-02', category: 'salary' },
+      ],
+    });
+    const reanchored = applyChangeSalary(before, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-09-09',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 9),
+      periodWeeks: 2,
+    });
+    const ended = {
+      ...reanchored,
+      salaryEndDate: '2026-09-23',
+      entries: [
+        ...reanchored.entries,
+        {
+          id: 'p4',
+          amount: 120,
+          type: 'Gave' as const,
+          date: '2026-09-20',
+          category: 'salary' as const,
+        },
+        {
+          id: 'p5',
+          amount: 500,
+          type: 'Gave' as const,
+          date: '2026-09-20',
+          category: 'salary' as const,
+        },
+        {
+          id: 'p6',
+          amount: 1000,
+          type: 'Gave' as const,
+          date: '2026-09-19',
+          category: 'salary' as const,
+        },
+      ],
+    };
+    const result = calculateSalary(ended, date(2026, 9, 27));
+    expect(result.ended).toBe(true);
+    expect(result.due + result.upcoming).toBeGreaterThan(0);
+  });
 });

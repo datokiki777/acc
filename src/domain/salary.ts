@@ -65,7 +65,8 @@ export function earliestUnpaidPayDate(
   periodAmount: number,
 ): string {
   const periodAmountSafe = periodAmount > 0 ? periodAmount : 1;
-  const paidPeriodsCount = Math.floor(paid / periodAmountSafe);
+  const paidSinceAnchor = Math.max(0, paid - config.accruedBaseline);
+  const paidPeriodsCount = Math.floor(paidSinceAnchor / periodAmountSafe);
   const earliestUnpaidIndex = Math.min(completedPeriods, paidPeriodsCount + 1);
   const periodEndDate = addDays(config.anchorDate, earliestUnpaidIndex * config.periodWeeks * 7);
   return computeSalaryPayDate(periodEndDate, config.payDelayMode);
