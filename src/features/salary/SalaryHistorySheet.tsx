@@ -130,24 +130,8 @@ export function SalaryHistorySheet() {
         </p>
         {rows.map((row, index) => (
           <div className="salary-history-edit-card" key={row.id}>
-            <div className="salary-history-edit-row">
-              <input
-                aria-label={index === 0 ? 'Starting date' : 'Change date'}
-                autoComplete="off"
-                onChange={(event) => updateRow(row.id, { effectiveDate: event.target.value })}
-                type="date"
-                value={row.effectiveDate}
-              />
-              <input
-                aria-label={index === 0 ? 'Starting salary' : 'New monthly salary'}
-                autoComplete="off"
-                inputMode="decimal"
-                min={0}
-                onChange={(event) => updateRow(row.id, { amountText: event.target.value })}
-                step={1}
-                type="number"
-                value={row.amountText}
-              />
+            <div className="salary-history-edit-card-heading">
+              <strong>{index === 0 ? 'Starting point' : `Change ${index + 1}`}</strong>
               {rows.length > 1 && (
                 <button
                   aria-label="Remove this entry"
@@ -155,22 +139,47 @@ export function SalaryHistorySheet() {
                   onClick={() => removeRow(row.id)}
                   type="button"
                 >
-                  ✕
+                  ✕ Remove
                 </button>
               )}
             </div>
             <div className="salary-history-edit-row">
-              <input
-                aria-label="Pay period (weeks)"
-                autoComplete="off"
-                inputMode="numeric"
-                max={52}
-                min={1}
-                onChange={(event) => updateRow(row.id, { periodWeeksText: event.target.value })}
-                step={1}
-                type="number"
-                value={row.periodWeeksText}
-              />
+              <label className="field">
+                <span>{index === 0 ? 'Starting date' : 'Change date'}</span>
+                <input
+                  autoComplete="off"
+                  onChange={(event) => updateRow(row.id, { effectiveDate: event.target.value })}
+                  type="date"
+                  value={row.effectiveDate}
+                />
+              </label>
+              <label className="field">
+                <span>{index === 0 ? 'Starting salary' : 'New monthly salary'}</span>
+                <input
+                  autoComplete="off"
+                  inputMode="decimal"
+                  min={0}
+                  onChange={(event) => updateRow(row.id, { amountText: event.target.value })}
+                  step={1}
+                  type="number"
+                  value={row.amountText}
+                />
+              </label>
+            </div>
+            <div className="salary-history-edit-row">
+              <label className="field">
+                <span>Pay period (weeks)</span>
+                <input
+                  autoComplete="off"
+                  inputMode="numeric"
+                  max={52}
+                  min={1}
+                  onChange={(event) => updateRow(row.id, { periodWeeksText: event.target.value })}
+                  step={1}
+                  type="number"
+                  value={row.periodWeeksText}
+                />
+              </label>
               <PickerField
                 label="Payment timing"
                 onChange={(next) => updateRow(row.id, { payDelayMode: next as PayDelayMode })}

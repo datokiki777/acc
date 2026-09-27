@@ -955,17 +955,32 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.salary-history-edit-row {
+.salary-history-edit-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--color-nav);
 }
 
-.salary-history-edit-row .text-button {
-  min-height: 44px;
+.salary-history-edit-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.salary-history-edit-card-heading .text-button {
+  min-height: 32px;
   padding: 0 6px;
-  font-size: 1rem;
+  font-size: 0.84rem;
+}
+
+.salary-history-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
 }
 
 .payroll-totals-row {
