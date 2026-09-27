@@ -13,8 +13,8 @@ import { formatDate, formatMoney, localDateString } from '../../utils/format';
 
 interface SyncForm {
   adjustmentAmount: number;
-  newAnchorDate: string;
-  newAmount: number;
+  effectiveDate: string;
+  amount: number;
   payDelayMode: PayDelayMode;
   periodWeeks: number;
 }
@@ -39,20 +39,20 @@ export function SalarySyncSheet() {
   } = useForm<SyncForm>({
     defaultValues: {
       adjustmentAmount: 0,
-      newAnchorDate: person?.salaryPeriodAnchorDate ?? person?.salaryStartDate ?? localDateString(),
-      newAmount: person?.salaryAmount ?? 0,
+      effectiveDate: person?.salaryPeriodAnchorDate ?? person?.salaryStartDate ?? localDateString(),
+      amount: person?.salaryAmount ?? 0,
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
       periodWeeks: Number(person?.salaryPayPeriodWeeks ?? person?.salaryPayDay ?? 2),
     },
   });
   const payDelayMode = useWatch({ control, name: 'payDelayMode' });
-  const watchedAnchorDate = useWatch({ control, name: 'newAnchorDate' });
+  const watchedEffectiveDate = useWatch({ control, name: 'effectiveDate' });
   const watchedPeriodWeeks = useWatch({ control, name: 'periodWeeks' });
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
   const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
 
-  const previewAnchor = watchedAnchorDate || person.salaryStartDate || localDateString();
+  const previewDate = watchedEffectiveDate || person.salaryStartDate || localDateString();
   const previewPeriodWeeks =
     Number.isFinite(watchedPeriodWeeks) && watchedPeriodWeeks > 0
       ? watchedPeriodWeeks
@@ -60,30 +60,28 @@ export function SalarySyncSheet() {
   // Deliberately independent of 'today': always the FIRST period from the chosen start date, so
   // the preview stays a stable, predictable readout of "date + period + timing" alone — it won't
   // silently jump ahead to a later period just because today happens to already be past the
-  // first one (which was confusing: the same period length could show different-looking results
-  // depending on which day you happened to be looking at it).
-  const previewDueDate = addDays(previewAnchor, previewPeriodWeeks * 7);
+  // first one.
+  const previewDueDate = addDays(previewDate, previewPeriodWeeks * 7);
   const previewPayDate = computeSalaryPayDate(previewDueDate, payDelayMode);
 
   const submit = handleSubmit(async (values) => {
-    if (!values.newAnchorDate) {
+    if (!values.effectiveDate) {
       setError(wasConfigured ? 'New cycle date is required' : 'Start date is required');
       return;
     }
-    const newAmount = Number(values.newAmount);
-    if (!wasConfigured && !(Number.isFinite(newAmount) && newAmount > 0)) {
+    const amount = Number(values.amount);
+    if (!(Number.isFinite(amount) && amount > 0)) {
       setError('Monthly salary is required');
       return;
     }
     try {
-      const currentPeriodWeeks = Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 2);
       await sync(
         person.id,
         values.adjustmentAmount,
-        values.newAnchorDate,
-        !wasConfigured || (Number.isFinite(newAmount) && newAmount > 0) ? newAmount : undefined,
+        values.effectiveDate,
+        amount,
         values.payDelayMode,
-        values.periodWeeks !== currentPeriodWeeks ? values.periodWeeks : undefined,
+        values.periodWeeks,
       );
       closeAfterSave();
     } catch (caught) {
@@ -110,7 +108,7 @@ export function SalarySyncSheet() {
         )}
         <label className="field">
           <span>{wasConfigured ? 'New cycle start date' : 'Salary start date'}</span>
-          <input autoComplete="off" type="date" {...register('newAnchorDate')} />
+          <input autoComplete="off" type="date" {...register('effectiveDate')} />
           {wasConfigured && <small>Only resets the schedule if you change this date.</small>}
         </label>
         <label className="field">
@@ -121,7 +119,7 @@ export function SalarySyncSheet() {
             min={0}
             step={1}
             type="number"
-            {...register('newAmount', { valueAsNumber: true })}
+            {...register('amount', { valueAsNumber: true })}
           />
           {wasConfigured && (
             <small>Applies from the date above onward. Leave as-is to keep the current rate.</small>

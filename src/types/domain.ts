@@ -31,6 +31,20 @@ export interface SalaryChangeRecord {
   newAmount: number;
 }
 
+/**
+ * One segment of a salary's timeline: 'from this date, the rate/period/timing is this'. The full,
+ * ascending-sorted list of these is the single source of truth for a salary's whole schedule —
+ * amount changes, pay-period changes, and payment-timing changes are all just a new segment
+ * appended to this list. There is no separate 'baseline' to bank or keep in sync: every
+ * calculation replays the full list of segments against the live entries, every time.
+ */
+export interface SalaryTimelineEntry {
+  effectiveDate: string;
+  amount: number;
+  periodWeeks: number;
+  payDelayMode: PayDelayMode;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -52,6 +66,7 @@ export interface Person {
   salaryPeriodAnchorDate?: string;
   salaryAccruedBaseline?: number;
   salaryHistory?: SalaryChangeRecord[];
+  salaryTimeline?: SalaryTimelineEntry[];
 }
 
 export interface SalaryCalculationResult {

@@ -4,39 +4,106 @@ import type {
   Person,
   SalaryCalculationResult,
   SalarySettings,
+  SalaryTimelineEntry,
 } from '../types/domain';
 import { isSalaryEntry, normalizeAmount } from './entries';
 import {
   addDays,
-  capReferenceDate,
   compareDateStrings,
   computeSalaryPayDate,
-  daysSince,
+  daysBetweenDates,
   daysUntil,
+  formatReferenceDate,
 } from './pay-dates';
 
 export const SALARY_PAY_SOON_DAYS = 3;
 export const SALARY_GRACE_DAYS = 0;
 
-export function getSalarySettings(person: Person): SalarySettings | null {
-  const monthly = normalizeAmount(person.salaryAmount ?? 0);
-  const startDate = person.salaryStartDate ?? '';
-  const endDate = person.salaryEndDate ?? '';
-  const periodWeeks = Math.min(
-    52,
-    Math.max(1, Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1)),
-  );
-  if (!monthly || !startDate) return null;
+function clampPeriodWeeks(value: number): number {
+  return Math.min(52, Math.max(1, Number(value) || 1));
+}
 
-  return {
-    monthly,
-    startDate,
-    endDate,
+/**
+ * The single source of truth for a salary's whole schedule: an ascending-sorted list of segments,
+ * each saying 'from this date, the rate/period/timing is this'. Every calculation below replays
+ * this list against the live entries — there is no separate 'baseline' or 'anchor' snapshot to
+ * keep in sync, so adding, correcting, or removing a past change can never leave a stale number
+ * behind. For a person saved before this model existed (no salaryTimeline yet), one is derived
+ * on the fly from the legacy fields — this is a pure, read-only reconstruction; nothing is
+ * persisted until the person is next saved through a workflow that writes salaryTimeline.
+ */
+export function getEffectiveTimeline(person: Person): SalaryTimelineEntry[] {
+  if (person.salaryTimeline && person.salaryTimeline.length > 0) {
+    return [...person.salaryTimeline].sort((first, second) =>
+      first.effectiveDate < second.effectiveDate
+        ? -1
+        : first.effectiveDate > second.effectiveDate
+          ? 1
+          : 0,
+    );
+  }
+  if (!person.salaryAmount || !person.salaryStartDate) return [];
+  const periodWeeks = clampPeriodWeeks(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1);
+  const payDelayMode = person.salaryPayDelayMode ?? 'none';
+  const history = [...(person.salaryHistory ?? [])].sort((first, second) =>
+    first.effectiveDate < second.effectiveDate
+      ? -1
+      : first.effectiveDate > second.effectiveDate
+        ? 1
+        : 0,
+  );
+  const segments: SalaryTimelineEntry[] = [];
+  const initialAmount = normalizeAmount(
+    history.length > 0 ? history[0]!.previousAmount : person.salaryAmount,
+  );
+  segments.push({
+    effectiveDate: person.salaryStartDate,
+    amount: initialAmount,
     periodWeeks,
-    anchorDate: person.salaryPeriodAnchorDate ?? startDate,
-    accruedBaseline: normalizeAmount(person.salaryAccruedBaseline ?? 0),
+    payDelayMode,
+  });
+  for (const change of history) {
+    segments.push({
+      effectiveDate: change.effectiveDate,
+      amount: normalizeAmount(change.newAmount),
+      periodWeeks,
+      payDelayMode,
+    });
+  }
+  // A plain re-anchor (no amount change) from before this model existed left no trace in
+  // salaryHistory — only the anchor field itself. Add it as its own segment if it isn't already
+  // covered by one of the amount-change segments above.
+  const anchor = person.salaryPeriodAnchorDate;
+  if (anchor && !segments.some((segment) => segment.effectiveDate === anchor)) {
+    segments.push({
+      effectiveDate: anchor,
+      amount: normalizeAmount(person.salaryAmount),
+      periodWeeks,
+      payDelayMode,
+    });
+  }
+  return segments.sort((first, second) =>
+    first.effectiveDate < second.effectiveDate
+      ? -1
+      : first.effectiveDate > second.effectiveDate
+        ? 1
+        : 0,
+  );
+}
+
+export function getSalarySettings(person: Person): SalarySettings | null {
+  const timeline = getEffectiveTimeline(person);
+  if (timeline.length === 0) return null;
+  const latest = timeline[timeline.length - 1]!;
+  return {
+    monthly: normalizeAmount(latest.amount),
+    startDate: timeline[0]!.effectiveDate,
+    endDate: person.salaryEndDate ?? '',
+    periodWeeks: latest.periodWeeks,
+    anchorDate: latest.effectiveDate,
+    accruedBaseline: 0,
     currency: person.salaryCurrency ?? person.currency,
-    payDelayMode: person.salaryPayDelayMode ?? 'none',
+    payDelayMode: latest.payDelayMode,
   };
 }
 
@@ -58,18 +125,126 @@ export function salaryPaidBefore(person: Pick<Person, 'entries'>, cutoffDate: st
   }, 0);
 }
 
-export function earliestUnpaidPayDate(
-  config: SalarySettings,
-  completedPeriods: number,
+function periodAmountFor(monthly: number, periodWeeks: number): number {
+  return normalizeAmount(monthly * (periodWeeks / 4));
+}
+
+interface Installment {
+  periodEndDate: string;
+  payDate: string;
+  amount: number;
+  completed: boolean;
+}
+
+/**
+ * Walks the whole timeline and produces the list of period installments (period-end date, its
+ * own delayed pay date, and its amount) up to the relevant cutoff — the end date if the person
+ * has finished, or far enough past 'today' to always include at least one still-upcoming
+ * installment otherwise (a long payment delay can otherwise leave every generated installment
+ * already in the past). Each segment only contributes its own FULLY COMPLETED periods once the
+ * next segment takes over — a re-anchor is always a clean cut, matching how it always worked
+ * here, never a continuation of the previous segment's partial period.
+ */
+function buildInstallments(
+  timeline: SalaryTimelineEntry[],
+  endDate: string,
+  referenceDate: Date,
+): Installment[] {
+  const referenceDateString = formatReferenceDate(referenceDate);
+  const installments: Installment[] = [];
+  const ended = Boolean(endDate) && compareDateStrings(endDate, referenceDateString) <= 0;
+
+  for (let index = 0; index < timeline.length; index += 1) {
+    const segment = timeline[index]!;
+    const periodDays = clampPeriodWeeks(segment.periodWeeks) * 7;
+    const isLastSegment = index === timeline.length - 1;
+    const nextSegmentStart = isLastSegment ? null : timeline[index + 1]!.effectiveDate;
+    let periodCount: number;
+    let completedCount: number;
+
+    if (!isLastSegment) {
+      const span = daysBetweenDates(segment.effectiveDate, nextSegmentStart!);
+      periodCount = Math.max(0, Math.floor(span / periodDays));
+      completedCount = periodCount;
+    } else if (ended) {
+      const span = daysBetweenDates(segment.effectiveDate, endDate);
+      periodCount = Math.max(0, Math.floor(span / periodDays));
+      completedCount = periodCount;
+    } else {
+      const span = daysBetweenDates(segment.effectiveDate, referenceDateString);
+      completedCount = Math.max(0, Math.floor(span / periodDays));
+      // period-end + delay is always >= referenceDate at k=periodsTargeted by construction
+      // (periodsTargeted*periodDays >= span, and delay only pushes the date later) — no need to
+      // search further for a still-future installment here.
+      periodCount = span <= 0 ? 1 : Math.ceil(span / periodDays);
+    }
+
+    const amount = periodAmountFor(segment.amount, segment.periodWeeks);
+    for (let k = 1; k <= periodCount; k += 1) {
+      const periodEndDate = addDays(segment.effectiveDate, k * periodDays);
+      const payDate = computeSalaryPayDate(periodEndDate, segment.payDelayMode);
+      installments.push({ periodEndDate, payDate, amount, completed: k <= completedCount });
+    }
+  }
+  return installments;
+}
+
+interface InstallmentClassification {
+  due: number;
+  upcoming: number;
+  nextPayDate: string;
+}
+
+/**
+ * Applies a straightforward payment waterfall: the live, all-time paid total is allocated against
+ * installments in chronological order, oldest first. Whatever isn't covered by the time we reach
+ * an installment is that installment's shortfall — split into 'due' (its own pay date has already
+ * passed) or 'upcoming' (it hasn't yet). This one direct comparison naturally handles advance
+ * payment, underpayment spanning several periods, and exact-boundary settlement alike, with no
+ * separate bookkeeping of 'how many periods are already paid' needed anywhere.
+ */
+function classifyInstallments(
+  installments: Installment[],
   paid: number,
-  periodAmount: number,
-): string {
-  const periodAmountSafe = periodAmount > 0 ? periodAmount : 1;
-  const paidSinceAnchor = Math.max(0, paid - config.accruedBaseline);
-  const paidPeriodsCount = Math.floor(paidSinceAnchor / periodAmountSafe);
-  const earliestUnpaidIndex = Math.min(completedPeriods, paidPeriodsCount + 1);
-  const periodEndDate = addDays(config.anchorDate, earliestUnpaidIndex * config.periodWeeks * 7);
-  return computeSalaryPayDate(periodEndDate, config.payDelayMode);
+  referenceDateString: string,
+): InstallmentClassification {
+  let cumulative = 0;
+  let due = 0;
+  let upcoming = 0;
+  let nextPayDate = '';
+  for (const installment of installments) {
+    cumulative = normalizeAmount(cumulative + installment.amount);
+    const uncovered = Math.max(0, Math.min(installment.amount, cumulative - paid));
+    // Strict: a pay date of exactly today is not yet overdue (SALARY_GRACE_DAYS applies from the
+    // day after).
+    const isPast = compareDateStrings(installment.payDate, referenceDateString) < 0;
+    if (uncovered > 0.0001) {
+      if (isPast) due = normalizeAmount(due + uncovered);
+      else {
+        upcoming = normalizeAmount(upcoming + uncovered);
+        if (!nextPayDate) nextPayDate = installment.payDate;
+      }
+    }
+  }
+  return { due, upcoming, nextPayDate };
+}
+
+/**
+ * When everything generated so far is already fully settled (nothing due or upcoming), this
+ * finds the delayed pay date of the very next period after the timeline's last segment — purely
+ * for display ('here's when your next cycle completes'), never counted toward any amount.
+ */
+function forecastFollowingPayDate(timeline: SalaryTimelineEntry[], referenceDate: Date): string {
+  const latest = timeline[timeline.length - 1];
+  if (!latest) return '';
+  const referenceDateString = formatReferenceDate(referenceDate);
+  const periodDays = clampPeriodWeeks(latest.periodWeeks) * 7;
+  const span = daysBetweenDates(latest.effectiveDate, referenceDateString);
+  const periodsTargeted = span <= 0 ? 1 : Math.ceil(span / periodDays);
+  const landedOnBoundary = span > 0 && span % periodDays === 0;
+  const nextIndex = landedOnBoundary ? periodsTargeted + 1 : periodsTargeted;
+  const periodEndDate = addDays(latest.effectiveDate, nextIndex * periodDays);
+  return computeSalaryPayDate(periodEndDate, latest.payDelayMode);
 }
 
 function disabledSalaryResult(): SalaryCalculationResult {
@@ -94,68 +269,42 @@ function disabledSalaryResult(): SalaryCalculationResult {
 }
 
 export function calculateSalary(person: Person, referenceDate: Date): SalaryCalculationResult {
-  const config = getSalarySettings(person);
-  if (!config) return disabledSalaryResult();
+  const timeline = getEffectiveTimeline(person);
+  if (timeline.length === 0) return disabledSalaryResult();
 
-  const referenceDateString = [
-    referenceDate.getFullYear(),
-    String(referenceDate.getMonth() + 1).padStart(2, '0'),
-    String(referenceDate.getDate()).padStart(2, '0'),
-  ].join('-');
-  const ended =
-    Boolean(config.endDate) && compareDateStrings(config.endDate, referenceDateString) <= 0;
-  const calculationDate = config.endDate
-    ? capReferenceDate(config.endDate, referenceDate)
-    : referenceDate;
-  const days = daysSince(config.anchorDate, calculationDate);
-  const periodDays = config.periodWeeks * 7;
-  const completedPeriods = Math.floor(days / periodDays);
-  const periodAmount = normalizeAmount(config.monthly * (config.periodWeeks / 4));
-  const accrued = config.accruedBaseline + normalizeAmount(periodAmount * completedPeriods);
+  const config = getSalarySettings(person)!;
+  const referenceDateString = formatReferenceDate(referenceDate);
+  const endDate = config.endDate;
+  const ended = Boolean(endDate) && compareDateStrings(endDate, referenceDateString) <= 0;
+  const latest = timeline[timeline.length - 1]!;
+  const periodAmount = periodAmountFor(latest.amount, latest.periodWeeks);
+  const days = daysBetweenDates(latest.effectiveDate, ended ? endDate : referenceDateString);
+  const completedPeriods = Math.max(0, Math.floor(days / (latest.periodWeeks * 7)));
+
+  const installments = buildInstallments(timeline, endDate, referenceDate);
+  const accrued = installments.reduce(
+    (sum, installment) => sum + (installment.completed ? installment.amount : 0),
+    0,
+  );
   const paid = salaryPaid(person);
-  const periodsTargeted = days <= 0 ? 1 : Math.ceil(days / periodDays);
-  const boundariesReached = completedPeriods;
-  const dueTarget =
-    config.accruedBaseline +
-    normalizeAmount(periodAmount * (ended ? boundariesReached : periodsTargeted));
-  const remaining = Math.max(0, dueTarget - paid);
-  const overdueTarget = config.accruedBaseline + normalizeAmount(periodAmount * boundariesReached);
-  const overdueRemaining = Math.max(0, overdueTarget - paid);
-  // If the reference date lands exactly on a period boundary and that period's due amount has
-  // already been fully paid (e.g. paid in advance), the forecast should point to the *next*
-  // period rather than reusing the boundary that was just settled.
-  const landedOnPaidBoundary = days > 0 && days % periodDays === 0 && remaining <= 0;
-  const forecastPeriodIndex = landedOnPaidBoundary ? periodsTargeted + 1 : periodsTargeted;
-  const nextPeriodEndDate = addDays(config.anchorDate, forecastPeriodIndex * periodDays);
-  const nextPayDateForecast = computeSalaryPayDate(nextPeriodEndDate, config.payDelayMode);
-  const earliestUnpaidDate = earliestUnpaidPayDate(config, boundariesReached, paid, periodAmount);
-  const isPastDue =
-    overdueRemaining > 0.0001 &&
-    ((config.accruedBaseline > 0 && boundariesReached === 0) ||
-      (boundariesReached > 0 && daysUntil(earliestUnpaidDate, referenceDate) < -SALARY_GRACE_DAYS));
-  const due = isPastDue ? Math.min(overdueRemaining, remaining) : 0;
+  const classification = classifyInstallments(installments, paid, referenceDateString);
   const nextPayDate =
-    overdueRemaining > 0.0001 && !isPastDue ? earliestUnpaidDate : nextPayDateForecast;
-  const daysUntilNextPay = ended ? null : daysUntil(nextPayDate, referenceDate);
-  let upcoming = remaining - due;
-  if (remaining <= 0 && !ended) {
-    // The currently-targeted period is already fully paid (including advance payment, whether or
-    // not its boundary date has technically arrived yet) — nothing is actually due or upcoming.
-    upcoming = 0;
-  }
+    classification.nextPayDate || (ended ? '' : forecastFollowingPayDate(timeline, referenceDate));
+  const { due, upcoming } = classification;
+  const daysUntilNextPay = ended || !nextPayDate ? null : daysUntil(nextPayDate, referenceDate);
   const paySoon =
     !ended && due <= 0 && daysUntilNextPay !== null && daysUntilNextPay <= SALARY_PAY_SOON_DAYS;
 
   return {
     enabled: true,
-    accrued,
+    accrued: normalizeAmount(accrued),
     paid,
     due,
     upcoming,
     currency: config.currency,
     days,
     monthly: config.monthly,
-    periodWeeks: config.periodWeeks,
+    periodWeeks: latest.periodWeeks,
     periodAmount,
     completedPeriods,
     nextPayDate,
@@ -163,8 +312,8 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
     paySoon,
     startDate: config.startDate,
     ended,
-    endDate: config.endDate,
-    payDelayMode: config.payDelayMode,
+    endDate,
+    payDelayMode: latest.payDelayMode,
   };
 }
 

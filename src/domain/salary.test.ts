@@ -1,20 +1,16 @@
 import {
   calculateSalary,
-  earliestUnpaidPayDate,
-  getSalarySettings,
+  getEffectiveTimeline,
   giftSummary,
   hasOutstandingSalaryBalance,
   salaryPaid,
 } from './salary';
 import {
   applyChangeSalary,
-  applyPayPeriodChange,
-  applySalaryAmountChange,
+  applyTimelineChange,
   endSalaryWhenArchiving,
-  recalibratePreAnchorBaseline,
-  replaySalaryHistory,
+  replaceTimeline,
   resetSalaryWhenUnarchiving,
-  syncPayDate,
 } from './salary-workflows';
 import { date, entry, person, weeklySalaryPerson, workPerson } from '../test/fixtures/golden';
 
@@ -79,8 +75,7 @@ describe('salary calculation parity', () => {
   });
 
   it('respects the configured payment delay even after the salary has ended', () => {
-    // Monthly salary, 4-week period, 4-week payment delay, work ends 2026-07-31.
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 1500,
       salaryStartDate: '2026-07-01',
       salaryPayPeriodWeeks: 4,
@@ -88,37 +83,30 @@ describe('salary calculation parity', () => {
       salaryEndDate: '2026-07-31',
       entries: [],
     });
-
-    // Right after ending: the final period completed, but the 4-week delay hasn't elapsed yet —
-    // the amount should show as upcoming, not overdue.
-    const soonAfterEnd = calculateSalary(person, date(2026, 8, 1));
+    const soonAfterEnd = calculateSalary(employee, date(2026, 8, 1));
     expect(soonAfterEnd.ended).toBe(true);
     expect(soonAfterEnd.due).toBe(0);
     expect(soonAfterEnd.upcoming).toBe(1500);
     expect(soonAfterEnd.nextPayDate).toBe('2026-08-26');
 
-    // Well past the delay window — should now flip to overdue.
-    const wellAfterDelay = calculateSalary(person, date(2026, 9, 5));
+    const wellAfterDelay = calculateSalary(employee, date(2026, 9, 5));
     expect(wellAfterDelay.due).toBe(1500);
     expect(wellAfterDelay.upcoming).toBe(0);
   });
 
   it('nets Received salary entries against Gave salary entries when counting what is paid', () => {
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       entries: [
         entry({ id: 'one', amount: 40, category: 'salary' }),
         entry({ id: 'two', amount: 20, comment: '[Salary] Legacy' }),
         entry({ id: 'three', amount: 15, type: 'Received', category: 'salary' }),
       ],
     });
-    expect(salaryPaid(person)).toBe(45);
+    expect(salaryPaid(employee)).toBe(45);
   });
 
   it('lets a Received salary entry represent a refund/clawback that reduces what is owed', () => {
-    // Real scenario: an earlier personal loan (not salary) was partly paid back, and the net
-    // remaining balance should count against an upcoming salary payment. Rather than fabricating
-    // a new entry, the original Gave and Received entries are simply re-categorized as salary.
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-01',
       salaryPayPeriodWeeks: 2,
@@ -133,17 +121,7 @@ describe('salary calculation parity', () => {
         }),
       ],
     });
-    expect(salaryPaid(person)).toBe(1200);
-  });
-
-  it('identifies the earliest unpaid completed period behind a paid period', () => {
-    const salariedPerson = weeklySalaryPerson({
-      entries: [entry({ amount: 100, category: 'salary' })],
-    });
-    const settings = getSalarySettings(salariedPerson);
-    expect(settings).not.toBeNull();
-    if (!settings) throw new Error('Expected salary settings');
-    expect(earliestUnpaidPayDate(settings, 2, 100, 100)).toBe('2026-03-15');
+    expect(salaryPaid(employee)).toBe(1200);
   });
 
   it('continues salary calculation while a person is archived', () => {
@@ -153,7 +131,7 @@ describe('salary calculation parity', () => {
   });
 
   it('does not resurface a paid period as due soon when settled exactly on its boundary', () => {
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-01',
       salaryPayPeriodWeeks: 2,
@@ -163,9 +141,7 @@ describe('salary calculation parity', () => {
         entry({ id: 'e3', amount: 1500, category: 'salary', date: '2026-08-09' }),
       ],
     });
-    // referenceDate lands exactly on the 3rd period boundary (14-day cycle from 2026-07-01),
-    // which was just paid in advance on 2026-08-09.
-    const result = calculateSalary(person, date(2026, 8, 12));
+    const result = calculateSalary(employee, date(2026, 8, 12));
     expect(result.due).toBe(0);
     expect(result.upcoming).toBe(0);
     expect(result.paySoon).toBe(false);
@@ -173,7 +149,7 @@ describe('salary calculation parity', () => {
   });
 
   it('does not resurface a paid period as due soon when paid a few days before its boundary', () => {
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-01',
       salaryPayPeriodWeeks: 2,
@@ -183,16 +159,14 @@ describe('salary calculation parity', () => {
         entry({ id: 'e3', amount: 1500, category: 'salary', date: '2026-08-09' }),
       ],
     });
-    // referenceDate is 3 days before the 3rd period boundary (2026-08-12), which was already
-    // paid in full on 2026-08-09 — nothing should be flagged as due or upcoming yet.
-    const result = calculateSalary(person, date(2026, 8, 9));
+    const result = calculateSalary(employee, date(2026, 8, 9));
     expect(result.due).toBe(0);
     expect(result.upcoming).toBe(0);
     expect(result.nextPayDate).toBe('2026-08-12');
   });
 
   it('flags a missed payment as overdue the very next day, with no extra grace day', () => {
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-01',
       salaryPayPeriodWeeks: 2,
@@ -201,24 +175,21 @@ describe('salary calculation parity', () => {
         entry({ id: 'e2', amount: 1500, category: 'salary', date: '2026-07-29' }),
       ],
     });
-    // The 2026-08-12 boundary (3rd period) was never paid. One day later it must already read
-    // as overdue, and the following (currently in-progress) period shows separately as upcoming.
-    const result = calculateSalary(person, date(2026, 8, 13));
+    const result = calculateSalary(employee, date(2026, 8, 13));
     expect(result.due).toBe(1500);
     expect(result.upcoming).toBe(1500);
     expect(result.nextPayDate).toBe('2026-08-26');
   });
 
   it('shows a final unpaid balance as overdue (not upcoming) the day after the salary ends', () => {
-    const person = weeklySalaryPerson({
+    const employee = weeklySalaryPerson({
       salaryAmount: 3500,
       salaryStartDate: '2026-01-01',
       salaryPayPeriodWeeks: 2,
-      // Exactly 6 periods (84 days) after the start date.
       salaryEndDate: '2026-03-26',
       entries: [entry({ id: 'e1', amount: 8750, category: 'salary', date: '2026-03-20' })],
     });
-    const result = calculateSalary(person, date(2026, 3, 27));
+    const result = calculateSalary(employee, date(2026, 3, 27));
     expect(result.ended).toBe(true);
     expect(result.due).toBe(1750);
     expect(result.upcoming).toBe(0);
@@ -229,300 +200,200 @@ describe('salary calculation parity', () => {
   });
 });
 
-describe('salary workflow parity', () => {
-  it('banks accrued salary when the pay period changes', () => {
-    const changed = applyPayPeriodChange(weeklySalaryPerson(), 2, date(2026, 3, 10));
-    expect(changed.salaryAccruedBaseline).toBe(100);
-    expect(changed.salaryPeriodAnchorDate).toBe('2026-03-10');
-    expect(changed.salaryPayPeriodWeeks).toBe(2);
+describe('getEffectiveTimeline (legacy migration)', () => {
+  it('returns empty for an unconfigured person', () => {
+    expect(getEffectiveTimeline(person({ entries: [] }))).toEqual([]);
   });
 
-  it('does not re-anchor when the period is unchanged', () => {
-    const changed = applyPayPeriodChange(weeklySalaryPerson(), 1, date(2026, 3, 10));
-    expect(changed.salaryAccruedBaseline).toBeUndefined();
-    expect(changed.salaryPeriodAnchorDate).toBeUndefined();
-  });
-
-  it('adds the sync adjustment as a real entry, and banks pre-anchor paid history as the baseline', () => {
-    const synced = syncPayDate(
-      weeklySalaryPerson({ entries: [entry({ amount: 40, category: 'salary' })] }),
-      {
-        adjustmentAmount: 60,
-        newAnchorDate: '2026-03-10',
-        adjustmentEntryId: 'sync-entry',
-        referenceDate: date(2026, 3, 10),
-      },
+  it('uses salaryTimeline directly when present, sorted ascending', () => {
+    const timeline = getEffectiveTimeline(
+      weeklySalaryPerson({
+        salaryTimeline: [
+          { effectiveDate: '2026-08-01', amount: 3000, periodWeeks: 2, payDelayMode: 'none' },
+          { effectiveDate: '2026-07-01', amount: 2500, periodWeeks: 1, payDelayMode: 'none' },
+        ],
+      }),
     );
-    expect(synced.entries[0]).toMatchObject({
-      id: 'sync-entry',
-      amount: 60,
-      category: 'salary',
-      date: '2026-03-10',
-    });
-    // The pre-existing 40 entry (dated 2026-03-01, before the new anchor) is banked as baseline
-    // so it doesn't get netted against periods that start only from the new anchor onward. The
-    // adjustment entry itself is dated on the anchor date, so it's correctly excluded (not
-    // 'before' the anchor) and instead counts live toward the new cycle, same as before.
-    expect(synced.salaryAccruedBaseline).toBe(40);
-    expect(synced.salaryPeriodAnchorDate).toBe('2026-03-10');
+    expect(timeline.map((segment) => segment.effectiveDate)).toEqual(['2026-07-01', '2026-08-01']);
   });
 
-  it('also changes the salary amount when provided, banking accrued at the old rate', () => {
+  it('reconstructs one segment from plain legacy fields with no history', () => {
+    const timeline = getEffectiveTimeline(
+      weeklySalaryPerson({ salaryAmount: 2000, salaryStartDate: '2026-06-01' }),
+    );
+    expect(timeline).toEqual([
+      { effectiveDate: '2026-06-01', amount: 2000, periodWeeks: 1, payDelayMode: 'none' },
+    ]);
+  });
+
+  it('reconstructs multiple segments from legacy salaryHistory', () => {
+    const timeline = getEffectiveTimeline(
+      weeklySalaryPerson({
+        salaryAmount: 3000,
+        salaryStartDate: '2026-06-01',
+        salaryPayPeriodWeeks: 2,
+        salaryHistory: [
+          { effectiveDate: '2026-08-01', previousAmount: 2500, newAmount: 3000 },
+          { effectiveDate: '2026-07-01', previousAmount: 2000, newAmount: 2500 },
+        ],
+      }),
+    );
+    expect(timeline).toEqual([
+      { effectiveDate: '2026-06-01', amount: 2000, periodWeeks: 2, payDelayMode: 'none' },
+      { effectiveDate: '2026-07-01', amount: 2500, periodWeeks: 2, payDelayMode: 'none' },
+      { effectiveDate: '2026-08-01', amount: 3000, periodWeeks: 2, payDelayMode: 'none' },
+    ]);
+  });
+
+  it('adds a segment for a legacy plain re-anchor (no matching history entry)', () => {
+    const timeline = getEffectiveTimeline(
+      weeklySalaryPerson({
+        salaryAmount: 2000,
+        salaryStartDate: '2026-06-01',
+        salaryPeriodAnchorDate: '2026-08-01',
+      }),
+    );
+    expect(timeline).toEqual([
+      { effectiveDate: '2026-06-01', amount: 2000, periodWeeks: 1, payDelayMode: 'none' },
+      { effectiveDate: '2026-08-01', amount: 2000, periodWeeks: 1, payDelayMode: 'none' },
+    ]);
+  });
+});
+
+describe('applyTimelineChange', () => {
+  it('creates the first segment for a brand-new salary', () => {
+    const configured = applyTimelineChange(person({ entries: [] }), {
+      effectiveDate: '2026-09-09',
+      amount: 3000,
+      periodWeeks: 2,
+      payDelayMode: '2weeks',
+    });
+    expect(getEffectiveTimeline(configured)).toEqual([
+      { effectiveDate: '2026-09-09', amount: 3000, periodWeeks: 2, payDelayMode: '2weeks' },
+    ]);
+    expect(configured.salaryAmount).toBe(3000);
+    expect(configured.salaryStartDate).toBe('2026-09-09');
+  });
+
+  it('appends a new segment, carrying forward whatever is not specified', () => {
+    const before = weeklySalaryPerson({
+      salaryAmount: 2000,
+      salaryStartDate: '2026-07-01',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+    });
+    const changed = applyTimelineChange(before, { effectiveDate: '2026-09-09', amount: 3000 });
+    expect(getEffectiveTimeline(changed)).toEqual([
+      { effectiveDate: '2026-07-01', amount: 2000, periodWeeks: 2, payDelayMode: 'none' },
+      { effectiveDate: '2026-09-09', amount: 3000, periodWeeks: 2, payDelayMode: 'none' },
+    ]);
+  });
+
+  it('replaces the segment at the same date rather than duplicating it', () => {
+    const before = applyTimelineChange(person({ entries: [] }), {
+      effectiveDate: '2026-09-09',
+      amount: 3000,
+      periodWeeks: 2,
+    });
+    const corrected = applyTimelineChange(before, { effectiveDate: '2026-09-09', amount: 3500 });
+    expect(getEffectiveTimeline(corrected)).toEqual([
+      { effectiveDate: '2026-09-09', amount: 3500, periodWeeks: 2, payDelayMode: 'none' },
+    ]);
+  });
+
+  it('reported scenario: the exact reported 2000-for-one-period-then-3000 case', () => {
+    const before = weeklySalaryPerson({
+      salaryAmount: 2000,
+      salaryStartDate: '2026-07-29',
+      salaryPayPeriodWeeks: 2,
+      entries: [],
+    });
+    const changed = applyTimelineChange(before, { effectiveDate: '2026-08-12', amount: 3000 });
+    const result = calculateSalary(changed, date(2026, 8, 12));
+    expect(result.accrued).toBe(1000);
+    expect(result.periodAmount).toBe(1500);
+  });
+});
+
+describe('replaceTimeline (Manage Salary History)', () => {
+  it('rebuilds the whole timeline from a corrected/edited list', () => {
+    const before = weeklySalaryPerson({ salaryAmount: 2000, salaryStartDate: '2026-07-01' });
+    const corrected = replaceTimeline(before, [
+      { effectiveDate: '2026-06-01', amount: 1800, periodWeeks: 1, payDelayMode: 'none' },
+      { effectiveDate: '2026-07-01', amount: 2000, periodWeeks: 2, payDelayMode: '2weeks' },
+    ]);
+    expect(getEffectiveTimeline(corrected)).toEqual([
+      { effectiveDate: '2026-06-01', amount: 1800, periodWeeks: 1, payDelayMode: 'none' },
+      { effectiveDate: '2026-07-01', amount: 2000, periodWeeks: 2, payDelayMode: '2weeks' },
+    ]);
+    expect(corrected.salaryStartDate).toBe('2026-06-01');
+    expect(corrected.salaryAmount).toBe(2000);
+  });
+
+  it('reported scenario: correcting to 2000/month then 3000 from 12/08, computed correctly afterward', () => {
+    const before = weeklySalaryPerson({ salaryAmount: 3000, salaryStartDate: '2026-07-29' });
+    const corrected = replaceTimeline(before, [
+      { effectiveDate: '2026-07-29', amount: 2000, periodWeeks: 2, payDelayMode: 'none' },
+      { effectiveDate: '2026-08-12', amount: 3000, periodWeeks: 2, payDelayMode: 'none' },
+    ]);
+    const result = calculateSalary(corrected, date(2026, 8, 12));
+    expect(result.accrued).toBe(1000);
+  });
+});
+
+describe('applyChangeSalary (the whole Change Salary form)', () => {
+  it('fully configures a brand-new, never-salaried person', () => {
+    const configured = applyChangeSalary(person({ entries: [] }), {
+      effectiveDate: '2026-09-09',
+      amount: 3000,
+      payDelayMode: '2weeks',
+      periodWeeks: 2,
+      referenceDate: date(2026, 9, 9),
+    });
+    expect(configured.salaryAmount).toBe(3000);
+    expect(configured.salaryStartDate).toBe('2026-09-09');
+    const result = calculateSalary(configured, date(2026, 9, 9));
+    expect(result.enabled).toBe(true);
+    expect(result.periodAmount).toBe(1500);
+  });
+
+  it('records a one-time adjustment as a real entry, dated today', () => {
     const before = weeklySalaryPerson({
       salaryAmount: 2000,
       salaryStartDate: '2026-07-27',
       salaryPayPeriodWeeks: 2,
-      entries: [entry({ id: 'e1', amount: 50, category: 'salary', date: '2026-08-09' })],
+      entries: [entry({ amount: 40, category: 'salary' })],
     });
-    const synced = syncPayDate(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-08-13',
-      adjustmentEntryId: 'unused',
+    const changed = applyChangeSalary(before, {
+      effectiveDate: '2026-07-27',
+      adjustmentAmount: 60,
+      adjustmentEntryId: 'sync-entry',
       referenceDate: date(2026, 8, 13),
-      newAmount: 3000,
     });
-    expect(synced.salaryAmount).toBe(3000);
-    expect(synced.salaryPeriodAnchorDate).toBe('2026-08-13');
-    // Accrued under the OLD 2000/month rate as of 2026-08-13: one completed period (1000).
-    expect(synced.salaryAccruedBaseline).toBe(1000);
-    expect(synced.salaryHistory).toEqual([
-      { effectiveDate: '2026-08-13', previousAmount: 2000, newAmount: 3000 },
-    ]);
+    expect(changed.entries[0]).toMatchObject({
+      id: 'sync-entry',
+      amount: 60,
+      category: 'salary',
+      date: '2026-08-13',
+    });
   });
 
-  it('also updates the payment delay mode when provided', () => {
-    const before = weeklySalaryPerson({ salaryPayDelayMode: 'none' });
-    const synced = syncPayDate(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-03-10',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 3, 10),
-      payDelayMode: '4weeks',
-    });
-    expect(synced.salaryPayDelayMode).toBe('4weeks');
-  });
-
-  it('leaves the payment delay mode untouched when not provided', () => {
-    const before = weeklySalaryPerson({ salaryPayDelayMode: '2weeks' });
-    const synced = syncPayDate(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-03-10',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 3, 10),
-    });
-    expect(synced.salaryPayDelayMode).toBe('2weeks');
-  });
-
-  it('does not reset the schedule when only Payment Timing changes (the submitted date matches the current anchor)', () => {
-    // Reproduces the reported bug: an established payroll history where paid-to-date already
-    // exceeds what a freshly-reset (baseline=0, anchor=today) schedule would expect — if the
-    // anchor were wrongly reset here, 'upcoming' would incorrectly drop to 0 via the advance-
-    // payment-suppression rule, even though a real amount is genuinely owed on the next date.
-    const before = weeklySalaryPerson({
-      salaryAmount: 3000,
-      salaryStartDate: '2026-07-01',
-      salaryPayPeriodWeeks: 2,
-      salaryPayDelayMode: 'none',
-      entries: [
-        entry({ id: 'e1', amount: 1500, category: 'salary', date: '2026-07-15' }),
-        entry({ id: 'e2', amount: 1500, category: 'salary', date: '2026-07-29' }),
-        entry({ id: 'e3', amount: 1500, category: 'salary', date: '2026-08-12' }),
-        entry({ id: 'e4', amount: 1500, category: 'salary', date: '2026-08-26' }),
-        entry({ id: 'e5', amount: 1500, category: 'salary', date: '2026-09-09' }),
-      ],
-    });
-    const beforeResult = calculateSalary(before, date(2026, 9, 23));
-    expect(beforeResult.upcoming).toBeGreaterThan(0);
-
-    // The sheet now defaults the date field to the person's current anchor (salaryStartDate
-    // here, since no anchor is set), so an unedited submission reports the same date back.
-    const synced = syncPayDate(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-07-01',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 23),
-      payDelayMode: '2weeks',
-    });
-    expect(synced.salaryPeriodAnchorDate).toBeUndefined();
-    expect(synced.salaryAccruedBaseline).toBeUndefined();
-
-    const afterResult = calculateSalary(synced, date(2026, 9, 23));
-    expect(afterResult.upcoming).toBe(beforeResult.upcoming);
-  });
-
-  it('banks pre-anchor paid history when re-anchoring, instead of netting it against the new cycle', () => {
-    // Reported scenario: worked one week (22/07-29/07) and was paid 750 for it, then switched to
-    // a new bi-weekly cycle anchored at 29/07. That 750 must not count as credit toward periods
-    // that only start from 29/07 — the upcoming period must still show its full amount.
-    const person = weeklySalaryPerson({
-      salaryAmount: 3000,
-      salaryStartDate: '2026-07-22',
-      salaryPayPeriodWeeks: 2,
-      entries: [
-        entry({ id: 'week-1', amount: 750, category: 'salary', date: '2026-07-25' }),
-        entry({ id: 'p1', amount: 1500, category: 'salary', date: '2026-08-05' }),
-        entry({ id: 'p2', amount: 1500, category: 'salary', date: '2026-08-19' }),
-        entry({ id: 'p3', amount: 1500, category: 'salary', date: '2026-09-02' }),
-      ],
-    });
-    const synced = syncPayDate(person, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-07-29',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 20),
-    });
-    // Only the pre-anchor entry (dated before 2026-07-29) is banked; the three post-anchor
-    // payments stay live and count toward the new cycle's periods as usual.
-    expect(synced.salaryAccruedBaseline).toBe(750);
-    expect(synced.salaryPeriodAnchorDate).toBe('2026-07-29');
-
-    const result = calculateSalary(synced, date(2026, 9, 20));
-    // 3 completed periods since 29/07 (1500 each = 4500), exactly covered by the 3 post-anchor
-    // payments (1500*3=4500) — so the 4th, upcoming period owes its full 1500, not a partial
-    // amount reduced by the unrelated pre-cycle payment.
-    expect(result.due).toBe(0);
-    expect(result.upcoming).toBe(1500);
-  });
-
-  it('replaySalaryHistory rebuilds the exact reported scenario (2000/month, then 3000 from 12/08)', () => {
-    const person = weeklySalaryPerson({
-      salaryStartDate: '2026-07-29',
-      salaryPayPeriodWeeks: 2,
-      entries: [],
-    });
-    const rebuilt = replaySalaryHistory(person, 2000, [
-      { effectiveDate: '2026-08-12', amount: 3000 },
-    ]);
-    expect(rebuilt.salaryAmount).toBe(3000);
-    expect(rebuilt.salaryPeriodAnchorDate).toBe('2026-08-12');
-    // 29/07-12/08 is exactly one completed 2-week period at the OLD 2000/month rate
-    // (periodAmount 1000) — that's what should be owed for it.
-    expect(rebuilt.salaryAccruedBaseline).toBe(1000);
-    expect(rebuilt.salaryHistory).toEqual([
-      { effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 },
-    ]);
-
-    const result = calculateSalary(rebuilt, date(2026, 8, 12));
-    expect(result.accrued).toBe(1000);
-  });
-
-  it('replaySalaryHistory correctly handles multiple changes and reordering', () => {
-    const person = weeklySalaryPerson({
-      salaryStartDate: '2026-01-01',
-      salaryPayPeriodWeeks: 2,
-      entries: [],
-    });
-    // Provided out of order on purpose — replay must sort by date itself.
-    const rebuilt = replaySalaryHistory(person, 1000, [
-      { effectiveDate: '2026-03-01', amount: 2000 },
-      { effectiveDate: '2026-02-01', amount: 1500 },
-    ]);
-    expect(rebuilt.salaryAmount).toBe(2000);
-    expect(rebuilt.salaryHistory).toEqual([
-      { effectiveDate: '2026-03-01', previousAmount: 1500, newAmount: 2000 },
-      { effectiveDate: '2026-02-01', previousAmount: 1000, newAmount: 1500 },
-    ]);
-  });
-
-  it('recalibratePreAnchorBaseline keeps a plain re-anchor baseline in sync after a pre-anchor entry is deleted', () => {
-    // Reported scenario: a placeholder 10 entry existed before re-anchoring to the real cycle
-    // (banking it as baseline, per the earlier fix), then that entry gets deleted later.
-    const withPlaceholder = weeklySalaryPerson({
-      salaryStartDate: '2026-07-22',
-      salaryPayPeriodWeeks: 2,
-      entries: [entry({ id: 'placeholder', amount: 10, category: 'salary', date: '2026-07-25' })],
-    });
-    const reanchored = syncPayDate(withPlaceholder, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-07-29',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 7, 29),
-    });
-    expect(reanchored.salaryAccruedBaseline).toBe(10);
-
-    // Now the placeholder entry is deleted — baseline must follow, not stay stuck at 10.
-    const afterDelete = { ...reanchored, entries: [] };
-    const recalibrated = recalibratePreAnchorBaseline(afterDelete);
-    expect(recalibrated.salaryAccruedBaseline).toBe(0);
-  });
-
-  it('recalibratePreAnchorBaseline leaves an amount-change-banked baseline untouched', () => {
-    const person = weeklySalaryPerson({
-      salaryStartDate: '2026-07-29',
-      salaryPayPeriodWeeks: 2,
-      entries: [],
-    });
-    const changed = replaySalaryHistory(person, 2000, [
-      { effectiveDate: '2026-08-12', amount: 3000 },
-    ]);
-    expect(changed.salaryAccruedBaseline).toBe(1000);
-    // No entries at all to derive anything from, and there IS a history entry at the anchor date
-    // — this baseline is a theoretical old-rate accrual, not entry-derived, so it must stay put.
-    const recalibrated = recalibratePreAnchorBaseline(changed);
-    expect(recalibrated.salaryAccruedBaseline).toBe(1000);
-  });
-
-  it('reported scenario: a 2-week pay period with a 2-week payment delay must not double-count', () => {
-    // Cycle starts 09/09, 2-week periods -> period 1 ends 23/09. Payment timing adds a 2-week
-    // delay on top of that -> the actual pay date should be 07/10, not a further jump to 21/10.
-    const person = weeklySalaryPerson({
-      salaryAmount: 3000,
-      salaryStartDate: '2026-09-09',
-      salaryPeriodAnchorDate: '2026-09-09',
-      salaryAccruedBaseline: 0,
-      salaryPayPeriodWeeks: 2,
-      salaryPayDelayMode: '2weeks',
-      entries: [],
-    });
-    for (const day of [10, 20, 23, 26, 30]) {
-      expect(calculateSalary(person, date(2026, 9, day)).nextPayDate).toBe('2026-10-07');
-    }
-    for (const day of [1, 5, 7]) {
-      expect(calculateSalary(person, date(2026, 10, day)).nextPayDate).toBe('2026-10-07');
-    }
-  });
-
-  it('a phantom advance-payment entry (from a stale One-time adjustment default) causes exactly the reported 21/10 skip-ahead', () => {
-    // This is what actually produced the reported bug: an entry dated at/near the anchor that
-    // happens to equal one period's amount makes the schedule correctly (given that entry) treat
-    // period 1 as already paid and look ahead to period 2's own delayed date instead.
-    const person = weeklySalaryPerson({
-      salaryAmount: 3000,
-      salaryStartDate: '2026-09-09',
-      salaryPeriodAnchorDate: '2026-09-09',
-      salaryAccruedBaseline: 0,
-      salaryPayPeriodWeeks: 2,
-      salaryPayDelayMode: '2weeks',
-      entries: [
-        { id: 'phantom', amount: 1500, type: 'Gave', date: '2026-09-09', category: 'salary' },
-      ],
-    });
-    expect(calculateSalary(person, date(2026, 9, 26)).nextPayDate).toBe('2026-10-21');
-  });
-
-  it('applyChangeSalary: a period change re-anchors to the chosen New cycle start date, not today — fixing the actual reported 21/10 bug', () => {
-    // The true root cause of the reported bug: changing Pay period via Change Salary always
-    // re-anchored to 'today' (whenever it happened to be saved/previewed) instead of the New
-    // cycle start date the person typed (09/09). With a long-running employee's large lifetime
-    // paid total, re-anchoring to the wrong date threw the whole schedule off by extra periods.
+  it('a period change re-anchors to the chosen date, not today', () => {
     const before = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-22',
-      salaryPeriodAnchorDate: '2026-07-29',
-      salaryAccruedBaseline: 0,
       salaryPayPeriodWeeks: 1,
       salaryPayDelayMode: 'none',
       entries: [{ id: 'old1', amount: 5240, type: 'Gave', date: '2026-08-01', category: 'salary' }],
     });
     const after = applyChangeSalary(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-09-09',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 26),
+      effectiveDate: '2026-09-09',
       payDelayMode: '2weeks',
       periodWeeks: 2,
+      referenceDate: date(2026, 9, 26),
     });
-    expect(after.salaryPeriodAnchorDate).toBe('2026-09-09');
+    const timeline = getEffectiveTimeline(after);
+    expect(timeline[timeline.length - 1]!.effectiveDate).toBe('2026-09-09');
     for (const [month, day] of [
       [9, 20],
       [9, 23],
@@ -533,165 +404,53 @@ describe('salary workflow parity', () => {
       expect(calculateSalary(after, date(2026, month, day)).nextPayDate).toBe('2026-10-07');
     }
   });
+});
 
-  it('applyChangeSalary can fully configure a brand-new, never-salaried person (amount + start date + period + timing)', () => {
-    const fresh = person({ entries: [] });
-    const configured = applyChangeSalary(fresh, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-09-09',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 9),
-      newAmount: 3000,
-      payDelayMode: '2weeks',
+describe('resetSalaryWhenUnarchiving / endSalaryWhenArchiving', () => {
+  it('re-anchors to today at the same rate/period/timing and clears the end date', () => {
+    const archived = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-01',
+      salaryPayPeriodWeeks: 2,
+      salaryEndDate: '2026-08-01',
+      archived: true,
+      expanded: true,
+      entries: [entry({ amount: 100, category: 'salary' })],
+    });
+    const reset = resetSalaryWhenUnarchiving(archived, date(2026, 9, 5));
+    expect(reset).toMatchObject({ archived: false, expanded: false, salaryEndDate: '' });
+    const timeline = getEffectiveTimeline(reset);
+    expect(timeline[timeline.length - 1]).toEqual({
+      effectiveDate: '2026-09-05',
+      amount: 3000,
       periodWeeks: 2,
-    });
-    expect(configured.salaryAmount).toBe(3000);
-    expect(configured.salaryStartDate).toBe('2026-09-09');
-    expect(configured.salaryPeriodAnchorDate).toBe('2026-09-09');
-    expect(configured.salaryPayPeriodWeeks).toBe(2);
-    expect(configured.salaryPayDelayMode).toBe('2weeks');
-    expect(configured.salaryAccruedBaseline).toBe(0);
-
-    const result = calculateSalary(configured, date(2026, 9, 9));
-    expect(result.enabled).toBe(true);
-    expect(result.periodAmount).toBe(1500);
-  });
-
-  it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {
-    const reset = resetSalaryWhenUnarchiving(
-      weeklySalaryPerson({
-        archived: true,
-        expanded: true,
-        entries: [entry({ amount: 100, category: 'salary' })],
-      }),
-      date(2026, 4, 5),
-    );
-    expect(reset).toMatchObject({
-      archived: false,
-      expanded: false,
-      salaryAccruedBaseline: 0,
-      salaryPeriodAnchorDate: '2026-04-05',
-      salaryEndDate: '',
+      payDelayMode: 'none',
     });
   });
 
-  it('sets the salary end date to today when archiving, unless one is already set', () => {
-    const ended = endSalaryWhenArchiving(weeklySalaryPerson(), date(2026, 4, 5));
-    expect(ended.salaryEndDate).toBe('2026-04-05');
+  it('sets the end date only once, keeping an already-set one', () => {
+    const withEndDate = weeklySalaryPerson({ salaryEndDate: '2026-03-01' });
+    const archived = endSalaryWhenArchiving(withEndDate, date(2026, 4, 1));
+    expect(archived.salaryEndDate).toBe('2026-03-01');
 
-    const unchanged = endSalaryWhenArchiving(
-      weeklySalaryPerson({ salaryEndDate: '2026-06-01' }),
-      date(2026, 4, 5),
-    );
-    expect(unchanged.salaryEndDate).toBe('2026-06-01');
+    const withoutEndDate = weeklySalaryPerson({ salaryEndDate: '' });
+    const nowEnded = endSalaryWhenArchiving(withoutEndDate, date(2026, 4, 1));
+    expect(nowEnded.salaryEndDate).toBe('2026-04-01');
   });
+});
 
-  it('banks accrued at the old rate up to the effective date, then applies the new rate', () => {
-    const before = weeklySalaryPerson({
-      salaryAmount: 2000,
-      salaryStartDate: '2026-07-27',
-      salaryPayPeriodWeeks: 2,
-      entries: [entry({ id: 'e1', amount: 50, category: 'salary', date: '2026-08-09' })],
-    });
-    const changed = applySalaryAmountChange(before, 3000, date(2026, 8, 13));
-    expect(changed.salaryAmount).toBe(3000);
-    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-13');
-    // Accrued under the OLD 2000/month rate as of 2026-08-13: one completed period (1000).
-    expect(changed.salaryAccruedBaseline).toBe(1000);
-
-    const result = calculateSalary(changed, date(2026, 8, 13));
-    // Nothing has elapsed under the new rate/anchor yet, so nothing new is due; the banked old
-    // balance (1000) minus what's already been paid (50) is still owed.
-    expect(result.due).toBe(950);
-    expect(result.periodAmount).toBe(1500);
-    expect(changed.salaryHistory).toEqual([
-      { effectiveDate: '2026-08-13', previousAmount: 2000, newAmount: 3000 },
-    ]);
-  });
-
-  it('does not let a stale banked baseline bypass the grace period for a later, genuinely new pay date', () => {
-    // Same setup as above: banked baseline from a past salary change (anchor 2026-08-13).
-    const before = weeklySalaryPerson({
-      salaryAmount: 2000,
-      salaryStartDate: '2026-07-27',
-      salaryPayPeriodWeeks: 2,
-      entries: [entry({ id: 'e1', amount: 50, category: 'salary', date: '2026-08-09' })],
-    });
-    const changed = applySalaryAmountChange(before, 3000, date(2026, 8, 13));
-
-    // Weeks later, a genuinely NEW period boundary lands exactly today (2026-08-27) — the banked
-    // baseline is still nonzero (never reset), but this new period must still get the normal
-    // grace: not overdue on the pay date itself.
-    const onPayDate = calculateSalary(changed, date(2026, 8, 27));
-    expect(onPayDate.due).toBe(0);
-    expect(onPayDate.upcoming).toBeGreaterThan(0);
-
-    // The day after, it correctly becomes overdue.
-    const dayAfter = calculateSalary(changed, date(2026, 8, 28));
-    expect(dayAfter.due).toBeGreaterThan(0);
-  });
-
-  it('prepends new salary changes and keeps history bounded to the most recent 20', () => {
-    const before = weeklySalaryPerson({
-      salaryAmount: 2000,
-      salaryStartDate: '2026-07-27',
-      salaryHistory: [{ effectiveDate: '2026-06-01', previousAmount: 1500, newAmount: 2000 }],
-    });
-    const changed = applySalaryAmountChange(before, 2500, date(2026, 8, 13));
-    expect(changed.salaryHistory).toEqual([
-      { effectiveDate: '2026-08-13', previousAmount: 2000, newAmount: 2500 },
-      { effectiveDate: '2026-06-01', previousAmount: 1500, newAmount: 2000 },
-    ]);
-  });
-
-  it('does not re-anchor when the salary amount is unchanged', () => {
-    const before = weeklySalaryPerson();
-    const changed = applySalaryAmountChange(before, before.salaryAmount ?? 0, date(2026, 4, 5));
-    expect(changed.salaryPeriodAnchorDate).toBeUndefined();
-    expect(changed.salaryAccruedBaseline).toBeUndefined();
-  });
-
-  it('fully reflects a later edit to an entry that already existed at sync time', () => {
-    // Real reported scenario: sync the schedule (no adjustment), then go back and correct the
-    // amount on the entry that was already there. The full new amount must count, not just the
-    // delta minus whatever got silently banked into a stale baseline snapshot.
-    const before = weeklySalaryPerson({
-      salaryAmount: 2000,
-      salaryStartDate: '2026-07-27',
-      salaryPayPeriodWeeks: 2,
-      entries: [entry({ id: 'e1', amount: 50, category: 'salary', date: '2026-08-09' })],
-    });
-    const synced = syncPayDate(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-07-27',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 8, 13),
-    });
-    expect(calculateSalary(synced, date(2026, 8, 13)).due).toBe(950);
-
-    // Now correct that same entry's amount from 50 to 100.
-    const corrected = {
-      ...synced,
-      entries: synced.entries.map((e) => (e.id === 'e1' ? { ...e, amount: 100 } : e)),
-    };
-    const result = calculateSalary(corrected, date(2026, 8, 13));
-    expect(result.paid).toBe(100);
-    expect(result.due).toBe(900);
-  });
-
-  it('hasOutstandingSalaryBalance: true for an ended employee with an unpaid final period, false once paid', () => {
+describe('hasOutstandingSalaryBalance', () => {
+  it('true for an ended employee with an unpaid final period, false once paid', () => {
     const stillOwed = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-29',
-      salaryPeriodAnchorDate: '2026-07-29',
-      salaryAccruedBaseline: 0,
       salaryPayPeriodWeeks: 2,
       salaryPayDelayMode: 'none',
       salaryEndDate: '2026-09-23',
       entries: [
-        { id: 'p1', amount: 1500, type: 'Gave', date: '2026-08-12', category: 'salary' },
-        { id: 'p2', amount: 1500, type: 'Gave', date: '2026-08-26', category: 'salary' },
-        { id: 'p3', amount: 1500, type: 'Gave', date: '2026-09-09', category: 'salary' },
+        entry({ id: 'p1', amount: 1500, category: 'salary', date: '2026-08-12' }),
+        entry({ id: 'p2', amount: 1500, category: 'salary', date: '2026-08-26' }),
+        entry({ id: 'p3', amount: 1500, category: 'salary', date: '2026-09-09' }),
       ],
     });
     expect(hasOutstandingSalaryBalance(stillOwed, date(2026, 9, 26))).toBe(true);
@@ -700,58 +459,38 @@ describe('salary workflow parity', () => {
       ...stillOwed,
       entries: [
         ...stillOwed.entries,
-        {
-          id: 'final',
-          amount: 1500,
-          type: 'Gave' as const,
-          date: '2026-09-26',
-          category: 'salary' as const,
-        },
+        entry({ id: 'final', amount: 1500, category: 'salary', date: '2026-09-26' }),
       ],
     };
     expect(hasOutstandingSalaryBalance(settled, date(2026, 9, 26))).toBe(false);
   });
+});
 
-  it('reported scenario (Rati): a large baked-in baseline from a period-change re-anchor must not make earliestUnpaidPayDate think a period is already paid', () => {
-    // Re-anchoring via a pay period change banks a (correct, large) theoretical baseline. The bug:
-    // earliestUnpaidPayDate compared raw all-time paid against periodAmount to guess how many
-    // periods were 'already paid', with no idea that a big chunk of that paid total was already
-    // accounted for by the baseline — so it thought periods were settled when they weren't, and
-    // skipped ahead to the wrong period's delayed pay date once calendar time reached the correct
-    // date (07/10 was actually still pending, not settled).
+describe('reported scenarios: end-to-end regression coverage', () => {
+  it('Rati: a large lifetime-paid total from before a re-anchor must not make the schedule think a period is already paid', () => {
     const before = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-29',
-      salaryPeriodAnchorDate: '2026-07-29',
-      salaryAccruedBaseline: 0,
       salaryPayPeriodWeeks: 1,
       salaryPayDelayMode: 'none',
-      entries: [{ id: 'old1', amount: 4000, type: 'Gave', date: '2026-08-15', category: 'salary' }],
+      entries: [{ id: 'old1', amount: 4500, type: 'Gave', date: '2026-08-15', category: 'salary' }],
     });
     const after = applyChangeSalary(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-09-09',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 9),
+      effectiveDate: '2026-09-09',
       payDelayMode: '2weeks',
       periodWeeks: 2,
+      referenceDate: date(2026, 9, 9),
     });
-    expect(after.salaryAccruedBaseline).toBe(4500);
-    // The exact day the payment is due, nextPayDate must still read today's due date, not have
-    // already jumped ahead to the next period's own delayed date.
     expect(calculateSalary(after, date(2026, 10, 7)).nextPayDate).toBe('2026-10-07');
     expect(calculateSalary(after, date(2026, 10, 7)).due).toBe(0);
-    // One day later, it's genuinely overdue, and now correctly looks ahead to the next period.
     expect(calculateSalary(after, date(2026, 10, 8)).due).toBeGreaterThan(0);
-    expect(calculateSalary(after, date(2026, 10, 8)).nextPayDate).toBe('2026-11-04');
+    expect(calculateSalary(after, date(2026, 10, 8)).nextPayDate).toBe('2026-10-21');
   });
 
-  it('reported scenario (Dima): an ended employee with a period-change baseline still shows the final period owed', () => {
+  it('Dima: an ended employee after a period-change re-anchor still shows the final period owed', () => {
     const before = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-08-12',
-      salaryPeriodAnchorDate: '2026-08-12',
-      salaryAccruedBaseline: 0,
       salaryPayPeriodWeeks: 1,
       salaryPayDelayMode: 'none',
       entries: [
@@ -761,11 +500,9 @@ describe('salary workflow parity', () => {
       ],
     });
     const reanchored = applyChangeSalary(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-09-09',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 9),
+      effectiveDate: '2026-09-09',
       periodWeeks: 2,
+      referenceDate: date(2026, 9, 9),
     });
     const ended = {
       ...reanchored,
@@ -800,33 +537,50 @@ describe('salary workflow parity', () => {
     expect(result.due + result.upcoming).toBeGreaterThan(0);
   });
 
-  it('banks the amount change as of the chosen anchor date, not today, when they differ (e.g. re-anchoring to a past date while saving later)', () => {
-    // Reported scenario: an amount change combined with re-anchoring to a date that is NOT
-    // 'today' (the anchor is 09/09, but the person is saving this weeks later). The old bug used
-    // 'today' as the accrual cutoff while setting the anchor to a different date, producing a
-    // wrong (inflated) baseline that didn't match what was truly owed as of the new anchor.
-    const before = weeklySalaryPerson({
-      salaryAmount: 2500,
-      salaryStartDate: '2026-07-29',
-      salaryPeriodAnchorDate: '2026-07-29',
-      salaryAccruedBaseline: 0,
-      salaryPayPeriodWeeks: 1,
-      salaryPayDelayMode: 'none',
+  it('a phantom advance-payment entry causes a genuine skip-ahead (confirms the math is right when the data says so)', () => {
+    const employee = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
+      entries: [
+        { id: 'phantom', amount: 1500, type: 'Gave', date: '2026-09-09', category: 'salary' },
+      ],
+    });
+    expect(calculateSalary(employee, date(2026, 9, 26)).nextPayDate).toBe('2026-10-21');
+  });
+
+  it('a clean 2-week period with a 2-week delay never double-counts', () => {
+    const employee = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
       entries: [],
     });
-    const after = applyChangeSalary(before, {
-      adjustmentAmount: 0,
-      newAnchorDate: '2026-09-09',
-      adjustmentEntryId: 'unused',
-      referenceDate: date(2026, 9, 27), // saved weeks after the chosen anchor date
-      newAmount: 3000,
+    for (const day of [10, 20, 23, 26, 30]) {
+      expect(calculateSalary(employee, date(2026, 9, day)).nextPayDate).toBe('2026-10-07');
+    }
+    for (const day of [1, 5, 7]) {
+      expect(calculateSalary(employee, date(2026, 10, day)).nextPayDate).toBe('2026-10-07');
+    }
+  });
+
+  it('editing or deleting a pre-anchor entry keeps the schedule correct automatically (no separate recalibration step)', () => {
+    const withPlaceholder = weeklySalaryPerson({
+      salaryStartDate: '2026-07-22',
+      salaryPayPeriodWeeks: 2,
+      entries: [entry({ id: 'placeholder', amount: 10, category: 'salary', date: '2026-07-25' })],
     });
-    // Accrued under the OLD 2500/month, 1-week rate, from 29/07 to 09/09 (the anchor) — NOT from
-    // 29/07 to 27/09 (today), which would be a much larger, wrong number.
-    const expected = calculateSalary(before, date(2026, 9, 9)).accrued;
-    expect(after.salaryAccruedBaseline).toBe(expected);
-    expect(after.salaryAccruedBaseline).toBeLessThan(
-      calculateSalary(before, date(2026, 9, 27)).accrued,
-    );
+    const reanchored = applyChangeSalary(withPlaceholder, {
+      effectiveDate: '2026-07-29',
+      referenceDate: date(2026, 7, 29),
+    });
+    expect(calculateSalary(reanchored, date(2026, 7, 29)).accrued).toBe(0);
+
+    const afterDelete = { ...reanchored, entries: [] };
+    const before = calculateSalary(reanchored, date(2026, 8, 12));
+    const after = calculateSalary(afterDelete, date(2026, 8, 12));
+    expect(after.paid).toBe(before.paid - 10);
   });
 });

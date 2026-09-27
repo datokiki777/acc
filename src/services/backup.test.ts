@@ -187,6 +187,43 @@ describe('legacy-compatible backup services', () => {
     ]);
   });
 
+  it('preserves the new salaryTimeline field through a full export/import round trip', async () => {
+    const timeline = [
+      { effectiveDate: '2026-07-29', amount: 2000, periodWeeks: 2, payDelayMode: 'none' },
+      { effectiveDate: '2026-08-12', amount: 3000, periodWeeks: 2, payDelayMode: '2weeks' },
+    ];
+    const backup: ExportedBackupData = {
+      personal: [],
+      work: [
+        {
+          id: 'dima',
+          name: 'Dima',
+          currency: 'EUR',
+          entries: [],
+          salaryAmount: 3000,
+          salaryStartDate: '2026-07-29',
+          salaryPayPeriodWeeks: 2,
+          salaryPeriodAnchorDate: '2026-08-12',
+          salaryTimeline: timeline,
+        } as unknown as ExportedBackupData['work'][number],
+      ],
+      exportDate: REFERENCE_DATE.toISOString(),
+    };
+    const inspection = inspectBackupText(JSON.stringify(backup), 'salary-timeline.json');
+    if (!inspection.valid) throw new Error('Expected valid inspection');
+    await applyInspectedBackup(repository, inspection, 'replace', REFERENCE_DATE);
+
+    const exported = await createBackupExport(repository, REFERENCE_DATE);
+    const savedPerson = exported.work.find((person) => person.id === 'dima');
+    expect(savedPerson?.salaryTimeline).toEqual(timeline);
+
+    const roundTrip = inspectBackupText(JSON.stringify(exported), 'round-trip-3.json');
+    expect(roundTrip.valid).toBe(true);
+    if (!roundTrip.valid) throw new Error('Expected valid round trip');
+    const roundTripPerson = roundTrip.normalized.work.find((person) => person.id === 'dima');
+    expect(roundTripPerson?.salaryTimeline).toEqual(timeline);
+  });
+
   it('detects checksum differences', () => {
     const expected: PersistedPerson = {
       id: 'person',

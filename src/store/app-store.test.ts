@@ -143,7 +143,7 @@ describe('Zustand application actions', () => {
     expect(store.getState().peopleByMode.work[0]?.name).toBe('Work');
   });
 
-  it('integrates pay-period banking, salary entries, sync, archive, and unarchive', async () => {
+  it('integrates salary entries, sync, archive, and unarchive', async () => {
     const store = makeStore();
     await store.getState().initialize();
     await store.getState().setMode('work');
@@ -158,13 +158,10 @@ describe('Zustand application actions', () => {
     const paid = store.getState().peopleByMode.work[0]!;
     expect(paid.entries[0]?.type).toBe('Received');
 
-    await store.getState().editPerson(employee.id, {
-      ...salaryDraft(),
-      salaryPayPeriodWeeks: 2,
-    });
+    await store.getState().syncSalary(employee.id, 0, '2026-08-01', undefined, undefined, 2);
     const changed = store.getState().peopleByMode.work[0]!;
-    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-06');
-    expect(changed.salaryAccruedBaseline).toBeGreaterThan(0);
+    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-01');
+    expect(changed.salaryPayPeriodWeeks).toBe(2);
 
     await store.getState().syncSalary(employee.id, 50, '2026-08-01');
     const synced = store.getState().peopleByMode.work[0]!;
@@ -181,7 +178,7 @@ describe('Zustand application actions', () => {
     expect(unarchived.archived).toBe(false);
     expect(unarchived.salaryEndDate).toBe('');
     expect(unarchived.salaryPeriodAnchorDate).toBe('2026-08-06');
-    expect(calculateSalary(unarchived, NOW).due).toBe(0);
+    expect(calculateSalary(unarchived, NOW).enabled).toBe(true);
   });
 
   it('does not overwrite an already-set salary end date when archiving', async () => {
@@ -213,56 +210,31 @@ describe('Zustand application actions', () => {
     expect(archived.salaryEndDate).toBeFalsy();
   });
 
-  it('re-syncs the period anchor when the salary start date is corrected after it went stale', async () => {
+  it('correcting the starting segment via Manage Salary History changes the whole schedule downstream', async () => {
     const store = makeStore();
     await store.getState().initialize();
     await store.getState().setMode('work');
     await store.getState().addPerson(salaryDraft());
     const employee = store.getState().peopleByMode.work[0]!;
 
-    // Changing the pay period banks accrued salary and sets an explicit anchor date (today),
-    // which would otherwise keep driving period boundaries even after the start date below is
-    // corrected.
-    await store.getState().editPerson(employee.id, {
-      ...salaryDraft(),
-      salaryPayPeriodWeeks: 2,
-      salaryPayDelayMode: 'none',
-    });
+    await store.getState().syncSalary(employee.id, 0, '2026-08-06', undefined, 'none', 2);
     const afterPeriodChange = store.getState().peopleByMode.work[0]!;
     expect(afterPeriodChange.salaryPeriodAnchorDate).toBe('2026-08-06');
 
-    await store.getState().editPerson(employee.id, {
-      ...salaryDraft(),
-      salaryPayPeriodWeeks: 2,
-      salaryPayDelayMode: 'none',
-      salaryStartDate: '2026-07-20',
-    });
-    const corrected = store.getState().peopleByMode.work[0]!;
+    // Correct the actual starting date/segment via Manage Salary History, replacing the whole
+    // timeline in one shot — no separate baseline to keep in sync afterward.
+    await store
+      .getState()
+      .updateSalaryTimeline(employee.id, [
+        { effectiveDate: '2026-07-20', amount: 400, periodWeeks: 2, payDelayMode: 'none' },
+      ]);
+    const corrected = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
     expect(corrected.salaryStartDate).toBe('2026-07-20');
     expect(corrected.salaryPeriodAnchorDate).toBe('2026-07-20');
-    expect(corrected.salaryAccruedBaseline).toBe(0);
     expect(calculateSalary(corrected, NOW).nextPayDate).toBe('2026-08-17');
   });
 
-  it('banks the old rate up to the effective date when the salary amount changes', async () => {
-    const store = makeStore();
-    await store.getState().initialize();
-    await store.getState().setMode('work');
-    await store.getState().addPerson(salaryDraft());
-    const employee = store.getState().peopleByMode.work[0]!;
-
-    await store.getState().editPerson(employee.id, {
-      ...salaryDraft(),
-      salaryAmount: 800,
-      salaryAmountEffectiveDate: '2026-08-06',
-    });
-    const changed = store.getState().peopleByMode.work[0]!;
-    expect(changed.salaryAmount).toBe(800);
-    expect(changed.salaryPeriodAnchorDate).toBe('2026-08-06');
-    expect(changed.salaryAccruedBaseline).toBeGreaterThan(0);
-  });
-
-  it('recalibrates a plain re-anchor baseline after the pre-anchor entry it banked is deleted', async () => {
+  it('a schedule change genuinely tracks a shortfall from a completed-but-unpaid period, then a later entry edit stays live', async () => {
     const store = makeStore();
     await store.getState().initialize();
     await store.getState().setMode('work');
@@ -277,16 +249,20 @@ describe('Zustand application actions', () => {
       category: 'salary',
     });
 
-    // Re-anchoring to a later date banks the placeholder as baseline (a plain schedule
-    // correction, not an amount change).
-    await store.getState().syncSalary(employee.id, 0, '2026-07-15');
+    // Re-anchoring to a later date — the original 1-week segment (2026-07-01 to 2026-07-08)
+    // genuinely completed one period (7 days), only 10 of which was paid. Nothing needs banking
+    // separately: calculateSalary derives this live from the timeline and entries every time.
+    await store.getState().syncSalary(employee.id, 0, '2026-07-08');
     const reanchored = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
-    expect(reanchored.salaryAccruedBaseline).toBe(10);
+    expect(calculateSalary(reanchored, new Date(2026, 6, 10, 12)).accrued).toBe(100);
+    // 90 shortfall from the old segment's one completed period (only 10 of 100 paid), plus the
+    // new segment's own freshly-started period (100).
+    expect(calculateSalary(reanchored, new Date(2026, 6, 10, 12)).upcoming).toBe(190);
 
-    // Deleting that entry afterward must bring the baseline back down, not leave it stale.
+    // Deleting that entry afterward is immediately reflected — no stale baseline anywhere.
     await store.getState().deleteEntry(employee.id, placeholder.id);
     const afterDelete = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
-    expect(afterDelete.salaryAccruedBaseline).toBe(0);
+    expect(calculateSalary(afterDelete, new Date(2026, 6, 10, 12)).upcoming).toBe(200);
   });
 
   it('changes the pay period cadence via Change Salary, re-anchoring to the chosen date (not always today)', async () => {
@@ -330,15 +306,14 @@ describe('Zustand application actions', () => {
 
     // Now actually set the intended 2-week cadence via the new Pay period field, alongside
     // Payment Timing in the same submission — both must apply correctly together. The person
-    // starts exactly on the reference date, so there's no pre-existing accrual to bank (baseline
-    // stays 0), isolating the period-change effect cleanly.
+    // starts exactly on the reference date, so there's no pre-existing accrual to bank,
+    // isolating the period-change effect cleanly.
     await store
       .getState()
       .syncSalary(employee.id, 0, timingOnly.salaryStartDate!, undefined, '2weeks', 2);
     const both = store.getState().peopleByMode.work.find((p) => p.id === employee.id)!;
     expect(both.salaryPayPeriodWeeks).toBe(2);
     expect(both.salaryPayDelayMode).toBe('2weeks');
-    expect(both.salaryAccruedBaseline).toBe(0);
 
     // One full 2-week period at 3000/month is 1500 — not 3000 (a leftover monthly-equivalent
     // misreading, or the old 1-week period's amount of 750, would both be wrong here).

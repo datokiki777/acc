@@ -3,13 +3,9 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { AppRepository } from '../db/repository';
 import {
   applyChangeSalary,
-  applyPayPeriodChange,
-  applySalaryAmountChange,
   endSalaryWhenArchiving,
-  recalibratePreAnchorBaseline,
-  replaySalaryHistory,
+  replaceTimeline,
   resetSalaryWhenUnarchiving,
-  type SalaryTimelineChange,
 } from '../domain/salary-workflows';
 import type {
   AppMode,
@@ -18,6 +14,7 @@ import type {
   EntryType,
   PayDelayMode,
   Person,
+  SalaryTimelineEntry,
   ThemeMode,
 } from '../types/domain';
 import type {
@@ -116,16 +113,12 @@ export interface AppStoreState {
   syncSalary: (
     personId: string,
     adjustmentAmount: number,
-    newAnchorDate: string,
-    newAmount?: number,
+    effectiveDate: string,
+    amount?: number,
     payDelayMode?: PayDelayMode,
     periodWeeks?: number,
   ) => Promise<void>;
-  updateSalaryTimeline: (
-    personId: string,
-    initialAmount: number,
-    changes: SalaryTimelineChange[],
-  ) => Promise<void>;
+  updateSalaryTimeline: (personId: string, timeline: SalaryTimelineEntry[]) => Promise<void>;
   importBackup: (
     inspection: Extract<BackupInspection, { valid: true }>,
     mode: ImportMode,
@@ -210,57 +203,17 @@ function personFromDraft(draft: PersonDraft, id: string, createdAt: string): Per
   };
 }
 
-function parseDateInput(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const [, y, m, d] = match;
-  return new Date(Number(y), Number(m) - 1, Number(d), 12);
-}
-
-function applyDraftToPerson(
-  original: PersistedPerson,
-  draft: PersonDraft,
-  referenceDate: Date,
-): PersistedPerson {
-  let next = structuredClone(original);
-  const wasConfigured = Boolean(original.salaryAmount && original.salaryStartDate);
-  const amountChanged =
-    wasConfigured && draft.salaryEnabled && original.salaryAmount !== draft.salaryAmount;
-  const periodWeeksChanged =
-    wasConfigured &&
-    Number(original.salaryPayPeriodWeeks ?? original.salaryPayDay ?? 1) !==
-      draft.salaryPayPeriodWeeks;
-  const startDateChanged =
-    wasConfigured && draft.salaryEnabled && original.salaryStartDate !== draft.salaryStartDate;
-
-  if (draft.salaryEnabled && amountChanged && draft.salaryAmountEffectiveDate) {
-    next = retainPersistedFields(
-      next,
-      applySalaryAmountChange(
-        next,
-        draft.salaryAmount,
-        parseDateInput(draft.salaryAmountEffectiveDate) ?? referenceDate,
-      ),
-    );
-  } else if (draft.salaryEnabled && periodWeeksChanged) {
-    next = retainPersistedFields(
-      next,
-      applyPayPeriodChange(next, draft.salaryPayPeriodWeeks, referenceDate),
-    );
-  } else if (startDateChanged) {
-    next.salaryPeriodAnchorDate = draft.salaryStartDate;
-    next.salaryAccruedBaseline = 0;
-  }
+function applyDraftToPerson(original: PersistedPerson, draft: PersonDraft): PersistedPerson {
+  const next = structuredClone(original);
   next.name = draft.name.trim();
   next.tagLabel = draft.tagLabel.trim();
   next.tagColor = draft.tagColor;
   if (draft.salaryEnabled) {
-    next.salaryAmount = draft.salaryAmount;
-    next.salaryStartDate = draft.salaryStartDate;
+    // Amount/start date/pay period/payment timing are no longer collected here — Change Salary
+    // (or, for a brand-new salary, the 'Set Up Salary' redirect right after this save) is the one
+    // place that configures those, so an already-configured salary's timeline is left completely
+    // untouched. Only the end date is editable from this form.
     next.salaryEndDate = draft.salaryEndDate;
-    next.salaryPayPeriodWeeks = draft.salaryPayPeriodWeeks;
-    next.salaryPayDelayMode = draft.salaryPayDelayMode;
-    next.salaryCurrency = next.salaryCurrency ?? next.currency;
   } else {
     delete next.salaryAmount;
     delete next.salaryStartDate;
@@ -271,6 +224,8 @@ function applyDraftToPerson(
     delete next.salaryCurrency;
     delete next.salaryPeriodAnchorDate;
     delete next.salaryAccruedBaseline;
+    delete next.salaryHistory;
+    delete next.salaryTimeline;
   }
   return next;
 }
@@ -417,7 +372,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         await withError(async () => {
           const state = get();
           const people = state.peopleByMode[state.mode].map((person) =>
-            person.id === personId ? applyDraftToPerson(person, draft, now()) : person,
+            person.id === personId ? applyDraftToPerson(person, draft) : person,
           );
           await persistModePeople(state.mode, people);
         });
@@ -467,15 +422,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
           const state = get();
           const created = entryFromDraft(draft, createId());
           const people = state.peopleByMode[state.mode].map((person) =>
-            person.id === personId
-              ? retainPersistedFields(
-                  person,
-                  recalibratePreAnchorBaseline({
-                    ...person,
-                    entries: [created, ...person.entries],
-                  }),
-                )
-              : person,
+            person.id === personId ? { ...person, entries: [created, ...person.entries] } : person,
           );
           await persistModePeople(state.mode, people);
           return created;
@@ -487,17 +434,12 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
           const state = get();
           const people = state.peopleByMode[state.mode].map((person) =>
             person.id === personId
-              ? retainPersistedFields(
-                  person,
-                  recalibratePreAnchorBaseline({
-                    ...person,
-                    entries: person.entries.map((entry) =>
-                      entry.id === entryId
-                        ? { ...entry, ...entryFromDraft(draft, entryId) }
-                        : entry,
-                    ),
-                  }),
-                )
+              ? {
+                  ...person,
+                  entries: person.entries.map((entry) =>
+                    entry.id === entryId ? { ...entry, ...entryFromDraft(draft, entryId) } : entry,
+                  ),
+                }
               : person,
           );
           await persistModePeople(state.mode, people);
@@ -513,13 +455,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             if (person.id !== personId) return person;
             removedIndex = person.entries.findIndex((entry) => entry.id === entryId);
             removed = person.entries[removedIndex];
-            return retainPersistedFields(
-              person,
-              recalibratePreAnchorBaseline({
-                ...person,
-                entries: person.entries.filter((entry) => entry.id !== entryId),
-              }),
-            );
+            return { ...person, entries: person.entries.filter((entry) => entry.id !== entryId) };
           });
           if (!removed || removedIndex < 0) return;
           await persistModePeople(state.mode, people);
@@ -548,10 +484,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             if (!target) return;
             const entries = [...target.entries];
             entries.splice(Math.min(undo.index, entries.length), 0, undo.entry);
-            people[personIndex] = retainPersistedFields(
-              target,
-              recalibratePreAnchorBaseline({ ...target, entries }),
-            );
+            people[personIndex] = { ...target, entries };
           }
           await persistModePeople(undo.mode, people);
           set({ undoAction: null });
@@ -565,8 +498,8 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
       async syncSalary(
         personId,
         adjustmentAmount,
-        newAnchorDate,
-        newAmount,
+        effectiveDate,
+        amount,
         payDelayMode,
         periodWeeks,
       ) {
@@ -578,11 +511,11 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
               ? retainPersistedFields(
                   person,
                   applyChangeSalary(person, {
+                    effectiveDate,
                     adjustmentAmount,
-                    newAnchorDate,
                     adjustmentEntryId: createId(),
                     referenceDate,
-                    ...(newAmount === undefined ? {} : { newAmount }),
+                    ...(amount === undefined ? {} : { amount }),
                     ...(payDelayMode === undefined ? {} : { payDelayMode }),
                     ...(periodWeeks === undefined ? {} : { periodWeeks }),
                   }),
@@ -593,12 +526,12 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         });
       },
 
-      async updateSalaryTimeline(personId, initialAmount, changes) {
+      async updateSalaryTimeline(personId, timeline) {
         await withError(async () => {
           const state = get();
           const people = state.peopleByMode[state.mode].map((person) =>
             person.id === personId
-              ? retainPersistedFields(person, replaySalaryHistory(person, initialAmount, changes))
+              ? retainPersistedFields(person, replaceTimeline(person, timeline))
               : person,
           );
           await persistModePeople(state.mode, people);

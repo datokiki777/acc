@@ -51,6 +51,13 @@ export function compareDateStrings(first: string, second: string): number {
   return calendarOrdinal(firstDate) - calendarOrdinal(secondDate);
 }
 
+export function daysBetweenDates(startDate: string, endDate: string): number {
+  const start = parseCalendarDate(startDate);
+  const end = parseCalendarDate(endDate);
+  if (!start || !end) return 0;
+  return calendarOrdinal(end) - calendarOrdinal(start);
+}
+
 export function daysSince(startDate: string, referenceDate: Date): number {
   const start = parseCalendarDate(startDate);
   if (!start) return 0;

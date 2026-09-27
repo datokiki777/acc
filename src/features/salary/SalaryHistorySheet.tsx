@@ -1,14 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { BottomSheet } from '../../components/BottomSheet';
+import { PickerField } from '../../components/PickerField';
 import { useAppNavigation } from '../../app/useAppNavigation';
+import { getEffectiveTimeline } from '../../domain/salary';
+import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
 import { useAppStore } from '../../store/hooks';
-import { formatDate, formatMoney, localDateString } from '../../utils/format';
+import type { PayDelayMode } from '../../types/domain';
+import { localDateString } from '../../utils/format';
 
 interface TimelineRow {
   id: string;
   effectiveDate: string;
   amountText: string;
+  periodWeeksText: string;
+  payDelayMode: PayDelayMode;
 }
 
 function makeRowId(): string {
@@ -22,6 +28,11 @@ function parseAmount(text: string): number {
   return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
+function parsePeriodWeeks(text: string): number {
+  const value = Number(text);
+  return Number.isFinite(value) && value >= 1 ? Math.min(52, Math.round(value)) : 2;
+}
+
 export function SalaryHistorySheet() {
   const personId = useAppStore((state) => state.ui.personId);
   const person = useAppStore((state) =>
@@ -32,43 +43,42 @@ export function SalaryHistorySheet() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const sortedHistory = useMemo(
-    () =>
-      [...(person?.salaryHistory ?? [])].sort((first, second) =>
-        first.effectiveDate < second.effectiveDate
-          ? -1
-          : first.effectiveDate > second.effectiveDate
-            ? 1
-            : 0,
-      ),
-    [person],
-  );
-  // Kept as raw text while editing (not coerced to a number on every keystroke) so the field can
-  // actually be cleared and retyped — a controlled input whose value snaps back to a forced
-  // number (e.g. 0 for an empty string) fights the user's typing instead of letting them clear it.
-  const [initialAmountText, setInitialAmountText] = useState(() =>
-    String(
-      sortedHistory.length > 0 ? sortedHistory[0]!.previousAmount : (person?.salaryAmount ?? 0),
-    ),
-  );
-  const [rows, setRows] = useState<TimelineRow[]>(() =>
-    sortedHistory.map((change) => ({
-      id: makeRowId(),
-      effectiveDate: change.effectiveDate,
-      amountText: String(change.newAmount),
-    })),
-  );
+  const [rows, setRows] = useState<TimelineRow[]>(() => {
+    if (!person) return [];
+    const timeline = getEffectiveTimeline(person);
+    if (timeline.length > 0) {
+      return timeline.map((segment) => ({
+        id: makeRowId(),
+        effectiveDate: segment.effectiveDate,
+        amountText: String(segment.amount),
+        periodWeeksText: String(segment.periodWeeks),
+        payDelayMode: segment.payDelayMode,
+      }));
+    }
+    return [
+      {
+        id: makeRowId(),
+        effectiveDate: localDateString(),
+        amountText: '0',
+        periodWeeksText: '2',
+        payDelayMode: 'none',
+      },
+    ];
+  });
 
   if (!person) return null;
-  const currency = person.salaryCurrency ?? person.currency;
+  const wasConfigured = rows.length > 0 && Boolean(person.salaryAmount && person.salaryStartDate);
 
   function addRow() {
+    const last = rows[rows.length - 1];
     setRows((current) => [
       ...current,
       {
         id: makeRowId(),
         effectiveDate: localDateString(),
-        amountText: String(person?.salaryAmount ?? 0),
+        amountText: last?.amountText ?? '0',
+        periodWeeksText: last?.periodWeeksText ?? '2',
+        payDelayMode: last?.payDelayMode ?? 'none',
       },
     ]);
   }
@@ -83,18 +93,23 @@ export function SalaryHistorySheet() {
 
   async function submit() {
     setError('');
+    if (rows.length === 0) {
+      setError('At least one entry is required');
+      return;
+    }
     if (rows.some((row) => !row.effectiveDate)) {
-      setError('Every change needs a date');
+      setError('Every entry needs a date');
       return;
     }
     setIsSubmitting(true);
     try {
       await updateTimeline(
         person!.id,
-        parseAmount(initialAmountText),
-        rows.map(({ effectiveDate, amountText }) => ({
-          effectiveDate,
-          amount: parseAmount(amountText),
+        rows.map((row) => ({
+          effectiveDate: row.effectiveDate,
+          amount: parseAmount(row.amountText),
+          periodWeeks: parsePeriodWeeks(row.periodWeeksText),
+          payDelayMode: row.payDelayMode,
         })),
       );
       closeAfterSave();
@@ -109,54 +124,65 @@ export function SalaryHistorySheet() {
     <BottomSheet onClose={requestClose} title="Manage Salary History">
       <div className="form-grid">
         <p className="inline-note">
-          Correct or add any past salary change — the schedule and amounts owed recalculate from
-          this full timeline.
+          {wasConfigured
+            ? 'Correct or add any past change — amount, pay period, or payment timing. Everything owed recalculates from this full timeline.'
+            : 'Add the starting salary — amount, pay period, and payment timing, from the date it began.'}
         </p>
-        <label className="field">
-          <span>Starting salary (from {formatDate(person.salaryStartDate ?? '')})</span>
-          <input
-            autoComplete="off"
-            inputMode="decimal"
-            min={0}
-            onChange={(event) => setInitialAmountText(event.target.value)}
-            step={1}
-            type="number"
-            value={initialAmountText}
-          />
-        </label>
-        {rows.map((row) => (
-          <div className="salary-history-edit-row" key={row.id}>
-            <input
-              autoComplete="off"
-              onChange={(event) => updateRow(row.id, { effectiveDate: event.target.value })}
-              type="date"
-              value={row.effectiveDate}
-            />
-            <input
-              autoComplete="off"
-              inputMode="decimal"
-              min={0}
-              onChange={(event) => updateRow(row.id, { amountText: event.target.value })}
-              step={1}
-              type="number"
-              value={row.amountText}
-            />
-            <button
-              aria-label="Remove this change"
-              className="text-button"
-              onClick={() => removeRow(row.id)}
-              type="button"
-            >
-              ✕
-            </button>
+        {rows.map((row, index) => (
+          <div className="salary-history-edit-card" key={row.id}>
+            <div className="salary-history-edit-row">
+              <input
+                aria-label={index === 0 ? 'Starting date' : 'Change date'}
+                autoComplete="off"
+                onChange={(event) => updateRow(row.id, { effectiveDate: event.target.value })}
+                type="date"
+                value={row.effectiveDate}
+              />
+              <input
+                aria-label={index === 0 ? 'Starting salary' : 'New monthly salary'}
+                autoComplete="off"
+                inputMode="decimal"
+                min={0}
+                onChange={(event) => updateRow(row.id, { amountText: event.target.value })}
+                step={1}
+                type="number"
+                value={row.amountText}
+              />
+              {rows.length > 1 && (
+                <button
+                  aria-label="Remove this entry"
+                  className="text-button"
+                  onClick={() => removeRow(row.id)}
+                  type="button"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="salary-history-edit-row">
+              <input
+                aria-label="Pay period (weeks)"
+                autoComplete="off"
+                inputMode="numeric"
+                max={52}
+                min={1}
+                onChange={(event) => updateRow(row.id, { periodWeeksText: event.target.value })}
+                step={1}
+                type="number"
+                value={row.periodWeeksText}
+              />
+              <PickerField
+                label="Payment timing"
+                onChange={(next) => updateRow(row.id, { payDelayMode: next as PayDelayMode })}
+                options={PAY_DELAY_OPTIONS}
+                value={row.payDelayMode}
+              />
+            </div>
           </div>
         ))}
         <button className="text-button" onClick={addRow} type="button">
           + Add change
         </button>
-        <p className="inline-note">
-          Current rate: <strong>{formatMoney(person.salaryAmount ?? 0, currency, false)}</strong>
-        </p>
         {error && <p className="form-error">{error}</p>}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">

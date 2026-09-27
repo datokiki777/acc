@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event';
 
 import { createAccReactDatabase, type AccReactDatabase } from '../db/database';
 import { createAppRepository } from '../db/repository';
+import { calculateSalary } from '../domain/salary';
 import { createAppStore, type PersonDraft } from '../store/app-store';
 import { AppStoreProvider } from '../store/provider';
 import { App } from './App';
@@ -742,7 +743,6 @@ describe('ACC application', () => {
     await waitFor(() => {
       const person = store.getState().peopleByMode.work.find((p) => p.id === personId);
       expect(person?.salaryAmount).toBe(3000);
-      expect(person?.salaryAccruedBaseline).toBeGreaterThanOrEqual(0);
     });
   }, 15_000);
 
@@ -997,10 +997,13 @@ describe('ACC application', () => {
 
     const historyDialog = await screen.findByRole('dialog', { name: 'Manage Salary History' });
     await user.click(within(historyDialog).getByRole('button', { name: '+ Add change' }));
-    const dateInputs = historyDialog.querySelectorAll('input[type="date"]');
-    const amountInputs = historyDialog.querySelectorAll('input[type="number"]');
-    fireEvent.change(dateInputs[0]!, { target: { value: '2026-08-12' } });
-    fireEvent.change(amountInputs[1]!, { target: { value: '3000' } });
+    const rows = historyDialog.querySelectorAll('.salary-history-edit-card');
+    expect(rows.length).toBe(2);
+    const newRow = rows[1]!;
+    const dateInput = newRow.querySelector('input[type="date"]')!;
+    const amountInput = newRow.querySelector('input[inputmode="decimal"]')!;
+    fireEvent.change(dateInput, { target: { value: '2026-08-12' } });
+    fireEvent.change(amountInput, { target: { value: '3000' } });
     await user.click(within(historyDialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
@@ -1008,10 +1011,8 @@ describe('ACC application', () => {
       expect(person?.salaryAmount).toBe(3000);
       expect(person?.salaryPeriodAnchorDate).toBe('2026-08-12');
       // One completed 2-week period (29/07-12/08) at the OLD 2000/month rate = 1000 owed.
-      expect(person?.salaryAccruedBaseline).toBe(1000);
-      expect(person?.salaryHistory).toEqual([
-        { effectiveDate: '2026-08-12', previousAmount: 2000, newAmount: 3000 },
-      ]);
+      const owed = calculateSalary(person!, new Date(2026, 7, 12, 12));
+      expect(owed.accrued).toBe(1000);
     });
   }, 15_000);
 

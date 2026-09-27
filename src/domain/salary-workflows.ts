@@ -1,228 +1,165 @@
-import type { Entry, PayDelayMode, Person, SalaryChangeRecord } from '../types/domain';
+import type { PayDelayMode, Person, SalaryTimelineEntry } from '../types/domain';
 import { normalizeAmount } from './entries';
 import { formatReferenceDate } from './pay-dates';
-import { calculateSalary, salaryPaidBefore } from './salary';
+import { getEffectiveTimeline } from './salary';
 
-function parseDateString(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1, 12);
-}
-
-export function applyPayPeriodChange(
-  person: Person,
-  nextPeriodWeeks: number,
-  referenceDate: Date,
-): Person {
-  const previousPeriodWeeks = Math.min(
-    52,
-    Math.max(1, Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1)),
-  );
-  const normalizedNextPeriod = Math.min(52, Math.max(1, Number(nextPeriodWeeks || 1)));
-  const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
-  const next = { ...person, entries: person.entries.map((entry) => ({ ...entry })) };
-
-  if (wasConfigured && previousPeriodWeeks !== normalizedNextPeriod) {
-    next.salaryAccruedBaseline = calculateSalary(person, referenceDate).accrued;
-    next.salaryPeriodAnchorDate = formatReferenceDate(referenceDate);
-  }
-  next.salaryPayPeriodWeeks = normalizedNextPeriod;
-  delete next.salaryPayDay;
-  return next;
-}
-
-export function applySalaryAmountChange(
-  person: Person,
-  nextAmount: number,
-  effectiveDate: Date,
-): Person {
-  const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
-  const next = { ...person, entries: person.entries.map((entry) => ({ ...entry })) };
-
-  if (wasConfigured && person.salaryAmount !== nextAmount) {
-    next.salaryAccruedBaseline = calculateSalary(person, effectiveDate).accrued;
-    next.salaryPeriodAnchorDate = formatReferenceDate(effectiveDate);
-    const record: SalaryChangeRecord = {
-      effectiveDate: formatReferenceDate(effectiveDate),
-      previousAmount: person.salaryAmount ?? 0,
-      newAmount: nextAmount,
-    };
-    next.salaryHistory = [record, ...(person.salaryHistory ?? [])].slice(0, 20);
-  }
-  next.salaryAmount = nextAmount;
-  return next;
-}
-
-export interface SalaryTimelineChange {
-  effectiveDate: string;
-  amount: number;
-}
-
-/**
- * If the person's current baseline was set by a plain schedule re-anchor (no salaryHistory entry
- * at that exact anchor date — i.e. it's just salaryPaidBefore(entries, anchor), not a banked
- * theoretical accrual under an old rate), recompute it fresh from the current entries. This is
- * what makes that kind of baseline self-healing: editing or deleting a pre-anchor entry after the
- * fact (e.g. removing a placeholder payment that predates the real cycle) keeps the schedule
- * correct instead of silently going stale, since the baseline was never really 'owed' data of its
- * own — it only ever existed to cancel out those specific entries in the math.
- *
- * An amount-change-triggered baseline (there IS a history entry at the anchor date) is left
- * alone: that number represents a theoretical accrual under a rate that no longer applies and
- * isn't derivable from entries at all.
- */
-export function recalibratePreAnchorBaseline(person: Person): Person {
-  const anchor = person.salaryPeriodAnchorDate;
-  if (!anchor) return person;
-  const bankedByAmountChange = (person.salaryHistory ?? []).some(
-    (change) => change.effectiveDate === anchor,
-  );
-  if (bankedByAmountChange) return person;
-  const recalculated = salaryPaidBefore(person, anchor);
-  if (recalculated === (person.salaryAccruedBaseline ?? 0)) return person;
-  return { ...person, salaryAccruedBaseline: recalculated };
-}
-
-/**
- * Rebuilds a person's whole salary timeline from scratch: starting rate (from salaryStartDate)
- * plus an ordered list of rate changes. Replays each change through applySalaryAmountChange in
- * chronological order, so the final anchor/baseline/history end up exactly as if each change had
- * been made for real, one at a time, in that order — letting a corrected or newly-added past
- * change be reflected without manually re-deriving the banking math by hand.
- */
-export function replaySalaryHistory(
-  person: Person,
-  initialAmount: number,
-  changes: SalaryTimelineChange[],
-): Person {
-  const sorted = [...changes].sort((first, second) =>
+function sortTimeline(timeline: SalaryTimelineEntry[]): SalaryTimelineEntry[] {
+  return [...timeline].sort((first, second) =>
     first.effectiveDate < second.effectiveDate
       ? -1
       : first.effectiveDate > second.effectiveDate
         ? 1
         : 0,
   );
-  let current: Person = {
-    ...person,
-    entries: person.entries.map((entry) => ({ ...entry })),
-    salaryAmount: initialAmount,
-    salaryHistory: [],
-  };
-  delete current.salaryPeriodAnchorDate;
-  delete current.salaryAccruedBaseline;
-  for (const change of sorted) {
-    current = applySalaryAmountChange(
-      current,
-      change.amount,
-      parseDateString(change.effectiveDate),
-    );
-  }
-  return current;
-}
-
-export interface SyncPayDateInput {
-  adjustmentAmount: number;
-  newAnchorDate: string;
-  adjustmentEntryId: string;
-  referenceDate: Date;
-  newAmount?: number;
-  payDelayMode?: PayDelayMode;
-}
-
-export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
-  const adjustmentAmount = normalizeAmount(input.adjustmentAmount);
-  const entries: Entry[] = person.entries.map((entry) => ({ ...entry }));
-  if (adjustmentAmount > 0) {
-    entries.unshift({
-      id: input.adjustmentEntryId,
-      amount: adjustmentAmount,
-      type: 'Gave',
-      date: formatReferenceDate(input.referenceDate),
-      comment: '[Salary] Schedule sync adjustment',
-      category: 'salary',
-    });
-  }
-  const next: Person = { ...person, entries };
-  const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
-  const amountChanging =
-    wasConfigured && input.newAmount !== undefined && person.salaryAmount !== input.newAmount;
-  const currentAnchor = person.salaryPeriodAnchorDate ?? person.salaryStartDate ?? '';
-  const dateChanging = wasConfigured && input.newAnchorDate !== currentAnchor;
-
-  if (amountChanging) {
-    // Amount is changing too: bank accrued-under-the-OLD-rate as of the NEW ANCHOR date (not
-    // 'today') — the anchor is what's being set below, so banking must use that same date as its
-    // cutoff, or the two end up describing inconsistent points in time.
-    next.salaryAccruedBaseline = calculateSalary(
-      person,
-      parseDateString(input.newAnchorDate),
-    ).accrued;
-    const record: SalaryChangeRecord = {
-      effectiveDate: input.newAnchorDate,
-      previousAmount: person.salaryAmount ?? 0,
-      newAmount: input.newAmount as number,
-    };
-    next.salaryHistory = [record, ...(person.salaryHistory ?? [])].slice(0, 20);
-    next.salaryAmount = input.newAmount as number;
-    next.salaryPeriodAnchorDate = input.newAnchorDate;
-  } else if (!wasConfigured || dateChanging) {
-    // Only the schedule date is actually changing (or this is a first-time setup): bank
-    // whatever was already paid before the new anchor date, so that history doesn't get netted
-    // against the new cycle's schedule — 'paid' is always a live, all-time sum with no date
-    // awareness, so without this, an old payment made before the new cycle started would
-    // silently count as credit toward periods that hadn't even begun yet.
-    next.salaryAccruedBaseline = salaryPaidBefore(person, input.newAnchorDate);
-    next.salaryPeriodAnchorDate = input.newAnchorDate;
-    if (!wasConfigured) {
-      // First-time setup: there's no separate 'Salary start date' field anywhere anymore — the
-      // chosen date IS the start date, and the amount must be set here too (this used to only
-      // ever run on an already-configured person, whose amount was set elsewhere).
-      next.salaryAmount = input.newAmount ?? person.salaryAmount ?? 0;
-      next.salaryStartDate = input.newAnchorDate;
-      next.salaryCurrency = next.salaryCurrency ?? next.currency;
-    }
-  }
-  // Otherwise neither the date nor the amount actually changed (e.g. this save only touched
-  // Payment Timing or added a one-time adjustment) — leave the anchor/baseline exactly as they
-  // were instead of silently resetting the whole schedule.
-  if (input.payDelayMode !== undefined) next.salaryPayDelayMode = input.payDelayMode;
-  return next;
-}
-
-export interface ChangeSalaryInput extends SyncPayDateInput {
-  periodWeeks?: number;
 }
 
 /**
- * The single entry point for the whole Change Salary form: an optional pay-period change,
- * applied first (using the chosen New cycle start date as its effective date — not always
- * 'today' — so a period change genuinely takes effect from the date the person typed), followed
- * by the rest of syncPayDate on top of that. The live preview in the Change Salary sheet calls
- * this exact function with the currently-watched form values, so what's shown before saving is
- * guaranteed to match what actually gets saved — no separate, potentially-drifting calculation.
+ * Writes a person's whole salary timeline in one shot, plus the legacy display fields kept in
+ * sync alongside it (for any other code that still reads salaryAmount/salaryStartDate/etc.
+ * directly, and so a JSON export stays readable) — but salaryTimeline is the only thing
+ * calculateSalary actually trusts. salaryAccruedBaseline and salaryHistory are cleared: there is
+ * nothing left for them to do once a timeline exists.
  */
-export function applyChangeSalary(person: Person, input: ChangeSalaryInput): Person {
-  let next: Person = person;
-  let effectiveAnchorDate = input.newAnchorDate;
-  const currentPeriodWeeks = Number(person.salaryPayPeriodWeeks ?? person.salaryPayDay ?? 1);
-  if (input.periodWeeks !== undefined && input.periodWeeks !== currentPeriodWeeks) {
-    next = applyPayPeriodChange(next, input.periodWeeks, parseDateString(input.newAnchorDate));
-    effectiveAnchorDate = next.salaryPeriodAnchorDate ?? effectiveAnchorDate;
-  }
-  return syncPayDate(next, { ...input, newAnchorDate: effectiveAnchorDate });
-}
-
-export function resetSalaryWhenUnarchiving(person: Person, referenceDate: Date): Person {
-  return {
+function withTimeline(person: Person, timeline: SalaryTimelineEntry[]): Person {
+  const sorted = sortTimeline(timeline);
+  const next: Person = {
     ...person,
     entries: person.entries.map((entry) => ({ ...entry })),
-    // See syncPayDate: 'paid' is always live, so banking it here would only create a stale
-    // snapshot that drifts if any already-counted entry is edited later.
-    salaryAccruedBaseline: 0,
-    salaryPeriodAnchorDate: formatReferenceDate(referenceDate),
-    salaryEndDate: '',
-    archived: false,
-    expanded: false,
+    salaryTimeline: sorted,
   };
+  delete next.salaryAccruedBaseline;
+  delete next.salaryHistory;
+  delete next.salaryPayDay;
+  if (sorted.length === 0) {
+    delete next.salaryAmount;
+    delete next.salaryStartDate;
+    delete next.salaryPeriodAnchorDate;
+    delete next.salaryPayPeriodWeeks;
+    delete next.salaryPayDelayMode;
+    return next;
+  }
+  const first = sorted[0]!;
+  const latest = sorted[sorted.length - 1]!;
+  next.salaryAmount = latest.amount;
+  next.salaryStartDate = first.effectiveDate;
+  next.salaryPeriodAnchorDate = latest.effectiveDate;
+  next.salaryPayPeriodWeeks = latest.periodWeeks;
+  next.salaryPayDelayMode = latest.payDelayMode;
+  next.salaryCurrency = next.salaryCurrency ?? next.currency;
+  return next;
+}
+
+export interface TimelineChangeInput {
+  effectiveDate: string;
+  amount?: number;
+  periodWeeks?: number;
+  payDelayMode?: PayDelayMode;
+}
+
+/**
+ * The one operation behind every kind of schedule change — a new monthly amount, a new pay
+ * period, a new payment delay, or any combination, all becoming effective from the same date.
+ * Whatever isn't specified carries forward from the current latest segment (or, for a brand-new
+ * salary, sensible defaults). If a segment already exists at this exact date (editing the same
+ * change again), it's replaced rather than duplicated.
+ */
+export function applyTimelineChange(person: Person, input: TimelineChangeInput): Person {
+  const timeline = getEffectiveTimeline(person);
+  const latest = timeline[timeline.length - 1];
+  const newSegment: SalaryTimelineEntry = {
+    effectiveDate: input.effectiveDate,
+    amount: normalizeAmount(input.amount ?? latest?.amount ?? 0),
+    periodWeeks: Math.min(52, Math.max(1, input.periodWeeks ?? latest?.periodWeeks ?? 2)),
+    payDelayMode: input.payDelayMode ?? latest?.payDelayMode ?? 'none',
+  };
+  const withoutSameDate = timeline.filter(
+    (segment) => segment.effectiveDate !== input.effectiveDate,
+  );
+  return withTimeline(person, [...withoutSameDate, newSegment]);
+}
+
+/**
+ * Replaces the entire timeline at once — used by 'Manage Salary History' to correct or add any
+ * past change, including the very first (starting) segment. This is the same operation as
+ * applyTimelineChange, just for the whole list instead of one date at a time: nothing needs
+ * separately 'replaying' or re-banking, since calculateSalary always derives everything fresh
+ * from whatever timeline is stored.
+ */
+export function replaceTimeline(person: Person, timeline: SalaryTimelineEntry[]): Person {
+  return withTimeline(person, timeline);
+}
+
+/**
+ * One-time payment recorded today, alongside (or instead of) a schedule change — a plain salary
+ * entry, nothing more. Kept as its own small step since it touches entries, not the timeline.
+ */
+export function addOneTimeAdjustment(
+  person: Person,
+  amount: number,
+  entryId: string,
+  referenceDate: Date,
+): Person {
+  const normalized = normalizeAmount(amount);
+  if (normalized <= 0) return person;
+  return {
+    ...person,
+    entries: [
+      {
+        id: entryId,
+        amount: normalized,
+        type: 'Gave',
+        date: formatReferenceDate(referenceDate),
+        comment: '[Salary] Schedule sync adjustment',
+        category: 'salary',
+      },
+      ...person.entries.map((entry) => ({ ...entry })),
+    ],
+  };
+}
+
+export interface ChangeSalaryInput {
+  effectiveDate: string;
+  amount?: number;
+  periodWeeks?: number;
+  payDelayMode?: PayDelayMode;
+  adjustmentAmount?: number;
+  adjustmentEntryId?: string;
+  referenceDate: Date;
+}
+
+/**
+ * The single entry point for the whole Change Salary / Set Up Salary form: a timeline change
+ * (amount and/or pay period and/or payment timing, all from the chosen date) plus an optional
+ * one-time adjustment entry recorded today. The live preview in the sheet calls
+ * applyTimelineChange directly with the same watched values, so what's shown before saving is
+ * guaranteed to match what actually gets saved.
+ */
+export function applyChangeSalary(person: Person, input: ChangeSalaryInput): Person {
+  const withTimelineChange = applyTimelineChange(person, {
+    effectiveDate: input.effectiveDate,
+    ...(input.amount === undefined ? {} : { amount: input.amount }),
+    ...(input.periodWeeks === undefined ? {} : { periodWeeks: input.periodWeeks }),
+    ...(input.payDelayMode === undefined ? {} : { payDelayMode: input.payDelayMode }),
+  });
+  if (!input.adjustmentAmount || !input.adjustmentEntryId) return withTimelineChange;
+  return addOneTimeAdjustment(
+    withTimelineChange,
+    input.adjustmentAmount,
+    input.adjustmentEntryId,
+    input.referenceDate,
+  );
+}
+
+/**
+ * Resuming after an archive: re-anchors to today at the same rate/period/timing (so the archived
+ * gap isn't counted as an unpaid period) and clears the end date. This is just another timeline
+ * segment — no baseline to reset.
+ */
+export function resetSalaryWhenUnarchiving(person: Person, referenceDate: Date): Person {
+  const resumed = applyTimelineChange(person, {
+    effectiveDate: formatReferenceDate(referenceDate),
+  });
+  return { ...resumed, salaryEndDate: '', archived: false, expanded: false };
 }
 
 export function endSalaryWhenArchiving(person: Person, referenceDate: Date): Person {

@@ -3,7 +3,7 @@ import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } f
 import { personOpenBalance, personTotals } from '../../domain/balances';
 import { useAppNavigation } from '../../app/useAppNavigation';
 import { entryEffect } from '../../domain/entries';
-import { calculateSalary, giftSummary } from '../../domain/salary';
+import { calculateSalary, getEffectiveTimeline, giftSummary } from '../../domain/salary';
 import { useAppStore } from '../../store/hooks';
 import { useLongPress } from '../../hooks/useLongPress';
 import type { PersistedEntry, PersistedPerson } from '../../types/persistence';
@@ -68,6 +68,7 @@ export function PersonCard({
   const balance = personOpenBalance(person, mode);
   const totals = personTotals(person);
   const salary = mode === 'work' ? calculateSalary(person, new Date()) : null;
+  const effectiveTimeline = mode === 'work' ? getEffectiveTimeline(person) : [];
   const gifts = mode === 'work' ? giftSummary(person) : null;
   const otherSummary =
     mode === 'work' && gifts
@@ -346,7 +347,7 @@ export function PersonCard({
                   currency={person.currency}
                   onSyncPayDate={() => openSheet('salary-sync', person.id)}
                   salary={salary}
-                  salaryHistory={person.salaryHistory}
+                  timeline={effectiveTimeline}
                   totals={totals}
                 />
               )}

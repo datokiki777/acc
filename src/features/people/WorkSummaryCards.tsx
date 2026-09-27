@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import type { PersonTotals } from '../../domain/balances';
 import type { GiftSummary } from '../../domain/salary';
-import type { SalaryCalculationResult, SalaryChangeRecord } from '../../types/domain';
+import type { SalaryCalculationResult, SalaryTimelineEntry } from '../../types/domain';
 import type { PersistedPerson } from '../../types/persistence';
 import { formatDate, formatMoney } from '../../utils/format';
 
@@ -50,19 +50,28 @@ interface PayrollSummaryCardProps {
   currency: PersistedPerson['currency'];
   onSyncPayDate: () => void;
   salary: SalaryCalculationResult;
-  salaryHistory: SalaryChangeRecord[] | undefined;
+  timeline: SalaryTimelineEntry[];
   totals: PersonTotals;
 }
+
+const PAY_DELAY_LABELS: Record<string, string> = {
+  none: 'no delay',
+  '2weeks': '+2w delay',
+  '4weeks': '+4w delay',
+  firstOfMonth: '1st of next month',
+};
 
 export function PayrollSummaryCard({
   currency,
   onSyncPayDate,
   salary,
-  salaryHistory,
+  timeline,
   totals,
 }: PayrollSummaryCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
-  const history = salaryHistory ?? [];
+  // The starting segment isn't a 'change' in its own right, so only show it as history once
+  // there's actually been at least one change since.
+  const changes = timeline.length > 1 ? timeline.slice(1) : [];
 
   return (
     <section className="payroll-panel work-summary-panel">
@@ -104,26 +113,26 @@ export function PayrollSummaryCard({
         <button className="text-button" onClick={onSyncPayDate} type="button">
           ↻ Change Salary
         </button>
-        {history.length > 0 && (
+        {changes.length > 0 && (
           <button
             aria-expanded={historyOpen}
             className="text-button"
             onClick={() => setHistoryOpen((open) => !open)}
             type="button"
           >
-            {historyOpen ? '▾' : '▸'} Salary history ({history.length})
+            {historyOpen ? '▾' : '▸'} Salary history ({changes.length})
           </button>
         )}
       </div>
-      {historyOpen && history.length > 0 && (
+      {historyOpen && changes.length > 0 && (
         <ul className="salary-history-list">
-          {history.map((change) => (
-            <li key={`${change.effectiveDate}-${change.newAmount}`}>
+          {changes.map((change) => (
+            <li key={change.effectiveDate}>
               <span className="salary-history-date">{formatDate(change.effectiveDate)}</span>
               <span className="salary-history-change">
-                {formatMoney(change.previousAmount, currency, false)}
-                {' → '}
-                <strong>{formatMoney(change.newAmount, currency, false)}</strong>
+                <strong>{formatMoney(change.amount, currency, false)}</strong> · every{' '}
+                {change.periodWeeks}w ·{' '}
+                {PAY_DELAY_LABELS[change.payDelayMode] ?? change.payDelayMode}
               </span>
             </li>
           ))}
