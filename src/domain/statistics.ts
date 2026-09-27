@@ -152,7 +152,12 @@ export function calculatePayrollOverview(
 
   const groups = new Map<string, PayrollPayDateGroup['rows']>();
   rows.forEach((row) => {
-    if (row.ended || !row.nextPayDate || row.upcoming <= 0) return;
+    // 'ended' only means the salary schedule itself has finished — it says nothing about whether
+    // the final installment has been paid. As long as there's a real upcoming amount and a date
+    // for it, the row belongs in its date group just like anyone still actively salaried; leaving
+    // 'ended' people out here silently dropped their name from every date group while their money
+    // stayed counted in the currency totals above.
+    if (!row.nextPayDate || row.upcoming <= 0) return;
     const group = groups.get(row.nextPayDate) ?? [];
     group.push(row);
     groups.set(row.nextPayDate, group);

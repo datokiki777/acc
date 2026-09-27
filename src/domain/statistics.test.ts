@@ -1,5 +1,9 @@
-import { balanceTotalsByCurrency, calculateStatistics } from './statistics';
-import { date, entry, person } from '../test/fixtures/golden';
+import {
+  balanceTotalsByCurrency,
+  calculatePayrollOverview,
+  calculateStatistics,
+} from './statistics';
+import { date, entry, person, weeklySalaryPerson } from '../test/fixtures/golden';
 
 describe('statistics parity', () => {
   const people = [
@@ -59,5 +63,26 @@ describe('statistics parity', () => {
     );
     expect(result.balancesByCurrency).toEqual({ EUR: 100 });
     expect(result.topBalances[0]?.balance).toBe(100);
+  });
+
+  it('Dima: an ended-but-unpaid salary still gets listed by name under its pay date', () => {
+    const dima = weeklySalaryPerson({
+      id: 'dima',
+      name: 'დიმა',
+      salaryAmount: 3000,
+      salaryStartDate: '2026-08-01',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
+      salaryEndDate: '2026-09-23',
+      entries: [],
+    });
+    const overview = calculatePayrollOverview([dima], date(2026, 9, 27));
+    expect(overview).not.toBeNull();
+    const group = overview?.payDates.find((candidate) => candidate.date === '2026-10-07');
+    expect(group).toBeDefined();
+    expect(group?.rows.map((row) => row.name)).toContain('დიმა');
+    // The money was already visible in the currency total before this fix — only the name was
+    // missing from the date group.
+    expect(overview?.totalsByCurrency.EUR?.upcoming).toBe(group?.rows[0]?.upcoming);
   });
 });
