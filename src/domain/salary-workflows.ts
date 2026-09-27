@@ -149,9 +149,13 @@ export function syncPayDate(person: Person, input: SyncPayDateInput): Person {
   const dateChanging = wasConfigured && input.newAnchorDate !== currentAnchor;
 
   if (amountChanging) {
-    // Amount is changing too: bank accrued-under-the-OLD-rate as of this date, so past periods
-    // keep the old rate/accounting and only periods from here forward use the new one.
-    next.salaryAccruedBaseline = calculateSalary(person, input.referenceDate).accrued;
+    // Amount is changing too: bank accrued-under-the-OLD-rate as of the NEW ANCHOR date (not
+    // 'today') — the anchor is what's being set below, so banking must use that same date as its
+    // cutoff, or the two end up describing inconsistent points in time.
+    next.salaryAccruedBaseline = calculateSalary(
+      person,
+      parseDateString(input.newAnchorDate),
+    ).accrued;
     const record: SalaryChangeRecord = {
       effectiveDate: input.newAnchorDate,
       previousAmount: person.salaryAmount ?? 0,

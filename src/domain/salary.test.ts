@@ -799,4 +799,34 @@ describe('salary workflow parity', () => {
     expect(result.ended).toBe(true);
     expect(result.due + result.upcoming).toBeGreaterThan(0);
   });
+
+  it('banks the amount change as of the chosen anchor date, not today, when they differ (e.g. re-anchoring to a past date while saving later)', () => {
+    // Reported scenario: an amount change combined with re-anchoring to a date that is NOT
+    // 'today' (the anchor is 09/09, but the person is saving this weeks later). The old bug used
+    // 'today' as the accrual cutoff while setting the anchor to a different date, producing a
+    // wrong (inflated) baseline that didn't match what was truly owed as of the new anchor.
+    const before = weeklySalaryPerson({
+      salaryAmount: 2500,
+      salaryStartDate: '2026-07-29',
+      salaryPeriodAnchorDate: '2026-07-29',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: 'none',
+      entries: [],
+    });
+    const after = applyChangeSalary(before, {
+      adjustmentAmount: 0,
+      newAnchorDate: '2026-09-09',
+      adjustmentEntryId: 'unused',
+      referenceDate: date(2026, 9, 27), // saved weeks after the chosen anchor date
+      newAmount: 3000,
+    });
+    // Accrued under the OLD 2500/month, 1-week rate, from 29/07 to 09/09 (the anchor) — NOT from
+    // 29/07 to 27/09 (today), which would be a much larger, wrong number.
+    const expected = calculateSalary(before, date(2026, 9, 9)).accrued;
+    expect(after.salaryAccruedBaseline).toBe(expected);
+    expect(after.salaryAccruedBaseline).toBeLessThan(
+      calculateSalary(before, date(2026, 9, 27)).accrued,
+    );
+  });
 });
