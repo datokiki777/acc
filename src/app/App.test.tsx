@@ -786,6 +786,49 @@ describe('ACC application', () => {
     });
   }, 15_000);
 
+  it('does not silently create a phantom advance-payment entry when only Pay period is changed', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    let personId = '';
+    await act(async () => {
+      await store.getState().setMode('work');
+      // Started a while back with a 1-week period, so there's a real accrued/owed balance —
+      // exactly the risky condition where a stale 'One-time adjustment' pre-fill used to bite.
+      const person = await store.getState().addPerson({
+        ...draft('No phantom entry target'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+        salaryPayPeriodWeeks: 1,
+      });
+      personId = person.id;
+    });
+    const entriesBefore = store.getState().peopleByMode.work.find((p) => p.id === personId)!.entries
+      .length;
+
+    const summary = await findPersonSummary('No phantom entry target');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /Change Salary/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'Change Salary' });
+
+    const adjustmentField = within(syncDialog).getByRole('spinbutton', {
+      name: /One-time adjustment/,
+    });
+    expect((adjustmentField as HTMLInputElement).value).toBe('0');
+
+    const periodField = within(syncDialog).getByRole('spinbutton', { name: /Pay period/ });
+    await user.clear(periodField);
+    await user.type(periodField, '2');
+    await user.click(within(syncDialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const person = store.getState().peopleByMode.work.find((p) => p.id === personId);
+      expect(person?.salaryPayPeriodWeeks).toBe(2);
+      expect(person?.entries.length).toBe(entriesBefore);
+    });
+  }, 15_000);
+
   it('shows a live preview that separates the period-end date from the actual pay date when a delay applies', async () => {
     const user = userEvent.setup();
     const store = renderApp();

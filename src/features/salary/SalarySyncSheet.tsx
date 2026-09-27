@@ -37,7 +37,7 @@ export function SalarySyncSheet() {
     formState: { isDirty, isSubmitting },
   } = useForm<SyncForm>({
     defaultValues: {
-      adjustmentAmount: owed,
+      adjustmentAmount: 0,
       newAnchorDate: person?.salaryPeriodAnchorDate ?? person?.salaryStartDate ?? localDateString(),
       newAmount: person?.salaryAmount ?? 0,
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
@@ -172,7 +172,10 @@ export function SalarySyncSheet() {
             type="number"
             {...register('adjustmentAmount', { valueAsNumber: true })}
           />
-          <small>An extra payment to record on the date above, if any.</small>
+          <small>
+            Records an extra payment today, if you type an amount here. Leave at 0 to add nothing —
+            this won't happen automatically.
+          </small>
         </label>
         {error && <p className="form-error">{error}</p>}
         <div className="form-actions">

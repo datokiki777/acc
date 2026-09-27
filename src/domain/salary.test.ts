@@ -460,6 +460,44 @@ describe('salary workflow parity', () => {
     expect(recalibrated.salaryAccruedBaseline).toBe(1000);
   });
 
+  it('reported scenario: a 2-week pay period with a 2-week payment delay must not double-count', () => {
+    // Cycle starts 09/09, 2-week periods -> period 1 ends 23/09. Payment timing adds a 2-week
+    // delay on top of that -> the actual pay date should be 07/10, not a further jump to 21/10.
+    const person = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPeriodAnchorDate: '2026-09-09',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
+      entries: [],
+    });
+    for (const day of [10, 20, 23, 26, 30]) {
+      expect(calculateSalary(person, date(2026, 9, day)).nextPayDate).toBe('2026-10-07');
+    }
+    for (const day of [1, 5, 7]) {
+      expect(calculateSalary(person, date(2026, 10, day)).nextPayDate).toBe('2026-10-07');
+    }
+  });
+
+  it('a phantom advance-payment entry (from a stale One-time adjustment default) causes exactly the reported 21/10 skip-ahead', () => {
+    // This is what actually produced the reported bug: an entry dated at/near the anchor that
+    // happens to equal one period's amount makes the schedule correctly (given that entry) treat
+    // period 1 as already paid and look ahead to period 2's own delayed date instead.
+    const person = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPeriodAnchorDate: '2026-09-09',
+      salaryAccruedBaseline: 0,
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: '2weeks',
+      entries: [
+        { id: 'phantom', amount: 1500, type: 'Gave', date: '2026-09-09', category: 'salary' },
+      ],
+    });
+    expect(calculateSalary(person, date(2026, 9, 26)).nextPayDate).toBe('2026-10-21');
+  });
+
   it('resets a salaried unarchive to today, without banking a separate paid snapshot', () => {
     const reset = resetSalaryWhenUnarchiving(
       weeklySalaryPerson({
