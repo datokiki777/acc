@@ -374,8 +374,6 @@ describe('ACC application', () => {
     await user.click(screen.getByRole('button', { name: 'Work' }));
     expect(screen.getByRole('button', { name: 'Filter by tag' })).toBeInTheDocument();
 
-    // addPerson prepends, so the last one added here is the first in the list — and therefore
-    // the one distinctTags picks as the representative label for their shared color.
     await act(async () => {
       await store.getState().addPerson({
         ...draft('D-Builder team'),
@@ -406,9 +404,10 @@ describe('ACC application', () => {
       'aria-selected',
       'true',
     );
-    // One option per color, not per label — the typo'd team doesn't get its own entry.
-    expect(within(options).getAllByRole('option')).toHaveLength(3);
-    await user.click(within(options).getByRole('option', { name: 'Badelix' }));
+    // Always All plus the fixed 3-color palette — never text labels, and never one entry per
+    // label (the typo'd team doesn't get its own entry).
+    expect(within(options).getAllByRole('option')).toHaveLength(1 + TAG_COLORS.length);
+    await user.click(within(options).getByRole('option', { name: `Tag color ${TAG_COLORS[0]}` }));
 
     // Selecting applies immediately and closes the sheet.
     expect(screen.queryByRole('heading', { name: 'Filter by tag' })).not.toBeInTheDocument();

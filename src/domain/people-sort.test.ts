@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PersistedPerson } from '../types/persistence';
-import { distinctTags, filterByTag, sortPeopleByTagAndActivity } from './people-sort';
+import { filterByTag, sortPeopleByTagAndActivity } from './people-sort';
 import { TAG_COLORS } from './tag-colors';
 
 function makePerson(overrides: Partial<PersistedPerson> = {}): PersistedPerson {
@@ -97,45 +97,6 @@ describe('sortPeopleByTagAndActivity', () => {
       'older',
       'newer',
     ]);
-  });
-});
-
-describe('distinctTags', () => {
-  it('lists each tag color once, ordered by palette position, labeled by the first person using it', () => {
-    const people = [
-      makePerson({ id: '1', tagLabel: 'Badelix', tagColor: TAG_COLORS[1] }),
-      makePerson({ id: '2', tagLabel: 'Badelix (2)', tagColor: TAG_COLORS[1] }),
-      makePerson({ id: '3', tagLabel: 'D-Builder', tagColor: TAG_COLORS[0] }),
-      makePerson({ id: '4' }), // no tag — excluded
-    ];
-    expect(distinctTags(people)).toEqual([
-      { label: 'D-Builder', color: TAG_COLORS[0] },
-      { label: 'Badelix', color: TAG_COLORS[1] },
-    ]);
-  });
-
-  it('groups a color under one tag even when the label used with it is inconsistent', () => {
-    // A typo or a never-finished rename on the label must not split one company's color into
-    // two filter entries — color is what identifies the tag, label is just a display hint.
-    const people = [
-      makePerson({ id: '1', tagLabel: 'ELIBO', tagColor: TAG_COLORS[2] }),
-      makePerson({ id: '2', tagLabel: 'Elibo ', tagColor: TAG_COLORS[2] }),
-    ];
-    expect(distinctTags(people)).toEqual([{ label: 'ELIBO', color: TAG_COLORS[2] }]);
-  });
-
-  it('falls back to a generic label when a color is used with no label at all', () => {
-    expect(distinctTags([makePerson({ tagColor: TAG_COLORS[0] })])).toEqual([
-      { label: '', color: TAG_COLORS[0] },
-    ]);
-  });
-
-  it('leaves out people with no color, or an unrecognized/legacy color value', () => {
-    const people = [
-      makePerson({ id: 'none' }),
-      makePerson({ id: 'legacy', tagLabel: 'Old', tagColor: '#000000' }),
-    ];
-    expect(distinctTags(people)).toEqual([]);
   });
 });
 

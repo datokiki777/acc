@@ -44,31 +44,6 @@ export function sortPeopleByTagAndActivity(people: PersistedPerson[]): Persisted
 }
 
 /**
- * The set of distinct tag colors currently in use, one entry per color (from the fixed
- * TAG_COLORS palette — an unrecognized/legacy color value is left out, same as the sort above),
- * ordered by palette position. The label shown for each color is the first non-empty tagLabel
- * found on a person carrying it — purely a display hint, since the filter itself matches by
- * color, not text. Different labels on the same color (a typo, a rename never finished) are all
- * one group here on purpose: color is the identity, label is just what's printed next to it.
- * People with no tag color at all aren't a tag and are left out.
- */
-export function distinctTags(people: PersistedPerson[]): { label: string; color: string }[] {
-  const byColor = new Map<string, string>();
-  for (const person of people) {
-    const color = person.tagColor;
-    if (!color || !TAG_COLORS.includes(color as (typeof TAG_COLORS)[number])) continue;
-    const label = person.tagLabel?.trim();
-    const existing = byColor.get(color);
-    if (!existing && label) byColor.set(color, label);
-    else if (!byColor.has(color)) byColor.set(color, '');
-  }
-  return TAG_COLORS.filter((color) => byColor.has(color)).map((color) => ({
-    label: byColor.get(color) ?? '',
-    color,
-  }));
-}
-
-/**
  * Narrows a list down to people carrying exactly this tag color — their tagLabel text plays no
  * part, so a typo or a never-finished rename doesn't split one tag into two. An empty tagFilter
  * ('All') is a no-op — the original list comes back unchanged, archived/active filtering and all.
