@@ -1230,7 +1230,25 @@ a:focus-visible {
 .fab-left {
   right: auto;
   left: max(16px, calc((100vw - 760px) / 2 + 16px));
-  font-size: 1.4rem;
+  color: var(--text);
+  background: var(--color-surface-control);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.fab-left.has-tag {
+  color: white;
+  border-color: transparent;
+}
+
+.fab-left svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .empty-card {
@@ -2782,9 +2800,12 @@ a:focus-visible {
 
 .segmented-control button.is-active:active,
 .primary-button:active,
-.fab:active,
-.fab-left:active {
+.fab:active {
   background: var(--color-accent-pressed);
+}
+
+.fab-left.has-tag:active {
+  filter: brightness(0.9);
 }
 
 .filter-switch {

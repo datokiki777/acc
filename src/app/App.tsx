@@ -437,12 +437,15 @@ export function App() {
       {initialized && mode === 'work' && (
         <button
           aria-label="Filter by tag"
-          className="fab fab-left"
+          className={tagFilter ? 'fab fab-left has-tag' : 'fab fab-left'}
           onClick={() => openSheet('tag-filter')}
           style={tagFilter ? { background: tagFilter } : undefined}
           type="button"
         >
-          🏷️
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+            <circle cx="6.75" cy="6.75" r="0.75" />
+          </svg>
         </button>
       )}
       {initialized && (
