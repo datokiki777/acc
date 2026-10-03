@@ -11,8 +11,8 @@ export function TagFilterSheet() {
   const options = [
     { value: '', label: 'All', color: '' },
     ...distinctTags(people).map((tag) => ({
-      value: tag.label,
-      label: tag.label,
+      value: tag.color,
+      label: tag.label || 'Color tag',
       color: tag.color,
     })),
   ];

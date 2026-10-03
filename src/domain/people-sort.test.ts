@@ -101,10 +101,10 @@ describe('sortPeopleByTagAndActivity', () => {
 });
 
 describe('distinctTags', () => {
-  it('lists each tag label once, ordered by color-palette position then alphabetically', () => {
+  it('lists each tag color once, ordered by palette position, labeled by the first person using it', () => {
     const people = [
       makePerson({ id: '1', tagLabel: 'Badelix', tagColor: TAG_COLORS[1] }),
-      makePerson({ id: '2', tagLabel: 'Badelix', tagColor: TAG_COLORS[1] }),
+      makePerson({ id: '2', tagLabel: 'Badelix (2)', tagColor: TAG_COLORS[1] }),
       makePerson({ id: '3', tagLabel: 'D-Builder', tagColor: TAG_COLORS[0] }),
       makePerson({ id: '4' }), // no tag — excluded
     ];
@@ -114,33 +114,49 @@ describe('distinctTags', () => {
     ]);
   });
 
-  it('keeps the first color seen for a label when the same label is colored inconsistently', () => {
+  it('groups a color under one tag even when the label used with it is inconsistent', () => {
+    // A typo or a never-finished rename on the label must not split one company's color into
+    // two filter entries — color is what identifies the tag, label is just a display hint.
     const people = [
-      makePerson({ id: '1', tagLabel: 'Badelix', tagColor: TAG_COLORS[2] }),
-      makePerson({ id: '2', tagLabel: 'Badelix', tagColor: TAG_COLORS[0] }),
+      makePerson({ id: '1', tagLabel: 'ELIBO', tagColor: TAG_COLORS[2] }),
+      makePerson({ id: '2', tagLabel: 'Elibo ', tagColor: TAG_COLORS[2] }),
     ];
-    expect(distinctTags(people)).toEqual([{ label: 'Badelix', color: TAG_COLORS[2] }]);
+    expect(distinctTags(people)).toEqual([{ label: 'ELIBO', color: TAG_COLORS[2] }]);
   });
 
-  it('trims whitespace-only labels out as if untagged', () => {
-    expect(distinctTags([makePerson({ tagLabel: '   ' })])).toEqual([]);
+  it('falls back to a generic label when a color is used with no label at all', () => {
+    expect(distinctTags([makePerson({ tagColor: TAG_COLORS[0] })])).toEqual([
+      { label: '', color: TAG_COLORS[0] },
+    ]);
+  });
+
+  it('leaves out people with no color, or an unrecognized/legacy color value', () => {
+    const people = [
+      makePerson({ id: 'none' }),
+      makePerson({ id: 'legacy', tagLabel: 'Old', tagColor: '#000000' }),
+    ];
+    expect(distinctTags(people)).toEqual([]);
   });
 });
 
 describe('filterByTag', () => {
-  const badelix = makePerson({ id: 'b', tagLabel: 'Badelix' });
-  const dBuilder = makePerson({ id: 'd', tagLabel: 'D-Builder' });
+  const badelix = makePerson({ id: 'b', tagLabel: 'Badelix', tagColor: TAG_COLORS[0] });
+  const dBuilder = makePerson({ id: 'd', tagLabel: 'D-Builder', tagColor: TAG_COLORS[1] });
   const untagged = makePerson({ id: 'u' });
 
   it('returns every person unchanged when the filter is empty (All)', () => {
     expect(filterByTag([badelix, dBuilder, untagged], '')).toEqual([badelix, dBuilder, untagged]);
   });
 
-  it('keeps only people whose exact (trimmed) tag label matches', () => {
-    expect(filterByTag([badelix, dBuilder, untagged], 'Badelix')).toEqual([badelix]);
+  it('keeps only people carrying exactly this tag color, label text aside', () => {
+    const badelixTypo = makePerson({ id: 'b2', tagLabel: 'badelix', tagColor: TAG_COLORS[0] });
+    expect(filterByTag([badelix, badelixTypo, dBuilder, untagged], TAG_COLORS[0])).toEqual([
+      badelix,
+      badelixTypo,
+    ]);
   });
 
-  it('matches nothing for a label currently in use by no one', () => {
-    expect(filterByTag([badelix, dBuilder], 'Unused')).toEqual([]);
+  it('matches nothing for a color currently in use by no one', () => {
+    expect(filterByTag([badelix, dBuilder], TAG_COLORS[2])).toEqual([]);
   });
 });

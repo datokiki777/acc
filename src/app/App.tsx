@@ -8,7 +8,7 @@ import { ModeSwitch } from '../components/ModeSwitch';
 import { PersonPickerSheet } from '../components/PersonPickerSheet';
 import { StartupScreen } from '../components/StartupScreen';
 import { UndoToast } from '../components/UndoToast';
-import { distinctTags, filterByTag } from '../domain/people-sort';
+import { filterByTag } from '../domain/people-sort';
 import { hasOutstandingSalaryBalance } from '../domain/salary';
 import { BackupSheet } from '../features/import-export/BackupSheet';
 import { PeopleList } from '../features/people/PeopleList';
@@ -439,13 +439,7 @@ export function App() {
           aria-label="Filter by tag"
           className="fab fab-left"
           onClick={() => openSheet('tag-filter')}
-          style={
-            tagFilter
-              ? {
-                  background: distinctTags(people).find((tag) => tag.label === tagFilter)?.color,
-                }
-              : undefined
-          }
+          style={tagFilter ? { background: tagFilter } : undefined}
           type="button"
         >
           🏷️

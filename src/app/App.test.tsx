@@ -374,20 +374,30 @@ describe('ACC application', () => {
     await user.click(screen.getByRole('button', { name: 'Work' }));
     expect(screen.getByRole('button', { name: 'Filter by tag' })).toBeInTheDocument();
 
+    // addPerson prepends, so the last one added here is the first in the list — and therefore
+    // the one distinctTags picks as the representative label for their shared color.
     await act(async () => {
-      await store.getState().addPerson({
-        ...draft('Badelix team'),
-        tagLabel: 'Badelix',
-        tagColor: TAG_COLORS[0],
-      });
       await store.getState().addPerson({
         ...draft('D-Builder team'),
         tagLabel: 'D-Builder',
         tagColor: TAG_COLORS[1],
       });
+      // Same color as Badelix team below, different (typo'd) label — must group with it under
+      // one filter entry, not split off into its own.
+      await store.getState().addPerson({
+        ...draft('badelix typo team'),
+        tagLabel: 'badelix',
+        tagColor: TAG_COLORS[0],
+      });
+      await store.getState().addPerson({
+        ...draft('Badelix team'),
+        tagLabel: 'Badelix',
+        tagColor: TAG_COLORS[0],
+      });
     });
     expect(await screen.findByText('Badelix team')).toBeInTheDocument();
     expect(screen.getByText('D-Builder team')).toBeInTheDocument();
+    expect(screen.getByText('badelix typo team')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Filter by tag' }));
     expect(screen.getByRole('heading', { name: 'Filter by tag' })).toBeInTheDocument();
@@ -396,17 +406,20 @@ describe('ACC application', () => {
       'aria-selected',
       'true',
     );
+    // One option per color, not per label — the typo'd team doesn't get its own entry.
+    expect(within(options).getAllByRole('option')).toHaveLength(3);
     await user.click(within(options).getByRole('option', { name: 'Badelix' }));
 
     // Selecting applies immediately and closes the sheet.
     expect(screen.queryByRole('heading', { name: 'Filter by tag' })).not.toBeInTheDocument();
     expect(screen.getByText('Badelix team')).toBeInTheDocument();
+    expect(screen.getByText('badelix typo team')).toBeInTheDocument();
     expect(screen.queryByText('D-Builder team')).not.toBeInTheDocument();
 
-    // Statistics respects the same filter: only the Badelix team is counted.
+    // Statistics respects the same filter: both Badelix-colored teams are counted.
     await user.click(screen.getByRole('button', { name: 'Stats' }));
     const teamsLabel = within(screen.getByRole('dialog')).getByText('Teams');
-    expect(teamsLabel.nextElementSibling).toHaveTextContent('1');
+    expect(teamsLabel.nextElementSibling).toHaveTextContent('2');
     await user.click(screen.getByRole('button', { name: 'Close' }));
 
     // Switching to Personal hides the button but keeps the choice; switching back restores it.
@@ -414,7 +427,7 @@ describe('ACC application', () => {
     expect(screen.queryByRole('button', { name: 'Filter by tag' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Work' }));
     expect(screen.queryByText('D-Builder team')).not.toBeInTheDocument();
-    expect(store.getState().tagFilter).toBe('Badelix');
+    expect(store.getState().tagFilter).toBe(TAG_COLORS[0]);
   });
 
   it('applies and persists an explicitly selected theme', async () => {
