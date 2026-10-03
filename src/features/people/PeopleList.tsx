@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import type { PersistedPerson } from '../../types/persistence';
+import { filterByTag, sortPeopleByTagAndActivity } from '../../domain/people-sort';
 import { hasOutstandingSalaryBalance } from '../../domain/salary';
-import { sortPeopleByTagAndActivity } from '../../domain/people-sort';
 import { useAppStore } from '../../store/hooks';
 import { PersonCard, type PersonSwipeAction } from './PersonCard';
 
@@ -19,10 +19,11 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
   } | null>(null);
   const mode = useAppStore((state) => state.mode);
   const people = useAppStore((state) => state.peopleByMode[state.mode]);
+  const tagFilter = useAppStore((state) => state.tagFilter);
   const search = useAppStore((state) => state.search.trim().toLowerCase());
   const filter = useAppStore((state) => state.filter);
   const filtered = sortPeopleByTagAndActivity(
-    people
+    (mode === 'work' ? filterByTag(people, tagFilter) : people)
       .filter((person) => {
         if (search) return true;
         const isArchived = Boolean(person.archived);
@@ -47,18 +48,29 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
   }, [openSwipe]);
 
   if (!filtered.length) {
+    const tagActive = mode === 'work' && Boolean(tagFilter);
     return (
       <section className="empty-card">
-        <div className="empty-icon">{search ? '🔍' : filter === 'archived' ? '🗄️' : '📒'}</div>
+        <div className="empty-icon">
+          {search ? '🔍' : tagActive ? '🏷️' : filter === 'archived' ? '🗄️' : '📒'}
+        </div>
         <h2>
-          {search ? 'No matches' : filter === 'archived' ? 'No archived people' : 'No records yet'}
+          {search
+            ? 'No matches'
+            : tagActive
+              ? 'No matches for this tag'
+              : filter === 'archived'
+                ? 'No archived people'
+                : 'No records yet'}
         </h2>
         <p>
           {search
             ? 'Try another name.'
-            : filter === 'archived'
-              ? 'Archived records will appear here.'
-              : 'Tap the plus button to add your first person.'}
+            : tagActive
+              ? 'Try a different tag, or All.'
+              : filter === 'archived'
+                ? 'Archived records will appear here.'
+                : 'Tap the plus button to add your first person.'}
         </p>
       </section>
     );

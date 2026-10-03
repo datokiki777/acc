@@ -15,6 +15,8 @@ export interface AppRepository {
   transactAll<T>(operation: (repository: AppRepository) => Promise<T>): Promise<T>;
   getMode(): Promise<AppMode>;
   setMode(mode: AppMode): Promise<void>;
+  getTagFilter(): Promise<string>;
+  setTagFilter(tag: string): Promise<void>;
   getTheme(): Promise<ThemeMode>;
   setTheme(theme: ThemeMode): Promise<void>;
   getPrivacyMode(): Promise<boolean>;
@@ -55,6 +57,9 @@ export class DexieAppRepository implements AppRepository {
         }
         if (!(await this.database.settings.get('privacyMode'))) {
           await this.database.settings.add({ key: 'privacyMode', value: false });
+        }
+        if (!(await this.database.settings.get('workTagFilter'))) {
+          await this.database.settings.add({ key: 'workTagFilter', value: '' });
         }
         if (!(await this.database.metadata.get('backup'))) {
           await this.database.metadata.add({
@@ -104,6 +109,15 @@ export class DexieAppRepository implements AppRepository {
 
   public async setMode(mode: AppMode): Promise<void> {
     await this.database.settings.put({ key: 'activeMode', value: mode });
+  }
+
+  public async getTagFilter(): Promise<string> {
+    const record = await this.database.settings.get('workTagFilter');
+    return typeof record?.value === 'string' ? record.value : '';
+  }
+
+  public async setTagFilter(tag: string): Promise<void> {
+    await this.database.settings.put({ key: 'workTagFilter', value: tag });
   }
 
   public async getTheme(): Promise<ThemeMode> {

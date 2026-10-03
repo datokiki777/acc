@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { createAccReactDatabase, type AccReactDatabase } from '../db/database';
 import { createAppRepository } from '../db/repository';
 import { calculateSalary } from '../domain/salary';
+import { TAG_COLORS } from '../domain/tag-colors';
 import { createAppStore, type PersonDraft } from '../store/app-store';
 import { AppStoreProvider } from '../store/provider';
 import { App } from './App';
@@ -361,6 +362,59 @@ describe('ACC application', () => {
     expect(screen.getByRole('button', { name: 'Work' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('Personal contact')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'No records yet' })).toBeInTheDocument();
+  });
+
+  it('only shows the tag filter button in Work mode, filters the list and Statistics by it, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await waitForElementToBeRemoved(() => screen.queryByRole('status', { name: 'ACC is loading' }));
+
+    expect(screen.queryByRole('button', { name: 'Filter by tag' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Work' }));
+    expect(screen.getByRole('button', { name: 'Filter by tag' })).toBeInTheDocument();
+
+    await act(async () => {
+      await store.getState().addPerson({
+        ...draft('Badelix team'),
+        tagLabel: 'Badelix',
+        tagColor: TAG_COLORS[0],
+      });
+      await store.getState().addPerson({
+        ...draft('D-Builder team'),
+        tagLabel: 'D-Builder',
+        tagColor: TAG_COLORS[1],
+      });
+    });
+    expect(await screen.findByText('Badelix team')).toBeInTheDocument();
+    expect(screen.getByText('D-Builder team')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Filter by tag' }));
+    expect(screen.getByRole('heading', { name: 'Filter by tag' })).toBeInTheDocument();
+    const options = screen.getByRole('listbox');
+    expect(within(options).getByRole('option', { name: 'All' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await user.click(within(options).getByRole('option', { name: 'Badelix' }));
+
+    // Selecting applies immediately and closes the sheet.
+    expect(screen.queryByRole('heading', { name: 'Filter by tag' })).not.toBeInTheDocument();
+    expect(screen.getByText('Badelix team')).toBeInTheDocument();
+    expect(screen.queryByText('D-Builder team')).not.toBeInTheDocument();
+
+    // Statistics respects the same filter: only the Badelix team is counted.
+    await user.click(screen.getByRole('button', { name: 'Stats' }));
+    const teamsLabel = within(screen.getByRole('dialog')).getByText('Teams');
+    expect(teamsLabel.nextElementSibling).toHaveTextContent('1');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    // Switching to Personal hides the button but keeps the choice; switching back restores it.
+    await user.click(screen.getByRole('button', { name: 'Personal' }));
+    expect(screen.queryByRole('button', { name: 'Filter by tag' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Work' }));
+    expect(screen.queryByText('D-Builder team')).not.toBeInTheDocument();
+    expect(store.getState().tagFilter).toBe('Badelix');
   });
 
   it('applies and persists an explicitly selected theme', async () => {

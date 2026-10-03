@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppNavigation } from '../../app/useAppNavigation';
+import { filterByTag } from '../../domain/people-sort';
 import {
   calculatePayrollOverview,
   calculateStatistics,
@@ -14,7 +15,12 @@ import { formatDate, formatMoney } from '../../utils/format';
 
 export function StatisticsSheet() {
   const mode = useAppStore((state) => state.mode);
-  const people = useAppStore((state) => state.peopleByMode[state.mode]);
+  const rawPeople = useAppStore((state) => state.peopleByMode[state.mode]);
+  const tagFilter = useAppStore((state) => state.tagFilter);
+  // Statistics mirrors whatever tag the person has the main list filtered to in Work mode, so
+  // 'Teams', 'Balance', 'Payroll', and the chart all describe the same slice they're browsing —
+  // not the whole roster.
+  const people = mode === 'work' ? filterByTag(rawPeople, tagFilter) : rawPeople;
   const { requestClose } = useAppNavigation();
   const [scope, setScope] = useState<StatisticsScope>('active');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);

@@ -8,10 +8,12 @@ import { ModeSwitch } from '../components/ModeSwitch';
 import { PersonPickerSheet } from '../components/PersonPickerSheet';
 import { StartupScreen } from '../components/StartupScreen';
 import { UndoToast } from '../components/UndoToast';
+import { distinctTags, filterByTag } from '../domain/people-sort';
 import { hasOutstandingSalaryBalance } from '../domain/salary';
 import { BackupSheet } from '../features/import-export/BackupSheet';
 import { PeopleList } from '../features/people/PeopleList';
 import { PersonFormSheet } from '../features/people/PersonFormSheet';
+import { TagFilterSheet } from '../features/people/TagFilterSheet';
 import { SalaryHistorySheet } from '../features/salary/SalaryHistorySheet';
 import { SalarySyncSheet } from '../features/salary/SalarySyncSheet';
 import { StatisticsSheet } from '../features/statistics/StatisticsSheet';
@@ -82,6 +84,7 @@ export function App() {
   const setSearch = useAppStore((state) => state.setSearch);
   const filter = useAppStore((state) => state.filter);
   const setFilter = useAppStore((state) => state.setFilter);
+  const tagFilter = useAppStore((state) => state.tagFilter);
   const expandedPersonId = useAppStore((state) => state.expandedPersonId);
   const setExpandedPerson = useAppStore((state) => state.setExpandedPerson);
   const openSheet = useAppStore((state) => state.openSheet);
@@ -129,12 +132,17 @@ export function App() {
     entryPersonPickerOpenRef.current = entryPersonPickerOpen;
   }, [entryPersonPickerOpen]);
 
-  const stillOwedArchived = people.filter(
+  // The tag filter only narrows what's shown while browsing Work — it never restricts which
+  // team an entry can be added for (the person picker below keeps using the unfiltered `people`),
+  // and it doesn't exist in Personal mode at all.
+  const visiblePeople = mode === 'work' ? filterByTag(people, tagFilter) : people;
+  const stillOwedArchived = visiblePeople.filter(
     (person) =>
       person.archived && mode === 'work' && hasOutstandingSalaryBalance(person, new Date()),
   );
-  const activeCount = people.filter((person) => !person.archived).length + stillOwedArchived.length;
-  const archivedCount = people.filter((person) => person.archived).length;
+  const activeCount =
+    visiblePeople.filter((person) => !person.archived).length + stillOwedArchived.length;
+  const archivedCount = visiblePeople.filter((person) => person.archived).length;
   const activeDestination: AppDestination =
     sheet === 'statistics' ? 'statistics' : sheet === 'backup' ? 'backup' : 'home';
 
@@ -426,6 +434,23 @@ export function App() {
           <ModeSwitch mode={mode} onChange={(next) => void setMode(next)} />
         </div>
       )}
+      {initialized && mode === 'work' && (
+        <button
+          aria-label="Filter by tag"
+          className="fab fab-left"
+          onClick={() => openSheet('tag-filter')}
+          style={
+            tagFilter
+              ? {
+                  background: distinctTags(people).find((tag) => tag.label === tagFilter)?.color,
+                }
+              : undefined
+          }
+          type="button"
+        >
+          🏷️
+        </button>
+      )}
       {initialized && (
         <button aria-label="Add" className="fab" onClick={() => setFabMenuOpen(true)} type="button">
           +
@@ -458,6 +483,7 @@ export function App() {
       {sheet === 'salary-history' && <SalaryHistorySheet />}
       {sheet === 'statistics' && <StatisticsSheet />}
       {sheet === 'backup' && <BackupSheet />}
+      {sheet === 'tag-filter' && <TagFilterSheet />}
       {fabMenuOpen && (
         <FabMenu
           onAddEntry={() => {

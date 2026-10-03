@@ -42,3 +42,39 @@ export function sortPeopleByTagAndActivity(people: PersistedPerson[]): Persisted
     return activityTime(second) - activityTime(first);
   });
 }
+
+/**
+ * The set of distinct tags currently in use, one entry per label (trimmed, case-sensitive —
+ * matching the exact comparison filterByTag uses), ordered the same way the list itself groups
+ * by tag: by color-palette position, then alphabetically within a color. People with no tag
+ * label are not a tag and are left out. When the same label has been given more than one color
+ * across different people, the first color encountered (in that same order) is the one shown —
+ * tags are meant to be used consistently, so this is a display tie-break, not a merge rule.
+ */
+export function distinctTags(people: PersistedPerson[]): { label: string; color: string }[] {
+  const byLabel = new Map<string, string>();
+  for (const person of people) {
+    const label = person.tagLabel?.trim();
+    if (!label || byLabel.has(label)) continue;
+    byLabel.set(label, person.tagColor ?? '');
+  }
+  return [...byLabel.entries()]
+    .map(([label, color]) => ({ label, color }))
+    .sort((first, second) => {
+      const firstColor = TAG_COLORS.indexOf(first.color as (typeof TAG_COLORS)[number]);
+      const secondColor = TAG_COLORS.indexOf(second.color as (typeof TAG_COLORS)[number]);
+      const colorDifference =
+        (firstColor < 0 ? TAG_COLORS.length : firstColor) -
+        (secondColor < 0 ? TAG_COLORS.length : secondColor);
+      return colorDifference || first.label.localeCompare(second.label);
+    });
+}
+
+/**
+ * Narrows a list down to people carrying exactly this tag label. An empty tagFilter ('All') is a
+ * no-op — the original list comes back unchanged, archived/active filtering and all.
+ */
+export function filterByTag<T extends PersistedPerson>(people: T[], tagFilter: string): T[] {
+  if (!tagFilter) return people;
+  return people.filter((person) => person.tagLabel?.trim() === tagFilter);
+}

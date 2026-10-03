@@ -97,6 +97,26 @@ describe('Zustand application actions', () => {
     });
   });
 
+  it('persists the tag filter across a reload and leaves it untouched by switching modes', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setTagFilter('Badelix');
+    await store.getState().setMode('personal');
+    // Switching modes clears search/filter/expanded selection, but the tag filter is a Work-only
+    // concern the UI simply hides outside Work — it isn't reset by the mode switch itself.
+    expect(store.getState().tagFilter).toBe('Badelix');
+    await store.getState().setMode('work');
+    expect(store.getState().tagFilter).toBe('Badelix');
+
+    const reloaded = createAppStore({
+      repository: createAppRepository(database),
+      now: () => new Date(NOW),
+      createId: () => crypto.randomUUID(),
+    });
+    await reloaded.getState().initialize();
+    expect(reloaded.getState().tagFilter).toBe('Badelix');
+  });
+
   it('performs person and entry CRUD with undo', async () => {
     const store = makeStore();
     await store.getState().initialize();

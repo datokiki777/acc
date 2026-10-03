@@ -43,7 +43,8 @@ export type SheetName =
   | 'statistics'
   | 'backup'
   | 'salary-sync'
-  | 'salary-history';
+  | 'salary-history'
+  | 'tag-filter';
 
 export interface TransientUiState {
   sheet: SheetName;
@@ -85,6 +86,7 @@ export interface AppStoreState {
   peopleByMode: Record<AppMode, PersistedPerson[]>;
   search: string;
   filter: PeopleFilter;
+  tagFilter: string;
   expandedPersonId: string | null;
   theme: ThemeMode;
   privacyMode: boolean;
@@ -94,6 +96,7 @@ export interface AppStoreState {
   backupMetadata: BackupMetadata;
   initialize: () => Promise<void>;
   setMode: (mode: AppMode) => Promise<void>;
+  setTagFilter: (tag: string) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
   setPrivacyMode: (enabled: boolean) => Promise<void>;
   setSearch: (search: string) => void;
@@ -279,6 +282,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
       peopleByMode: { personal: [], work: [] },
       search: '',
       filter: 'active',
+      tagFilter: '',
       expandedPersonId: null,
       theme: 'system',
       privacyMode: false,
@@ -297,21 +301,31 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         set({ loading: true, error: null });
         try {
           await repository.initialize();
-          const [personal, work, mode, theme, privacyMode, backupMetadata, cloudSyncMetadata] =
-            await Promise.all([
-              repository.getPeople('personal'),
-              repository.getPeople('work'),
-              repository.getMode(),
-              repository.getTheme(),
-              repository.getPrivacyMode(),
-              repository.getBackupMetadata(),
-              repository.getCloudSyncMetadata(),
-            ]);
+          const [
+            personal,
+            work,
+            mode,
+            tagFilter,
+            theme,
+            privacyMode,
+            backupMetadata,
+            cloudSyncMetadata,
+          ] = await Promise.all([
+            repository.getPeople('personal'),
+            repository.getPeople('work'),
+            repository.getMode(),
+            repository.getTagFilter(),
+            repository.getTheme(),
+            repository.getPrivacyMode(),
+            repository.getBackupMetadata(),
+            repository.getCloudSyncMetadata(),
+          ]);
           set({
             initialized: true,
             loading: false,
             peopleByMode: { personal, work },
             mode,
+            tagFilter,
             theme,
             privacyMode,
             backupMetadata,
@@ -326,6 +340,13 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         await withError(async () => {
           await repository.setMode(mode);
           set({ mode, search: '', filter: 'active', expandedPersonId: null });
+        });
+      },
+
+      async setTagFilter(tag) {
+        await withError(async () => {
+          await repository.setTagFilter(tag);
+          set({ tagFilter: tag });
         });
       },
 

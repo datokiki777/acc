@@ -1227,6 +1227,12 @@ a:focus-visible {
   font-size: 1.8rem;
 }
 
+.fab-left {
+  right: auto;
+  left: max(16px, calc((100vw - 760px) / 2 + 16px));
+  font-size: 1.4rem;
+}
+
 .empty-card {
   display: grid;
   place-items: center;
@@ -2752,7 +2758,8 @@ a:focus-visible {
 .icon-button:active,
 .statistics-button:active,
 .bottom-navigation button:active,
-.fab:active {
+.fab:active,
+.fab-left:active {
   transform: scale(0.94);
 }
 
@@ -2775,7 +2782,8 @@ a:focus-visible {
 
 .segmented-control button.is-active:active,
 .primary-button:active,
-.fab:active {
+.fab:active,
+.fab-left:active {
   background: var(--color-accent-pressed);
 }
 
@@ -3157,6 +3165,11 @@ a:focus-visible {
   color: var(--color-accent-ink);
   background: var(--color-accent);
   box-shadow: 0 6px 18px var(--color-accent-shadow);
+}
+
+.fab-left {
+  right: auto;
+  left: max(18px, calc((100vw - 760px) / 2 + 18px));
 }
 
 .mode-switch-bar {

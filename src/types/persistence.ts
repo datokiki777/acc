@@ -1,4 +1,4 @@
-import type { AppMode, Entry, Person, ThemeMode } from './domain';
+import type { AppMode, Entry, Person } from './domain';
 
 export type PersistedEntry = Entry & Record<string, unknown>;
 
@@ -13,11 +13,11 @@ export interface ModeDataRecord {
   updatedAt: string;
 }
 
-export type SettingKey = 'activeMode' | 'theme' | 'privacyMode';
+export type SettingKey = 'activeMode' | 'theme' | 'privacyMode' | 'workTagFilter';
 
 export interface SettingRecord {
   key: SettingKey;
-  value: AppMode | ThemeMode | boolean;
+  value: boolean | string;
 }
 
 export interface MetadataRecord {
