@@ -259,9 +259,9 @@ function classifyInstallments(
   for (const installment of installments) {
     cumulative = normalizeAmount(cumulative + installment.amount);
     const uncovered = Math.max(0, Math.min(installment.amount, cumulative - paid));
-    // Strict: a pay date of exactly today is not yet overdue (SALARY_GRACE_DAYS applies from the
-    // day after).
-    const isPast = compareDateStrings(installment.payDate, referenceDateString) < 0;
+    // SALARY_GRACE_DAYS is 0: an installment is already due the moment its pay date arrives,
+    // today included — not the day after.
+    const isPast = compareDateStrings(installment.payDate, referenceDateString) <= 0;
     if (uncovered > 0.0001) {
       if (isPast) due = normalizeAmount(due + uncovered);
       else {

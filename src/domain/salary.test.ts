@@ -26,17 +26,19 @@ describe('salary calculation parity', () => {
     expect(result.periodAmount).toBe(100);
     expect(result.completedPeriods).toBe(1);
     expect(result.accrued).toBe(100);
-    expect(result.upcoming).toBe(100);
-    expect(result.nextPayDate).toBe('2026-03-08');
+    // Pay date 2026-03-08 falls exactly on the reference date — already due today, not upcoming.
+    expect(result.due).toBe(100);
+    expect(result.upcoming).toBe(0);
+    expect(result.nextPayDate).toBe('2026-03-15');
   });
 
   it.each([
     [date(2026, 3, 7), 0, 100, '2026-03-08', 1, true],
-    [date(2026, 3, 8), 0, 100, '2026-03-08', 0, true],
+    [date(2026, 3, 8), 100, 0, '2026-03-15', 7, false],
     [date(2026, 3, 9), 100, 100, '2026-03-15', 6, false],
     [date(2026, 3, 10), 100, 100, '2026-03-15', 5, false],
   ] as const)(
-    'preserves grace and upcoming behavior at %s',
+    'has no grace period at all: due the moment the pay date arrives, today included, at %s',
     (referenceDate, due, upcoming, nextPayDate, until, paySoon) => {
       const result = calculateSalary(weeklySalaryPerson(), referenceDate);
       expect(result.due).toBe(due);
@@ -165,7 +167,7 @@ describe('salary calculation parity', () => {
     expect(result.nextPayDate).toBe('2026-08-12');
   });
 
-  it('flags a missed payment as overdue the very next day, with no extra grace day', () => {
+  it('flags a missed payment as overdue the day after, with no extra grace day', () => {
     const employee = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryStartDate: '2026-07-01',
@@ -481,8 +483,10 @@ describe('reported scenarios: end-to-end regression coverage', () => {
       periodWeeks: 2,
       referenceDate: date(2026, 9, 9),
     });
-    expect(calculateSalary(after, date(2026, 10, 7)).nextPayDate).toBe('2026-10-07');
-    expect(calculateSalary(after, date(2026, 10, 7)).due).toBe(0);
+    // Already due on its own pay date (10-07), not the day after — so nextPayDate skips ahead
+    // to the following period on 10-07 itself, same as it does on 10-08.
+    expect(calculateSalary(after, date(2026, 10, 7)).nextPayDate).toBe('2026-10-21');
+    expect(calculateSalary(after, date(2026, 10, 7)).due).toBeGreaterThan(0);
     expect(calculateSalary(after, date(2026, 10, 8)).due).toBeGreaterThan(0);
     expect(calculateSalary(after, date(2026, 10, 8)).nextPayDate).toBe('2026-10-21');
   });
@@ -561,9 +565,12 @@ describe('reported scenarios: end-to-end regression coverage', () => {
     for (const day of [10, 20, 23, 26, 30]) {
       expect(calculateSalary(employee, date(2026, 9, day)).nextPayDate).toBe('2026-10-07');
     }
-    for (const day of [1, 5, 7]) {
+    for (const day of [1, 5]) {
       expect(calculateSalary(employee, date(2026, 10, day)).nextPayDate).toBe('2026-10-07');
     }
+    // On 10-07 itself the first period is already due (no grace even on its own pay date), so
+    // nextPayDate has already moved on to the following period.
+    expect(calculateSalary(employee, date(2026, 10, 7)).nextPayDate).toBe('2026-10-21');
   });
 
   it('editing or deleting a pre-anchor entry keeps the schedule correct automatically (no separate recalibration step)', () => {

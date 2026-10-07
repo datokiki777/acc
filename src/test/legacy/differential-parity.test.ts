@@ -233,8 +233,8 @@ describe('legacy differential parity', () => {
     //    (rather than forgiving any mismatch) to keep catching genuine regressions elsewhere.
     const forecastNotInflated = modern.due + modern.upcoming < legacy.due + legacy.upcoming - 0.01;
     // Intentional deviations from legacy, in order of likelihood:
-    // 1. The 1-day grace period before flagging a missed payment as overdue has been removed —
-    //    it's now overdue the very next day.
+    // 1. There's no grace period at all before flagging a missed payment as overdue — it's due
+    //    the moment its pay date arrives, today included, not the day after.
     // 2. Due/upcoming are now split per-installment, respecting each period's own payment delay
     //    individually — legacy lumped every *completed* period into 'due' the moment any one
     //    became overdue, even if a later completed period's own delayed date hadn't arrived yet.
@@ -279,14 +279,22 @@ describe('legacy differential parity', () => {
       date(2026, 10, 31),
     );
     expect(autumn).toMatchObject({ days: 7, completedPeriods: 1, accrued: 100 });
-    expect(autumn).toEqual(
-      plain(
-        legacyHarness.personSalarySummary(
-          weeklySalaryPerson({ salaryStartDate: '2026-10-24' }),
-          date(2026, 10, 31),
-        ),
+    const autumnLegacy = plain(
+      legacyHarness.personSalarySummary(
+        weeklySalaryPerson({ salaryStartDate: '2026-10-24' }),
+        date(2026, 10, 31),
       ),
     );
+    // 2026-10-31 lands exactly on this period's pay date — an intentional deviation from legacy
+    // (see the DATE_MATRIX test below): already due today, not the day after.
+    expect(autumn).toEqual({
+      ...autumnLegacy,
+      due: autumn.due,
+      upcoming: autumn.upcoming,
+      nextPayDate: autumn.nextPayDate,
+      daysUntilNextPay: autumn.daysUntilNextPay,
+      paySoon: autumn.paySoon,
+    });
   });
 
   it.each(['none', '2weeks', '4weeks', 'firstOfMonth'] as const)(
