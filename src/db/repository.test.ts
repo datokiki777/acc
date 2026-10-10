@@ -27,6 +27,7 @@ describe('Dexie application repository', () => {
     expect(await repository.getMode()).toBe('personal');
     expect(await repository.getTagFilter()).toBe('');
     expect(await repository.getTheme()).toBe('system');
+    expect(await repository.getLanguage()).toBe('en');
     expect(await repository.getSchemaVersion()).toBe(1);
   });
 
@@ -44,6 +45,7 @@ describe('Dexie application repository', () => {
     await repository.setMode('work');
     await repository.setTagFilter('Badelix');
     await repository.setTheme('dark');
+    await repository.setLanguage('ka');
     await repository.setBackupMetadata({ lastBackup: '2026-08-06T10:00:00.000Z', count: 3 });
     database.close();
 
@@ -55,6 +57,7 @@ describe('Dexie application repository', () => {
     expect(await repository.getMode()).toBe('work');
     expect(await repository.getTagFilter()).toBe('Badelix');
     expect(await repository.getTheme()).toBe('dark');
+    expect(await repository.getLanguage()).toBe('ka');
     expect(await repository.getBackupMetadata()).toEqual({
       lastBackup: '2026-08-06T10:00:00.000Z',
       count: 3,

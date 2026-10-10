@@ -19,6 +19,8 @@ import { SalarySyncSheet } from '../features/salary/SalarySyncSheet';
 import { StatisticsSheet } from '../features/statistics/StatisticsSheet';
 import { EntryFormSheet } from '../features/transactions/EntryFormSheet';
 import { useThemeEffect } from '../hooks/useThemeEffect';
+import { AVAILABLE_LANGUAGES } from '../i18n/translations';
+import { useTranslation } from '../i18n/useTranslation';
 import type { SheetName } from '../store/app-store';
 import { useAppStore } from '../store/hooks';
 import type { ThemeMode } from '../types/domain';
@@ -62,6 +64,11 @@ function nextTheme(current: ThemeMode): ThemeMode {
   return order[(order.indexOf(current) + 1) % order.length]!;
 }
 
+function nextLanguage(current: string): string {
+  const index = AVAILABLE_LANGUAGES.indexOf(current);
+  return AVAILABLE_LANGUAGES[(index + 1) % AVAILABLE_LANGUAGES.length]!;
+}
+
 function hasMeaningfulNavigationState(snapshot: NavigationSnapshot) {
   return snapshot.sheet !== 'none' || snapshot.expandedPersonId !== null;
 }
@@ -77,6 +84,9 @@ export function App() {
   const setMode = useAppStore((state) => state.setMode);
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
+  const language = useAppStore((state) => state.language);
+  const setLanguage = useAppStore((state) => state.setLanguage);
+  const t = useTranslation();
   const privacyMode = useAppStore((state) => state.privacyMode);
   const setPrivacyMode = useAppStore((state) => state.setPrivacyMode);
   const people = useAppStore((state) => state.peopleByMode[state.mode]);
@@ -466,10 +476,13 @@ export function App() {
       {initialized && (
         <BottomNavigation
           active={activeDestination}
+          language={language}
+          onCycleLanguage={() => void setLanguage(nextLanguage(language))}
           onCycleTheme={() => void setTheme(nextTheme(theme))}
           onNavigate={navigate}
           onTogglePrivacy={() => void setPrivacyMode(!privacyMode)}
           privacyMode={privacyMode}
+          t={t}
           theme={theme}
         />
       )}

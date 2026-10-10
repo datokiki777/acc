@@ -19,6 +19,8 @@ export interface AppRepository {
   setTagFilter(tag: string): Promise<void>;
   getTheme(): Promise<ThemeMode>;
   setTheme(theme: ThemeMode): Promise<void>;
+  getLanguage(): Promise<string>;
+  setLanguage(language: string): Promise<void>;
   getPrivacyMode(): Promise<boolean>;
   setPrivacyMode(enabled: boolean): Promise<void>;
   getBackupMetadata(): Promise<BackupMetadata>;
@@ -60,6 +62,9 @@ export class DexieAppRepository implements AppRepository {
         }
         if (!(await this.database.settings.get('workTagFilter'))) {
           await this.database.settings.add({ key: 'workTagFilter', value: '' });
+        }
+        if (!(await this.database.settings.get('language'))) {
+          await this.database.settings.add({ key: 'language', value: 'en' });
         }
         if (!(await this.database.metadata.get('backup'))) {
           await this.database.metadata.add({
@@ -128,6 +133,15 @@ export class DexieAppRepository implements AppRepository {
 
   public async setTheme(theme: ThemeMode): Promise<void> {
     await this.database.settings.put({ key: 'theme', value: theme });
+  }
+
+  public async getLanguage(): Promise<string> {
+    const record = await this.database.settings.get('language');
+    return typeof record?.value === 'string' ? record.value : 'en';
+  }
+
+  public async setLanguage(language: string): Promise<void> {
+    await this.database.settings.put({ key: 'language', value: language });
   }
 
   public async getPrivacyMode(): Promise<boolean> {

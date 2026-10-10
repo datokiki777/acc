@@ -117,6 +117,22 @@ describe('Zustand application actions', () => {
     expect(reloaded.getState().tagFilter).toBe('Badelix');
   });
 
+  it('defaults to English and persists a chosen language across a reload', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    expect(store.getState().language).toBe('en');
+    await store.getState().setLanguage('ka');
+    expect(store.getState().language).toBe('ka');
+
+    const reloaded = createAppStore({
+      repository: createAppRepository(database),
+      now: () => new Date(NOW),
+      createId: () => crypto.randomUUID(),
+    });
+    await reloaded.getState().initialize();
+    expect(reloaded.getState().language).toBe('ka');
+  });
+
   it('performs person and entry CRUD with undo', async () => {
     const store = makeStore();
     await store.getState().initialize();

@@ -7,6 +7,7 @@ import {
   replaceTimeline,
   resetSalaryWhenUnarchiving,
 } from '../domain/salary-workflows';
+import { DEFAULT_LANGUAGE } from '../i18n/translations';
 import type {
   AppMode,
   Currency,
@@ -89,6 +90,7 @@ export interface AppStoreState {
   tagFilter: string;
   expandedPersonId: string | null;
   theme: ThemeMode;
+  language: string;
   privacyMode: boolean;
   ui: TransientUiState;
   undoAction: UndoAction | null;
@@ -98,6 +100,7 @@ export interface AppStoreState {
   setMode: (mode: AppMode) => Promise<void>;
   setTagFilter: (tag: string) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
+  setLanguage: (language: string) => Promise<void>;
   setPrivacyMode: (enabled: boolean) => Promise<void>;
   setSearch: (search: string) => void;
   setFilter: (filter: PeopleFilter) => void;
@@ -285,6 +288,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
       tagFilter: '',
       expandedPersonId: null,
       theme: 'system',
+      language: DEFAULT_LANGUAGE,
       privacyMode: false,
       ui: EMPTY_UI,
       undoAction: null,
@@ -307,6 +311,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             mode,
             tagFilter,
             theme,
+            language,
             privacyMode,
             backupMetadata,
             cloudSyncMetadata,
@@ -316,6 +321,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             repository.getMode(),
             repository.getTagFilter(),
             repository.getTheme(),
+            repository.getLanguage(),
             repository.getPrivacyMode(),
             repository.getBackupMetadata(),
             repository.getCloudSyncMetadata(),
@@ -327,6 +333,7 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             mode,
             tagFilter,
             theme,
+            language,
             privacyMode,
             backupMetadata,
             cloudSyncMetadata,
@@ -354,6 +361,13 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
         await withError(async () => {
           await repository.setTheme(theme);
           set({ theme });
+        });
+      },
+
+      async setLanguage(language) {
+        await withError(async () => {
+          await repository.setLanguage(language);
+          set({ language });
         });
       },
 

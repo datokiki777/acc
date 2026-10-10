@@ -155,6 +155,34 @@ describe('ACC application', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
 
+  it('cycles the navigation language between English and Georgian, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    expect(within(navigation).getByText('Stats')).toBeInTheDocument();
+    expect(within(navigation).queryByText('სტატისტიკა')).not.toBeInTheDocument();
+
+    await user.click(within(navigation).getByRole('button', { name: 'Language' }));
+    expect(store.getState().language).toBe('ka');
+    // The whole bar is now in Georgian — including its own aria-label — not just one button.
+    expect(screen.getByRole('navigation', { name: 'მთავარი ნავიგაცია' })).toBeInTheDocument();
+    expect(within(navigation).getByText('სტატისტიკა')).toBeInTheDocument();
+    expect(within(navigation).queryByText('Stats')).not.toBeInTheDocument();
+
+    await user.click(within(navigation).getByRole('button', { name: 'ენა' }));
+    expect(store.getState().language).toBe('en');
+    expect(within(navigation).getByText('Stats')).toBeInTheDocument();
+
+    // Pick Georgian again and confirm it survives a reload, same as theme/tagFilter do.
+    await user.click(within(navigation).getByRole('button', { name: 'Language' }));
+    expect(store.getState().language).toBe('ka');
+    const reloaded = createAppStore({ repository: createAppRepository(database) });
+    await reloaded.getState().initialize();
+    expect(reloaded.getState().language).toBe('ka');
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

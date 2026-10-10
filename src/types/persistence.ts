@@ -13,7 +13,7 @@ export interface ModeDataRecord {
   updatedAt: string;
 }
 
-export type SettingKey = 'activeMode' | 'theme' | 'privacyMode' | 'workTagFilter';
+export type SettingKey = 'activeMode' | 'theme' | 'privacyMode' | 'workTagFilter' | 'language';
 
 export interface SettingRecord {
   key: SettingKey;

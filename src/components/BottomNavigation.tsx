@@ -1,14 +1,18 @@
+import type { TranslateFn } from '../i18n/useTranslation';
 import type { ThemeMode } from '../types/domain';
 
 export type AppDestination = 'home' | 'statistics' | 'backup';
 
 interface BottomNavigationProps {
   active: AppDestination;
-  onNavigate: (destination: AppDestination) => void;
-  theme: ThemeMode;
+  language: string;
+  onCycleLanguage: () => void;
   onCycleTheme: () => void;
-  privacyMode: boolean;
+  onNavigate: (destination: AppDestination) => void;
   onTogglePrivacy: () => void;
+  privacyMode: boolean;
+  t: TranslateFn;
+  theme: ThemeMode;
 }
 
 const items: Array<{ destination: AppDestination; label: string }> = [
@@ -31,14 +35,17 @@ const THEME_LABEL: Record<ThemeMode, string> = {
 
 export function BottomNavigation({
   active,
-  onNavigate,
-  theme,
+  language,
+  onCycleLanguage,
   onCycleTheme,
-  privacyMode,
+  onNavigate,
   onTogglePrivacy,
+  privacyMode,
+  t,
+  theme,
 }: BottomNavigationProps) {
   return (
-    <nav aria-label="Primary navigation" className="bottom-navigation">
+    <nav aria-label={t('Primary navigation')} className="bottom-navigation">
       {items.map((item) => (
         <button
           aria-current={active === item.destination ? 'page' : undefined}
@@ -48,18 +55,18 @@ export function BottomNavigation({
           type="button"
         >
           <NavigationIcon destination={item.destination} />
-          <span>{item.label}</span>
+          <span>{t(item.label)}</span>
         </button>
       ))}
-      <button aria-label={THEME_LABEL[theme]} onClick={onCycleTheme} type="button">
+      <button aria-label={t(THEME_LABEL[theme])} onClick={onCycleTheme} type="button">
         <span aria-hidden="true" className="nav-emoji-icon">
           {THEME_ICON[theme]}
         </span>
-        <span>Theme</span>
+        <span>{t('Theme')}</span>
       </button>
       <button
         aria-checked={privacyMode}
-        aria-label="Hide amounts"
+        aria-label={t('Hide amounts')}
         onClick={onTogglePrivacy}
         role="switch"
         type="button"
@@ -67,7 +74,13 @@ export function BottomNavigation({
         <span aria-hidden="true" className="nav-emoji-icon">
           {privacyMode ? '🙈' : '👁️'}
         </span>
-        <span>Hide</span>
+        <span>{t('Hide')}</span>
+      </button>
+      <button aria-label={t('Language')} onClick={onCycleLanguage} type="button">
+        <span aria-hidden="true" className="nav-emoji-icon nav-language-icon">
+          {language.toUpperCase()}
+        </span>
+        <span>{t('Language')}</span>
       </button>
     </nav>
   );
