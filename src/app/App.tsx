@@ -117,7 +117,17 @@ export function App() {
 
   useEffect(() => {
     if (!initialized) return;
-    initCloudAuth();
+    // Defer starting the Firebase cloud-sync module (a large chunk, fetched + parsed on demand)
+    // until just after the first paint, so it isn't competing with the initial render for the
+    // browser's attention. Auto-sync still kicks in automatically moments later on its own —
+    // this only delays when that starts, never whether it does.
+    const idle =
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback
+        : (callback: () => void) => window.setTimeout(callback, 1);
+    const cancelIdle = typeof cancelIdleCallback === 'function' ? cancelIdleCallback : clearTimeout;
+    const handle = idle(() => initCloudAuth());
+    return () => cancelIdle(handle);
   }, [initialized, initCloudAuth]);
 
   useEffect(() => {
