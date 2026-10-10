@@ -930,6 +930,32 @@ a:focus-visible {
   gap: 4px;
 }
 
+.payroll-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.payroll-action-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.payroll-action-chevron {
+  transition: transform 160ms ease;
+  transform: rotate(-90deg);
+}
+
+.payroll-action-chevron.is-open {
+  transform: rotate(0deg);
+}
+
 .salary-history-list {
   display: grid;
   gap: 6px;

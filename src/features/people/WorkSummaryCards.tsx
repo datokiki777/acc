@@ -110,17 +110,31 @@ export function PayrollSummaryCard({
         </span>
       </div>
       <div className="payroll-secondary-actions">
-        <button className="text-button" onClick={onSyncPayDate} type="button">
-          ↻ Change Salary
+        <button className="text-button payroll-action" onClick={onSyncPayDate} type="button">
+          <svg aria-hidden="true" className="payroll-action-icon" viewBox="0 0 24 24">
+            <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Change Salary
         </button>
         {changes.length > 0 && (
           <button
             aria-expanded={historyOpen}
-            className="text-button"
+            className="text-button payroll-action"
             onClick={() => setHistoryOpen((open) => !open)}
             type="button"
           >
-            {historyOpen ? '▾' : '▸'} Salary history ({changes.length})
+            <svg
+              aria-hidden="true"
+              className={
+                historyOpen
+                  ? 'payroll-action-icon payroll-action-chevron is-open'
+                  : 'payroll-action-icon payroll-action-chevron'
+              }
+              viewBox="0 0 24 24"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            Salary history ({changes.length})
           </button>
         )}
       </div>
