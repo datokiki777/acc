@@ -1583,6 +1583,16 @@ a:focus-visible {
   border-radius: 50%;
 }
 
+.tag-filter-swatches {
+  gap: 16px;
+  padding: 10px 2px 4px;
+}
+
+.tag-filter-swatches .color-swatch {
+  width: 48px;
+  min-height: 48px;
+}
+
 .color-none {
   background: linear-gradient(
     135deg,

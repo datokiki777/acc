@@ -32,26 +32,20 @@ export function TagFilterSheet() {
             </svg>
           )}
         </button>
-        {TAG_COLORS.map((color) => (
-          <button
-            aria-label={`Tag color ${color}`}
-            aria-selected={color === tagFilter}
-            className={`picker-option ${color === tagFilter ? 'is-selected' : ''}`}
-            key={color}
-            onClick={() => select(color)}
-            role="option"
-            type="button"
-          >
-            <span className="picker-option-text">
-              <span className="tag-dot" style={{ background: color }} />
-            </span>
-            {color === tagFilter && (
-              <svg aria-hidden="true" className="picker-check" viewBox="0 0 24 24">
-                <path d="m5 13 4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        ))}
+        <div className="color-picker tag-filter-swatches" role="group" aria-label="Tag color">
+          {TAG_COLORS.map((color) => (
+            <button
+              aria-label={`Tag color ${color}`}
+              aria-selected={color === tagFilter}
+              className={color === tagFilter ? 'color-swatch is-selected' : 'color-swatch'}
+              key={color}
+              onClick={() => select(color)}
+              role="option"
+              style={{ background: color }}
+              type="button"
+            />
+          ))}
+        </div>
       </div>
     </BottomSheet>
   );
