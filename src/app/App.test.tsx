@@ -108,6 +108,18 @@ describe('ACC application', () => {
     return store;
   }
 
+  it('shows a spinner on the startup screen until the app is actually ready, then fades it out', async () => {
+    const store = renderApp();
+    const startup = screen.getByRole('status', { name: 'ACC is loading' });
+    expect(within(startup).getByText('ACC')).toBeInTheDocument();
+    // Right after mount, initialize() hasn't resolved yet — the spinner should be showing,
+    // not a fixed timer deciding when to leave.
+    expect(startup.querySelector('.startup-spinner')).toBeInTheDocument();
+
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await waitForElementToBeRemoved(() => screen.queryByRole('status', { name: 'ACC is loading' }));
+  });
+
   it('renders the initialized application shell', async () => {
     const store = renderApp();
 

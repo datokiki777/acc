@@ -2652,11 +2652,25 @@ a:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  opacity: 1;
+  visibility: visible;
   color: var(--color-text);
   background:
     radial-gradient(circle at 50% 32%, var(--color-accent-soft), transparent 26%),
     linear-gradient(180deg, var(--color-surface-panel), var(--color-bg) 55%, var(--color-bg-deep));
-  animation: splash-out 250ms ease 550ms forwards;
+  transition:
+    opacity 250ms ease,
+    visibility 0ms linear 250ms;
+}
+
+/* Driven by React once the app is actually ready (see StartupScreen.tsx), not a fixed clock —
+   so the fade can never start before there's real content underneath to reveal. */
+.startup-screen.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 250ms ease,
+    visibility 0ms linear 250ms;
 }
 
 .startup-screen img {
@@ -2675,6 +2689,10 @@ a:focus-visible {
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.startup-spinner {
+  margin-top: 6px;
 }
 
 .update-prompt {
@@ -3515,13 +3533,6 @@ a:focus-visible {
 .fatal-error button {
   color: var(--color-accent-ink);
   background: var(--color-accent);
-}
-
-@keyframes splash-out {
-  to {
-    opacity: 0;
-    visibility: hidden;
-  }
 }
 
 @media (min-width: 640px) {
