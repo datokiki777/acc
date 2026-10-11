@@ -6,6 +6,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { PickerField } from '../../components/PickerField';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { TAG_COLORS } from '../../domain/tag-colors';
+import { useTranslation } from '../../i18n/useTranslation';
 import type { PersonDraft } from '../../store/app-store';
 import { useAppStore } from '../../store/hooks';
 import type { Currency } from '../../types/domain';
@@ -31,6 +32,7 @@ const personSchema = z.object({
 });
 
 export function PersonFormSheet() {
+  const t = useTranslation();
   const mode = useAppStore((state) => state.mode);
   const people = useAppStore((state) => state.peopleByMode[state.mode]);
   const personId = useAppStore((state) => state.ui.personId);
@@ -97,15 +99,11 @@ export function PersonFormSheet() {
   return (
     <BottomSheet
       onClose={requestClose}
-      title={
-        existing
-          ? `Edit ${mode === 'work' ? 'Team' : 'Person'}`
-          : `Add ${mode === 'work' ? 'Team' : 'Person'}`
-      }
+      title={`${existing ? t('Edit') : t('Add')} ${mode === 'work' ? t('Team') : t('Person')}`}
     >
       <form autoComplete="off" className="form-grid" onSubmit={(event) => void submit(event)}>
         <label className="field">
-          <span>Name</span>
+          <span>{t('Name')}</span>
           <input
             autoCapitalize="words"
             autoComplete="off"
@@ -113,7 +111,7 @@ export function PersonFormSheet() {
             enterKeyHint="next"
             inputMode="text"
             maxLength={80}
-            placeholder="Example: John"
+            placeholder={t('Example: John')}
             spellCheck={false}
             {...register('name')}
           />
@@ -121,7 +119,7 @@ export function PersonFormSheet() {
 
         <label className="field">
           <span>
-            Tag <small>optional</small>
+            {t('Tag')} <small>{t('optional')}</small>
           </span>
           <input
             autoCapitalize="words"
@@ -129,14 +127,14 @@ export function PersonFormSheet() {
             enterKeyHint="next"
             inputMode="text"
             maxLength={20}
-            placeholder="Family, Work…"
+            placeholder={t('Family, Work…')}
             spellCheck={false}
             {...register('tagLabel')}
           />
         </label>
-        <div className="color-picker" role="group" aria-label="Tag color">
+        <div className="color-picker" role="group" aria-label={t('Tag color')}>
           <button
-            aria-label="No tag color"
+            aria-label={t('No tag color')}
             className={
               !tagColor ? 'color-swatch is-selected color-none' : 'color-swatch color-none'
             }
@@ -147,7 +145,7 @@ export function PersonFormSheet() {
           </button>
           {TAG_COLORS.map((color) => (
             <button
-              aria-label={`Tag color ${color}`}
+              aria-label={`${t('Tag color')} ${color}`}
               className={tagColor === color ? 'color-swatch is-selected' : 'color-swatch'}
               key={color}
               onClick={() => setValue('tagColor', color, { shouldDirty: true })}
@@ -159,7 +157,7 @@ export function PersonFormSheet() {
 
         <PickerField
           disabled={Boolean(existing)}
-          label="Currency"
+          label={t('Currency')}
           onChange={(next) => setValue('currency', next as Currency, { shouldDirty: true })}
           options={CURRENCY_OPTIONS}
           value={currency}
@@ -168,20 +166,20 @@ export function PersonFormSheet() {
         {mode === 'work' && (
           <>
             <label className="toggle-field">
-              <span>Salaried employee</span>
+              <span>{t('Salaried employee')}</span>
               <input type="checkbox" {...register('salaryEnabled')} />
             </label>
             {salaryEnabled && wasSalaried && (
               <label className="field">
                 <span>
-                  Salary end date <small>optional</small>
+                  {t('Salary end date')} <small>{t('optional')}</small>
                 </span>
                 <input autoComplete="off" type="date" {...register('salaryEndDate')} />
               </label>
             )}
             {salaryEnabled && !wasSalaried && (
               <p className="inline-note">
-                Save, then set the monthly amount, start date, and schedule in Change Salary.
+                {t('Save, then set the monthly amount, start date, and schedule in Change Salary.')}
               </p>
             )}
           </>
@@ -189,15 +187,15 @@ export function PersonFormSheet() {
 
         {formError && (
           <p className="form-error" role="alert">
-            {formError}
+            {t(formError)}
           </p>
         )}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">
-            Cancel
+            {t('Cancel')}
           </button>
           <button className="primary-button" disabled={isSubmitting} type="submit">
-            Save
+            {t('Save')}
           </button>
         </div>
       </form>

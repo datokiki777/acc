@@ -105,6 +105,31 @@ const ka: Record<string, string> = {
   'Date is required': 'თარიღი სავალდებულოა',
   'Check the entry': 'გადაამოწმე ჩანაწერი',
   'Could not save entry': 'ჩანაწერის შენახვა ვერ მოხერხდა',
+
+  // Person form
+  Edit: 'რედაქტირება',
+  Add: 'დამატება',
+  Team: 'გუნდი',
+  Person: 'ადამიანი',
+  Name: 'სახელი',
+  'Example: John': 'მაგალითად: გიორგი',
+  Tag: 'ტეგი',
+  'Family, Work…': 'ოჯახი, სამუშაო…',
+  'Tag color': 'ტეგის ფერი',
+  'No tag color': 'ფერის გარეშე',
+  Currency: 'ვალუტა',
+  'Salaried employee': 'ხელფასიანი თანამშრომელი',
+  'Salary end date': 'ხელფასის დასრულების თარიღი',
+  'Save, then set the monthly amount, start date, and schedule in Change Salary.':
+    'შეინახე, შემდეგ დააყენე ყოველთვიური თანხა, დაწყების თარიღი და გრაფიკი „ხელფასის შეცვლაში".',
+  'Name is required': 'სახელი სავალდებულოა',
+  'Check the form': 'გადაამოწმე ფორმა',
+  'Could not save': 'ვერ შევინახეთ',
+
+  // FAB "Add" menu
+  'Create a new record': 'შექმენი ახალი ჩანაწერი',
+  'Choose a': 'აირჩიე',
+  'to log it for': 'რომლისთვისაც დაამატო',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

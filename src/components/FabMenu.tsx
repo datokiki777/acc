@@ -1,3 +1,4 @@
+import { useTranslation } from '../i18n/useTranslation';
 import { BottomSheet } from './BottomSheet';
 
 interface FabMenuProps {
@@ -8,11 +9,12 @@ interface FabMenuProps {
 }
 
 export function FabMenu({ personLabel, onAddPerson, onAddEntry, onClose }: FabMenuProps) {
+  const t = useTranslation();
   return (
-    <BottomSheet onClose={onClose} title="Add">
+    <BottomSheet onClose={onClose} title={t('Add')}>
       <div className="fab-menu-options">
         <button
-          aria-label={`Add ${personLabel}`}
+          aria-label={`${t('Add')} ${personLabel}`}
           className="fab-menu-option"
           onClick={onAddPerson}
           type="button"
@@ -24,12 +26,14 @@ export function FabMenu({ personLabel, onAddPerson, onAddEntry, onClose }: FabMe
             </svg>
           </span>
           <span className="fab-menu-text">
-            <span>Add {personLabel}</span>
-            <small>Create a new record</small>
+            <span>
+              {t('Add')} {personLabel}
+            </span>
+            <small>{t('Create a new record')}</small>
           </span>
         </button>
         <button
-          aria-label="Add Entry"
+          aria-label={t('Add Entry')}
           className="fab-menu-option"
           onClick={onAddEntry}
           type="button"
@@ -42,8 +46,10 @@ export function FabMenu({ personLabel, onAddPerson, onAddEntry, onClose }: FabMe
             </svg>
           </span>
           <span className="fab-menu-text">
-            <span>Add Entry</span>
-            <small>Choose a {personLabel.toLowerCase()} to log it for</small>
+            <span>{t('Add Entry')}</span>
+            <small>
+              {t('Choose a')} {personLabel.toLowerCase()} {t('to log it for')}
+            </small>
           </span>
         </button>
       </div>

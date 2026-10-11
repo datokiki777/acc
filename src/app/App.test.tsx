@@ -265,6 +265,25 @@ describe('ACC application', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('თანხა სავალდებულოა');
   });
 
+  it('translates the Person form into Georgian, including a validation error', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => store.getState().setLanguage('ka'));
+
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(await screen.findByRole('button', { name: /ადამიანი/ }));
+    const dialog = screen.getByRole('dialog', { name: /ადამიანი/ });
+
+    expect(within(dialog).getByText('სახელი')).toBeInTheDocument();
+    expect(within(dialog).getByText('ტეგი')).toBeInTheDocument();
+    expect(within(dialog).getByText('ვალუტა')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'გაუქმება' })).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'შენახვა' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('სახელი სავალდებულოა');
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

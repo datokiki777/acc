@@ -511,7 +511,7 @@ export function App() {
             openSheet('person-form');
           }}
           onClose={() => setFabMenuOpen(false)}
-          personLabel={mode === 'work' ? 'Team' : 'Person'}
+          personLabel={mode === 'work' ? t('Team') : t('Person')}
         />
       )}
       {entryPersonPickerOpen && (
