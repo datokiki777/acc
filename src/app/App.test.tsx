@@ -426,6 +426,38 @@ describe('ACC application', () => {
     expect(within(dialog).getByText('ღია ბალანსი არ არის')).toBeInTheDocument();
   });
 
+  it('translates Data & Backup into Georgian, including the health card and PDF picker', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().addPerson(draft('Backup person'));
+      await store.getState().setLanguage('ka');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'პარამეტრები' }));
+    const settings = screen.getByRole('dialog', { name: 'პარამეტრები' });
+    await user.click(within(settings).getByRole('button', { name: /ბექაფი და მონაცემები/ }));
+    const dialog = screen.getByRole('dialog', { name: 'მონაცემები და ბექაფი' });
+
+    // Health card: no backup has ever been made, so this is the 'No backup yet' branch —
+    // confirms the reconstructed detail text (not a direct t(health.detail) lookup) is correct.
+    expect(within(dialog).getByText('ჯერ არ არის ბექაფი')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('გააკეთე JSON ბექაფი, რომ დაიცვა ამ მოწყობილობის მონაცემები.'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'JSON ექსპორტი' })).toBeInTheDocument();
+    expect(within(dialog).getByText('ღრუბლოვანი ბექაფი')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'შესვლა' })).toBeInTheDocument();
+    expect(within(dialog).getByText('PDF რეპორტები')).toBeInTheDocument();
+    expect(within(dialog).getByText('ACC-ის მონაცემების მიმოხილვა')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: /ადამიანის არჩევა/ }));
+    const picker = screen.getByRole('dialog', { name: 'ადამიანის არჩევა' });
+    expect(within(picker).getByText('Backup person')).toBeInTheDocument();
+    expect(within(picker).getByPlaceholderText('ადამიანების ძებნა')).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

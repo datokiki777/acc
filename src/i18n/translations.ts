@@ -217,6 +217,114 @@ const ka: Record<string, string> = {
   'Top Balances': 'ტოპ ბალანსები',
   'No open balances': 'ღია ბალანსი არ არის',
   'Filter by tag': 'ტეგის ფილტრი',
+
+  // Backup & Data: health card
+  'Data & Backup': 'მონაცემები და ბექაფი',
+  'Last JSON backup': 'ბოლო JSON ბექაფი',
+  Never: 'არასდროს',
+  'Not backed up': 'არ არის დაბექაფილი',
+  'Tracking unavailable': 'თვალყურის დევნება მიუწვდომელია',
+  'No backup yet': 'ჯერ არ არის ბექაფი',
+  'Refresh your backup': 'განაახლე შენი ბექაფი',
+  'Backup overdue': 'ბექაფი ვადაგადაცილებულია',
+  'Backup recommended': 'ბექაფი რეკომენდებულია',
+  'Backup is current': 'ბექაფი აქტუალურია',
+  'Export a JSON backup to protect this device data.':
+    'გააკეთე JSON ბექაფი, რომ დაიცვა ამ მოწყობილობის მონაცემები.',
+  'Create one new JSON backup to start precise change tracking.':
+    'გააკეთე ერთი ახალი JSON ბექაფი, რომ დაიწყოს ზუსტი ცვლილებების თვალყურის დევნება.',
+  'entry changes are not in the last backup.': 'ჩანაწერის ცვლილება არ შედის ბოლო ბექაფში.',
+  'Profile or archive changes are not in the last backup.':
+    'პროფილის ან არქივის ცვლილებები არ შედის ბოლო ბექაფში.',
+  'The last backup is': 'ბოლო ბექაფი არის',
+  'days old.': 'დღის წინანდელი.',
+  'All current data is included in the latest JSON backup.':
+    'ყველა მიმდინარე მონაცემი შედის უახლეს JSON ბექაფში.',
+  'Export JSON': 'JSON ექსპორტი',
+  'Choose backup': 'ბექაფის არჩევა',
+  'JSON is the restorable backup format for importing data back into ACC.':
+    'JSON არის აღდგენადი ბექაფის ფორმატი, რომლითაც მონაცემები უკან ACC-ში შეიტვირთება.',
+
+  // Backup & Data: cloud backup
+  'Cloud backup': 'ღრუბლოვანი ბექაფი',
+  'Cross-device': 'ყველა მოწყობილობაზე',
+  'Cloud Backup': 'ღრუბლოვანი ბექაფი',
+  'Signed in': 'შესული ხარ',
+  'Sign out': 'გასვლა',
+  'Pending — last synced': 'მოლოდინში — ბოლოს დასინქრონდა',
+  Synced: 'დასინქრონებული',
+  'Not synced yet': 'ჯერ არ არის დასინქრონებული',
+  'Save to cloud now': 'ღრუბელში შენახვა ახლავე',
+  'Load from cloud': 'ღრუბლიდან ჩატვირთვა',
+  Email: 'ელფოსტა',
+  Password: 'პაროლი',
+  'Sign in': 'შესვლა',
+  'Create account': 'ანგარიშის შექმნა',
+  "Don't have an account? Create one": 'არ გაქვს ანგარიში? შექმენი',
+  'Have an account? Sign in': 'გაქვს ანგარიში? შედი',
+  'Restore source': 'აღდგენის წყარო',
+  'Loading…': 'იტვირთება…',
+  'No cloud backups yet.': 'ჯერ არ არის ღრუბლოვანი ბექაფი.',
+
+  // Backup & Data: PDF reports
+  'Individual PDF export': 'ინდივიდუალური PDF ექსპორტი',
+  'Readable documents': 'წასაკითხი დოკუმენტები',
+  'PDF Reports': 'PDF რეპორტები',
+  'Export All Data PDF': 'ყველა მონაცემის PDF ექსპორტი',
+  'Single report': 'ერთი რეპორტი',
+  'Person / Team PDF': 'ადამიანის / გუნდის PDF',
+  'PDF report type': 'PDF რეპორტის ტიპი',
+  'Choose person': 'ადამიანის არჩევა',
+  'Choose team': 'გუნდის არჩევა',
+  'Choose person for PDF': 'ადამიანის არჩევა PDF-სთვის',
+  'Choose team for PDF': 'გუნდის არჩევა PDF-სთვის',
+  'No records': 'ჩანაწერები არ არის',
+  Export: 'ექსპორტი',
+  'PDF opens the phone print screen—choose “Save as PDF”.':
+    'PDF ხსნის ტელეფონის ბეჭდვის ეკრანს — აირჩიე „შენახვა PDF-ად".',
+  'PDF report': 'PDF რეპორტი',
+  'Close PDF selection': 'PDF არჩევანის დახურვა',
+  'Search names': 'სახელების ძებნა',
+  'Search people': 'ადამიანების ძებნა',
+  'Search teams': 'გუნდების ძებნა',
+  'No matching records': 'დამთხვევა ვერ მოიძებნა',
+
+  // Backup & Data: device insights
+  'Data and device insights': 'მონაცემებისა და მოწყობილობის მიმოხილვა',
+  'On this device': 'ამ მოწყობილობაზე',
+  'ACC data overview': 'ACC-ის მონაცემების მიმოხილვა',
+  'Work teams': 'სამუშაო გუნდები',
+  'Data file': 'მონაცემთა ფაილი',
+  'Backup exports': 'ბექაფის ექსპორტები',
+  Currencies: 'ვალუტები',
+  'None yet': 'ჯერ არცერთი',
+  'Entry range': 'ჩანაწერების პერიოდი',
+  'Device storage quota': 'მოწყობილობის საცავის ლიმიტი',
+  'Device usage includes ACC local data and offline app files. It can vary by browser.':
+    'მოწყობილობის გამოყენება მოიცავს ACC-ის ლოკალურ მონაცემებს და ოფლაინ აპის ფაილებს. ბრაუზერის მიხედვით შეიძლება განსხვავდებოდეს.',
+  Unavailable: 'მიუწვდომელია',
+
+  // Backup & Data: restore flow
+  'Backup safety check': 'ბექაფის უსაფრთხოების შემოწმება',
+  Filename: 'ფაილის სახელი',
+  Validation: 'ვალიდაცია',
+  Valid: 'სწორია',
+  Failed: 'ჩავარდა',
+  'Export date': 'ექსპორტის თარიღი',
+  'Not provided': 'მითითებული არ არის',
+  'This is a snapshot from a specific moment.': 'ეს არის კონკრეტული მომენტის სურათი.',
+  Merge: 'შერწყმა',
+  "only adds what's missing — it won't remove anything added since then. To fully go back to this exact point in time, use":
+    'მხოლოდ დაკარგულს ამატებს — არ წაშლის მას შემდეგ დამატებულს. ზუსტად ამ მომენტში სრულად დასაბრუნებლად გამოიყენე',
+  Replace: 'ჩანაცვლება',
+  'below.': 'ქვემოთ.',
+  'Merge with current data': 'შერწყმა მიმდინარე მონაცემებთან',
+  'I understand Replace will overwrite all React Personal and Work data.':
+    'მესმის, რომ ჩანაცვლება გადაწერს ყველა Personal და Work მონაცემს.',
+  'Replace all React data': 'ყველა მონაცემის ჩანაცვლება',
+  'Restore verified successfully': 'აღდგენა წარმატებით გადამოწმდა',
+  'Restore verification failed': 'აღდგენის გადამოწმება ჩავარდა',
+  people: 'ადამიანი',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

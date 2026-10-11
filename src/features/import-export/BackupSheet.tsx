@@ -12,24 +12,54 @@ import {
   analyzeBackupHealth,
   collectDataInsights,
   createBackupSnapshot,
+  type BackupHealth,
 } from '../../services/backup-health';
 import {
   buildAllPdfReport,
   buildPersonPdfReport,
   openPdfPrintDialog,
 } from '../../services/pdf-report';
+import { useTranslation, type TranslateFn } from '../../i18n/useTranslation';
 import type { AppMode } from '../../types/domain';
 import { useAppStore } from '../../store/hooks';
 
-function formatBytes(bytes: number | undefined): string {
-  if (bytes === undefined || !Number.isFinite(bytes)) return 'Unavailable';
+function formatBytes(bytes: number | undefined, t: TranslateFn): string {
+  if (bytes === undefined || !Number.isFinite(bytes)) return t('Unavailable');
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
+/**
+ * backup-health.ts builds its `detail` text with the live counts already baked in (e.g. '3 entry
+ * changes are not in the last backup.'), so it can't be translated by looking the whole string up
+ * in the dictionary. Rather than touch that service (and its own test suite) to thread a
+ * translation function through pure business logic, this mirrors its exact branching here using
+ * only the signals it already exposes on `health` (plus whether a backup has ever been made,
+ * which the caller already has) — same conditions, same order, just assembled with t() instead.
+ */
+function healthDetailText(health: BackupHealth, hasEverBackedUp: boolean, t: TranslateFn): string {
+  if (!hasEverBackedUp) {
+    return t('Export a JSON backup to protect this device data.');
+  }
+  if (!health.trackingAvailable) {
+    return t('Create one new JSON backup to start precise change tracking.');
+  }
+  if (health.pendingEntryCount > 0) {
+    return `${health.pendingEntryCount} ${t('entry changes are not in the last backup.')}`;
+  }
+  if (health.hasPendingChanges) {
+    return t('Profile or archive changes are not in the last backup.');
+  }
+  if (health.ageDays !== null && health.ageDays > 14) {
+    return `${t('The last backup is')} ${health.ageDays} ${t('days old.')}`;
+  }
+  return t('All current data is included in the latest JSON backup.');
+}
+
 export function BackupSheet() {
+  const t = useTranslation();
   const { requestClose } = useAppNavigation();
   const importBackup = useAppStore((state) => state.importBackup);
   const exportBackup = useAppStore((state) => state.exportBackup);
@@ -193,32 +223,32 @@ export function BackupSheet() {
   }
 
   return (
-    <BottomSheet onClose={requestClose} title="Data & Backup" wide>
+    <BottomSheet onClose={requestClose} title={t('Data & Backup')} wide>
       <section className={`backup-health-card is-${health.tone}`}>
         <div className="backup-health-heading">
           <span className="backup-health-icon" aria-hidden="true">
             {health.tone === 'safe' ? '✓' : health.tone === 'warning' ? '!' : '×'}
           </span>
           <div>
-            <h3>{health.label}</h3>
-            <p>{health.detail}</p>
+            <h3>{t(health.label)}</h3>
+            <p>{healthDetailText(health, Boolean(backupMetadata.lastBackup), t)}</p>
           </div>
         </div>
         <div className="backup-health-facts">
           <div>
-            <span>Last JSON backup</span>
+            <span>{t('Last JSON backup')}</span>
             <strong>
               {backupMetadata.lastBackup
                 ? new Date(backupMetadata.lastBackup).toLocaleString()
-                : 'Never'}
+                : t('Never')}
             </strong>
           </div>
           <div>
-            <span>Not backed up</span>
+            <span>{t('Not backed up')}</span>
             <strong>
               {health.trackingAvailable
-                ? `${health.pendingEntryCount} entries`
-                : 'Tracking unavailable'}
+                ? `${health.pendingEntryCount} ${t('entries')}`
+                : t('Tracking unavailable')}
             </strong>
           </div>
         </div>
@@ -226,10 +256,10 @@ export function BackupSheet() {
 
       <div className="backup-actions-main">
         <button className="primary-button" onClick={() => void exportJson()} type="button">
-          Export JSON
+          {t('Export JSON')}
         </button>
         <button className="secondary-button" onClick={() => fileRef.current?.click()} type="button">
-          Choose backup
+          {t('Choose backup')}
         </button>
         <input
           accept="application/json,.json"
@@ -240,28 +270,28 @@ export function BackupSheet() {
         />
       </div>
       <p className="backup-format-note">
-        JSON is the restorable backup format for importing data back into ACC.
+        {t('JSON is the restorable backup format for importing data back into ACC.')}
       </p>
 
-      <section className="cloud-backup-card" aria-label="Cloud backup">
+      <section className="cloud-backup-card" aria-label={t('Cloud backup')}>
         <div className="backup-section-heading">
           <div>
-            <span>Cross-device</span>
-            <h3>Cloud Backup</h3>
+            <span>{t('Cross-device')}</span>
+            <h3>{t('Cloud Backup')}</h3>
           </div>
         </div>
         {cloudUser ? (
           <>
             <div className="cloud-account-row">
-              <span>{cloudUser.email ?? cloudUser.displayName ?? 'Signed in'}</span>
+              <span>{cloudUser.email ?? cloudUser.displayName ?? t('Signed in')}</span>
               <button className="text-button" onClick={() => void signOutCloud()} type="button">
-                Sign out
+                {t('Sign out')}
               </button>
             </div>
             <p className={`cloud-sync-status ${cloudPendingChanges ? 'is-pending' : 'is-synced'}`}>
               {cloudSyncMetadata
-                ? `${cloudPendingChanges ? '⏳ Pending — last synced' : '✓ Synced'} ${new Date(cloudSyncMetadata.syncedAt).toLocaleString()}`
-                : '○ Not synced yet'}
+                ? `${cloudPendingChanges ? `⏳ ${t('Pending — last synced')}` : `✓ ${t('Synced')}`} ${new Date(cloudSyncMetadata.syncedAt).toLocaleString()}`
+                : `○ ${t('Not synced yet')}`}
             </p>
             <div className="backup-actions-main">
               <button
@@ -270,7 +300,7 @@ export function BackupSheet() {
                 onClick={() => void handleSaveToCloud()}
                 type="button"
               >
-                ☁ Save to cloud now
+                ☁ {t('Save to cloud now')}
               </button>
               <button
                 className="secondary-button"
@@ -278,14 +308,14 @@ export function BackupSheet() {
                 onClick={() => void openCloudPicker()}
                 type="button"
               >
-                ☁ Load from cloud
+                ☁ {t('Load from cloud')}
               </button>
             </div>
           </>
         ) : (
           <div className="cloud-auth-form">
             <div className="field">
-              <span>Email</span>
+              <span>{t('Email')}</span>
               <input
                 autoCapitalize="off"
                 autoComplete="email"
@@ -296,7 +326,7 @@ export function BackupSheet() {
               />
             </div>
             <div className="field">
-              <span>Password</span>
+              <span>{t('Password')}</span>
               <input
                 autoComplete={cloudMode === 'signIn' ? 'current-password' : 'new-password'}
                 onChange={(event) => setCloudPassword(event.target.value)}
@@ -311,7 +341,7 @@ export function BackupSheet() {
               onClick={() => void submitCloudAuth()}
               type="button"
             >
-              {cloudMode === 'signIn' ? 'Sign in' : 'Create account'}
+              {cloudMode === 'signIn' ? t('Sign in') : t('Create account')}
             </button>
             <button
               className="text-button"
@@ -319,20 +349,20 @@ export function BackupSheet() {
               type="button"
             >
               {cloudMode === 'signIn'
-                ? "Don't have an account? Create one"
-                : 'Have an account? Sign in'}
+                ? t("Don't have an account? Create one")
+                : t('Have an account? Sign in')}
             </button>
           </div>
         )}
-        {cloudError && <p className="form-error">{cloudError}</p>}
+        {cloudError && <p className="form-error">{t(cloudError)}</p>}
       </section>
 
       {cloudPickerOpen && (
-        <BottomSheet onClose={() => setCloudPickerOpen(false)} title="Restore source">
+        <BottomSheet onClose={() => setCloudPickerOpen(false)} title={t('Restore source')}>
           {cloudBusy && cloudBackups.length === 0 ? (
-            <p className="mini-empty">Loading…</p>
+            <p className="mini-empty">{t('Loading…')}</p>
           ) : cloudBackups.length === 0 ? (
-            <p className="mini-empty">No cloud backups yet.</p>
+            <p className="mini-empty">{t('No cloud backups yet.')}</p>
           ) : (
             <div className="picker-options">
               {cloudBackups.map((entry) => (
@@ -352,21 +382,21 @@ export function BackupSheet() {
         </BottomSheet>
       )}
 
-      <section className="individual-pdf-card" aria-label="Individual PDF export">
+      <section className="individual-pdf-card" aria-label={t('Individual PDF export')}>
         <div className="backup-section-heading">
           <div>
-            <span>Readable documents</span>
-            <h3>PDF Reports</h3>
+            <span>{t('Readable documents')}</span>
+            <h3>{t('PDF Reports')}</h3>
           </div>
         </div>
         <button className="secondary-button all-data-pdf-button" onClick={exportPdf} type="button">
-          Export All Data PDF
+          {t('Export All Data PDF')}
         </button>
         <div className="pdf-section-label">
-          <span>Single report</span>
-          <strong>Person / Team PDF</strong>
+          <span>{t('Single report')}</span>
+          <strong>{t('Person / Team PDF')}</strong>
         </div>
-        <div className="pdf-mode-switch" role="group" aria-label="PDF report type">
+        <div className="pdf-mode-switch" role="group" aria-label={t('PDF report type')}>
           {(['personal', 'work'] as const).map((mode) => (
             <button
               aria-pressed={pdfMode === mode}
@@ -381,16 +411,18 @@ export function BackupSheet() {
               key={mode}
             >
               {mode === 'personal'
-                ? `Personal (${peopleByMode.personal.length})`
-                : `Work (${peopleByMode.work.length})`}
+                ? `${t('Personal')} (${peopleByMode.personal.length})`
+                : `${t('Work')} (${peopleByMode.work.length})`}
             </button>
           ))}
         </div>
         <div className="individual-pdf-controls">
           <label>
-            <span>{pdfMode === 'personal' ? 'Choose person' : 'Choose team'}</span>
+            <span>{pdfMode === 'personal' ? t('Choose person') : t('Choose team')}</span>
             <button
-              aria-label={pdfMode === 'personal' ? 'Choose person for PDF' : 'Choose team for PDF'}
+              aria-label={
+                pdfMode === 'personal' ? t('Choose person for PDF') : t('Choose team for PDF')
+              }
               className="pdf-person-trigger"
               disabled={!pdfPeople.length}
               onClick={() => {
@@ -399,7 +431,7 @@ export function BackupSheet() {
               }}
               type="button"
             >
-              <span>{pdfPerson?.name ?? 'No records'}</span>
+              <span>{pdfPerson?.name ?? t('No records')}</span>
               <span aria-hidden="true">⌄</span>
             </button>
           </label>
@@ -409,11 +441,11 @@ export function BackupSheet() {
             onClick={exportIndividualPdf}
             type="button"
           >
-            Export {pdfMode === 'personal' ? 'Person' : 'Team'} PDF
+            {t('Export')} {pdfMode === 'personal' ? t('Person') : t('Team')} PDF
           </button>
         </div>
         <p className="backup-format-note pdf-format-note">
-          PDF opens the phone print screen—choose “Save as PDF”.
+          {t('PDF opens the phone print screen—choose “Save as PDF”.')}
         </p>
       </section>
 
@@ -425,18 +457,18 @@ export function BackupSheet() {
           }}
         >
           <section
-            aria-label={pdfMode === 'personal' ? 'Choose person' : 'Choose team'}
+            aria-label={pdfMode === 'personal' ? t('Choose person') : t('Choose team')}
             aria-modal="true"
             className="pdf-picker-dialog"
             role="dialog"
           >
             <header>
               <div>
-                <span>PDF report</span>
-                <h3>{pdfMode === 'personal' ? 'Choose person' : 'Choose team'}</h3>
+                <span>{t('PDF report')}</span>
+                <h3>{pdfMode === 'personal' ? t('Choose person') : t('Choose team')}</h3>
               </div>
               <button
-                aria-label="Close PDF selection"
+                aria-label={t('Close PDF selection')}
                 className="icon-button"
                 onClick={() => setPdfPickerOpen(false)}
                 type="button"
@@ -445,7 +477,7 @@ export function BackupSheet() {
               </button>
             </header>
             <label className="pdf-picker-search">
-              <span className="sr-only">Search names</span>
+              <span className="sr-only">{t('Search names')}</span>
               <svg aria-hidden="true" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m16 16 4 4" />
@@ -453,7 +485,7 @@ export function BackupSheet() {
               <input
                 autoFocus
                 onChange={(event) => setPdfPickerSearch(event.target.value)}
-                placeholder={pdfMode === 'personal' ? 'Search people' : 'Search teams'}
+                placeholder={pdfMode === 'personal' ? t('Search people') : t('Search teams')}
                 type="search"
                 value={pdfPickerSearch}
               />
@@ -473,113 +505,113 @@ export function BackupSheet() {
                     <strong>{person.name}</strong>
                     <small>
                       {person.currency} · {person.entries.length}{' '}
-                      {person.entries.length === 1 ? 'entry' : 'entries'}
-                      {person.archived ? ' · Archived' : ''}
+                      {person.entries.length === 1 ? t('entry') : t('entries')}
+                      {person.archived ? ` · ${t('Archived')}` : ''}
                     </small>
                   </span>
                   <span aria-hidden="true">{person.id === pdfPerson?.id ? '✓' : '›'}</span>
                 </button>
               ))}
-              {!filteredPdfPeople.length && <p>No matching records</p>}
+              {!filteredPdfPeople.length && <p>{t('No matching records')}</p>}
             </div>
           </section>
         </div>
       )}
 
-      <section className="backup-insights" aria-label="Data and device insights">
+      <section className="backup-insights" aria-label={t('Data and device insights')}>
         <div className="backup-section-heading">
           <div>
-            <span>On this device</span>
-            <h3>ACC data overview</h3>
+            <span>{t('On this device')}</span>
+            <h3>{t('ACC data overview')}</h3>
           </div>
-          <strong>{formatBytes(deviceStorage?.usage)}</strong>
+          <strong>{formatBytes(deviceStorage?.usage, t)}</strong>
         </div>
         <div className="backup-insight-grid">
           <div>
-            <span>Personal</span>
+            <span>{t('Personal')}</span>
             <strong>{insights.people}</strong>
           </div>
           <div>
-            <span>Work teams</span>
+            <span>{t('Work teams')}</span>
             <strong>{insights.teams}</strong>
           </div>
           <div>
-            <span>Entries</span>
+            <span>{t('Entries')}</span>
             <strong>{insights.entries}</strong>
           </div>
           <div>
-            <span>Archived</span>
+            <span>{t('Archived')}</span>
             <strong>{insights.archived}</strong>
           </div>
           <div>
-            <span>Data file</span>
-            <strong>{formatBytes(insights.dataBytes)}</strong>
+            <span>{t('Data file')}</span>
+            <strong>{formatBytes(insights.dataBytes, t)}</strong>
           </div>
           <div>
-            <span>Backup exports</span>
+            <span>{t('Backup exports')}</span>
             <strong>{backupMetadata.count}</strong>
           </div>
         </div>
         <dl className="backup-detail-list">
           <div>
-            <dt>Currencies</dt>
-            <dd>{insights.currencies.join(', ') || 'None yet'}</dd>
+            <dt>{t('Currencies')}</dt>
+            <dd>{insights.currencies.join(', ') || t('None yet')}</dd>
           </div>
           <div>
-            <dt>Entry range</dt>
+            <dt>{t('Entry range')}</dt>
             <dd>
               {insights.oldestEntryDate && insights.newestEntryDate
                 ? `${insights.oldestEntryDate} — ${insights.newestEntryDate}`
-                : 'No entries yet'}
+                : t('No entries yet')}
             </dd>
           </div>
           <div>
-            <dt>Device storage quota</dt>
-            <dd>{formatBytes(deviceStorage?.quota)}</dd>
+            <dt>{t('Device storage quota')}</dt>
+            <dd>{formatBytes(deviceStorage?.quota, t)}</dd>
           </div>
         </dl>
         <p className="backup-storage-note">
-          Device usage includes ACC local data and offline app files. It can vary by browser.
+          {t('Device usage includes ACC local data and offline app files. It can vary by browser.')}
         </p>
       </section>
 
       {inspection && (
         <section className={`backup-inspection ${inspection.valid ? 'valid' : 'invalid'}`}>
-          <h3>Backup safety check</h3>
+          <h3>{t('Backup safety check')}</h3>
           <dl>
             <div>
-              <dt>Filename</dt>
+              <dt>{t('Filename')}</dt>
               <dd>{inspection.filename}</dd>
             </div>
             <div>
-              <dt>Validation</dt>
-              <dd>{inspection.valid ? 'Valid' : 'Failed'}</dd>
+              <dt>{t('Validation')}</dt>
+              <dd>{inspection.valid ? t('Valid') : t('Failed')}</dd>
             </div>
             <div>
-              <dt>Personal</dt>
+              <dt>{t('Personal')}</dt>
               <dd>{inspection.counts.personalPeople}</dd>
             </div>
             <div>
-              <dt>Work</dt>
+              <dt>{t('Work')}</dt>
               <dd>{inspection.counts.workPeople}</dd>
             </div>
             <div>
-              <dt>Entries</dt>
+              <dt>{t('Entries')}</dt>
               <dd>{inspection.counts.entries}</dd>
             </div>
             <div>
-              <dt>Export date</dt>
+              <dt>{t('Export date')}</dt>
               <dd>
                 {inspection.exportDate
                   ? new Date(inspection.exportDate).toLocaleString()
-                  : 'Not provided'}
+                  : t('Not provided')}
               </dd>
             </div>
           </dl>
           {!inspection.valid && (
             <ul className="error-list">
               {inspection.errors.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{t(item)}</li>
               ))}
             </ul>
           )}
@@ -587,9 +619,11 @@ export function BackupSheet() {
             <>
               {restoreSource === 'cloud' && (
                 <p className="cloud-restore-note">
-                  This is a snapshot from a specific moment. <strong>Merge</strong> only adds what's
-                  missing — it won't remove anything added since then. To fully go back to this
-                  exact point in time, use <strong>Replace</strong> below.
+                  {t('This is a snapshot from a specific moment.')} <strong>{t('Merge')}</strong>{' '}
+                  {t(
+                    "only adds what's missing — it won't remove anything added since then. To fully go back to this exact point in time, use",
+                  )}{' '}
+                  <strong>{t('Replace')}</strong> {t('below.')}
                 </p>
               )}
               <button
@@ -598,7 +632,7 @@ export function BackupSheet() {
                 onClick={() => void restore('merge')}
                 type="button"
               >
-                Merge with current data
+                {t('Merge with current data')}
               </button>
               <label className="replace-confirm">
                 <input
@@ -606,7 +640,9 @@ export function BackupSheet() {
                   onChange={(event) => setReplaceConfirmed(event.target.checked)}
                   type="checkbox"
                 />
-                <span>I understand Replace will overwrite all React Personal and Work data.</span>
+                <span>
+                  {t('I understand Replace will overwrite all React Personal and Work data.')}
+                </span>
               </label>
               <button
                 className="danger-button full-button"
@@ -614,7 +650,7 @@ export function BackupSheet() {
                 onClick={() => void restore('replace')}
                 type="button"
               >
-                Replace all React data
+                {t('Replace all React data')}
               </button>
             </>
           )}
@@ -624,13 +660,15 @@ export function BackupSheet() {
       {report && (
         <section className={`restore-report ${report.success ? 'success' : 'failure'}`}>
           <h3>
-            {report.success ? 'Restore verified successfully' : 'Restore verification failed'}
+            {report.success ? t('Restore verified successfully') : t('Restore verification failed')}
           </h3>
           <p>
-            Personal: {report.personal.personCount} people · {report.personal.entryCount} entries
+            {t('Personal')}: {report.personal.personCount} {t('people')} ·{' '}
+            {report.personal.entryCount} {t('entries')}
           </p>
           <p>
-            Work: {report.work.personCount} people · {report.work.entryCount} entries
+            {t('Work')}: {report.work.personCount} {t('people')} · {report.work.entryCount}{' '}
+            {t('entries')}
           </p>
           {report.failures.map((failure) => (
             <p key={failure}>{failure}</p>
@@ -639,7 +677,7 @@ export function BackupSheet() {
       )}
       {error && (
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
     </BottomSheet>
