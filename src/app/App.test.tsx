@@ -210,7 +210,7 @@ describe('ACC application', () => {
 
     expect(screen.getByPlaceholderText('ძებნა')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /აქტიური/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /დაარქივებული/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /დაარქ\./ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'პირადი' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'სამუშაო' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'ჯერ არაფერია დამატებული' })).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('ACC application', () => {
     await user.click(summary);
 
     expect(screen.getByText('ხელფასი')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /ხელფასის შეცვლა/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ხელ\. შეცვლა/ })).toBeInTheDocument();
     expect(screen.getByText('დაწყება')).toBeInTheDocument();
     expect(screen.getByText('გადახდილი')).toBeInTheDocument();
   });
@@ -301,8 +301,8 @@ describe('ACC application', () => {
 
     const summary = await findPersonSummary('Already salaried');
     await user.click(summary);
-    await user.click(screen.getByRole('button', { name: /ხელფასის შეცვლა/ }));
-    const dialog = screen.getByRole('dialog', { name: 'ხელფასის შეცვლა' });
+    await user.click(screen.getByRole('button', { name: /ხელ\. შეცვლა/ }));
+    const dialog = screen.getByRole('dialog', { name: 'ხელ. შეცვლა' });
 
     expect(within(dialog).getByText('ახალი ციკლის დაწყების თარიღი')).toBeInTheDocument();
     expect(within(dialog).getByText('ახალი ყოველთვიური ხელფასი')).toBeInTheDocument();
@@ -342,8 +342,8 @@ describe('ACC application', () => {
 
     const summary = await findPersonSummary('History person');
     await user.click(summary);
-    await user.click(screen.getByRole('button', { name: /ხელფასის შეცვლა/ }));
-    const syncDialog = screen.getByRole('dialog', { name: 'ხელფასის შეცვლა' });
+    await user.click(screen.getByRole('button', { name: /ხელ\. შეცვლა/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'ხელ. შეცვლა' });
     await user.click(within(syncDialog).getByRole('button', { name: /წარსული ხელფასის ცვლილება/ }));
     const historyDialog = screen.getByRole('dialog', { name: 'ხელფასის ისტორიის მართვა' });
 
@@ -410,7 +410,7 @@ describe('ACC application', () => {
     const dialog = screen.getByRole('dialog', { name: 'სტატისტიკა' });
 
     expect(within(dialog).getByRole('button', { name: 'აქტიური' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'დაარქივებული' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'დაარქ.' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'ყველა' })).toBeInTheDocument();
     expect(within(dialog).getByText('ადამიანები')).toBeInTheDocument();
     expect(within(dialog).getByText('ბალანსი')).toBeInTheDocument();
