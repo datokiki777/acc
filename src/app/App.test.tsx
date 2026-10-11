@@ -325,6 +325,43 @@ describe('ACC application', () => {
     ).toBeInTheDocument();
   });
 
+  it('translates Manage Salary History into Georgian, including a validation error', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('History person'),
+        salaryEnabled: true,
+        salaryAmount: 2000,
+        salaryStartDate: '2026-07-01',
+      });
+      await store.getState().setLanguage('ka');
+    });
+
+    const summary = await findPersonSummary('History person');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /ხელფასის შეცვლა/ }));
+    const syncDialog = screen.getByRole('dialog', { name: 'ხელფასის შეცვლა' });
+    await user.click(within(syncDialog).getByRole('button', { name: /წარსული ხელფასის ცვლილება/ }));
+    const historyDialog = screen.getByRole('dialog', { name: 'ხელფასის ისტორიის მართვა' });
+
+    expect(within(historyDialog).getByText('საწყისი წერტილი')).toBeInTheDocument();
+    expect(within(historyDialog).getByText('დაწყების თარიღი')).toBeInTheDocument();
+    expect(within(historyDialog).getByText('საწყისი ხელფასი')).toBeInTheDocument();
+    expect(
+      within(historyDialog).getByRole('button', { name: /დაამატე ცვლილება/ }),
+    ).toBeInTheDocument();
+
+    const dateField = within(historyDialog).getByLabelText(/დაწყების თარიღი/);
+    fireEvent.change(dateField, { target: { value: '' } });
+    await user.click(within(historyDialog).getByRole('button', { name: 'შენახვა' }));
+    expect(
+      await within(historyDialog).findByText('ყველა ჩანაწერს თარიღი სჭირდება'),
+    ).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

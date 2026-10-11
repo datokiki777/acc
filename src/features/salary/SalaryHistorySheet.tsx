@@ -5,6 +5,7 @@ import { PickerField } from '../../components/PickerField';
 import { useAppNavigation } from '../../app/useAppNavigation';
 import { getEffectiveTimeline } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
+import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
 import { localDateString } from '../../utils/format';
@@ -34,6 +35,7 @@ function parsePeriodWeeks(text: string): number {
 }
 
 export function SalaryHistorySheet() {
+  const t = useTranslation();
   const personId = useAppStore((state) => state.ui.personId);
   const person = useAppStore((state) =>
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
@@ -121,31 +123,35 @@ export function SalaryHistorySheet() {
   }
 
   return (
-    <BottomSheet onClose={requestClose} title="Manage Salary History">
+    <BottomSheet onClose={requestClose} title={t('Manage Salary History')}>
       <div className="form-grid">
         <p className="inline-note">
           {wasConfigured
-            ? 'Correct or add any past change — amount, pay period, or payment timing. Everything owed recalculates from this full timeline.'
-            : 'Add the starting salary — amount, pay period, and payment timing, from the date it began.'}
+            ? t(
+                'Correct or add any past change — amount, pay period, or payment timing. Everything owed recalculates from this full timeline.',
+              )
+            : t(
+                'Add the starting salary — amount, pay period, and payment timing, from the date it began.',
+              )}
         </p>
         {rows.map((row, index) => (
           <div className="salary-history-edit-card" key={row.id}>
             <div className="salary-history-edit-card-heading">
-              <strong>{index === 0 ? 'Starting point' : `Change ${index + 1}`}</strong>
+              <strong>{index === 0 ? t('Starting point') : `${t('Change')} ${index + 1}`}</strong>
               {rows.length > 1 && (
                 <button
-                  aria-label="Remove this entry"
+                  aria-label={t('Remove this entry')}
                   className="text-button"
                   onClick={() => removeRow(row.id)}
                   type="button"
                 >
-                  ✕ Remove
+                  ✕ {t('Remove')}
                 </button>
               )}
             </div>
             <div className="salary-history-edit-row">
               <label className="field">
-                <span>{index === 0 ? 'Starting date' : 'Change date'}</span>
+                <span>{index === 0 ? t('Starting date') : t('Change date')}</span>
                 <input
                   autoComplete="off"
                   onChange={(event) => updateRow(row.id, { effectiveDate: event.target.value })}
@@ -154,7 +160,7 @@ export function SalaryHistorySheet() {
                 />
               </label>
               <label className="field">
-                <span>{index === 0 ? 'Starting salary' : 'New monthly salary'}</span>
+                <span>{index === 0 ? t('Starting salary') : t('New monthly salary')}</span>
                 <input
                   autoComplete="off"
                   inputMode="decimal"
@@ -168,7 +174,7 @@ export function SalaryHistorySheet() {
             </div>
             <div className="salary-history-edit-row">
               <label className="field">
-                <span>Pay period (weeks)</span>
+                <span>{t('Pay period (weeks)')}</span>
                 <input
                   autoComplete="off"
                   inputMode="numeric"
@@ -181,7 +187,7 @@ export function SalaryHistorySheet() {
                 />
               </label>
               <PickerField
-                label="Payment timing"
+                label={t('Payment timing')}
                 onChange={(next) => updateRow(row.id, { payDelayMode: next as PayDelayMode })}
                 options={PAY_DELAY_OPTIONS}
                 value={row.payDelayMode}
@@ -190,12 +196,12 @@ export function SalaryHistorySheet() {
           </div>
         ))}
         <button className="text-button" onClick={addRow} type="button">
-          + Add change
+          + {t('Add change')}
         </button>
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error">{t(error)}</p>}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             className="primary-button"
@@ -203,7 +209,7 @@ export function SalaryHistorySheet() {
             onClick={() => void submit()}
             type="button"
           >
-            Save
+            {t('Save')}
           </button>
         </div>
       </div>

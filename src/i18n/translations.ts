@@ -168,6 +168,24 @@ const ka: Record<string, string> = {
   'Paid 2 weeks after the period ends': 'გადაიხდება პერიოდის დასრულებიდან 2 კვირაში',
   'Paid 4 weeks after the period ends': 'გადაიხდება პერიოდის დასრულებიდან 4 კვირაში',
   'Paid on the 1st of the following month': 'გადაიხდება მომდევნო თვის 1-ელ რიცხვში',
+
+  // Manage Salary History
+  'Manage Salary History': 'ხელფასის ისტორიის მართვა',
+  'Correct or add any past change — amount, pay period, or payment timing. Everything owed recalculates from this full timeline.':
+    'შეასწორე ან დაამატე ნებისმიერი წარსული ცვლილება — თანხა, გადახდის პერიოდი ან გადახდის დრო. ყველაფერი, რაც ეკუთვნის, ხელახლა გამოითვლება ამ მთლიანი ისტორიიდან.',
+  'Add the starting salary — amount, pay period, and payment timing, from the date it began.':
+    'დაამატე საწყისი ხელფასი — თანხა, გადახდის პერიოდი და გადახდის დრო, იმ თარიღიდან როცა დაიწყო.',
+  'Starting point': 'საწყისი წერტილი',
+  Change: 'ცვლილება',
+  'Remove this entry': 'წაშალე ეს ჩანაწერი',
+  Remove: 'წაშლა',
+  'Starting date': 'დაწყების თარიღი',
+  'Change date': 'ცვლილების თარიღი',
+  'Starting salary': 'საწყისი ხელფასი',
+  'Add change': 'დაამატე ცვლილება',
+  'At least one entry is required': 'მინიმუმ ერთი ჩანაწერია საჭირო',
+  'Every entry needs a date': 'ყველა ჩანაწერს თარიღი სჭირდება',
+  'Could not update salary history': 'ხელფასის ისტორიის განახლება ვერ მოხერხდა',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };
