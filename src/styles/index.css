@@ -922,19 +922,25 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.payroll-panel .payroll-action {
+  min-height: 28px;
+  font-size: 0.78rem;
+}
+
 .payroll-secondary-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+  margin: 9px 0;
 }
 
 .payroll-action {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
+  gap: 4px;
+  padding: 4px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-radius: 99px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
@@ -946,8 +952,8 @@ a:focus-visible {
 }
 
 .payroll-action-icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   flex: 0 0 auto;
   fill: none;
   stroke: currentcolor;
