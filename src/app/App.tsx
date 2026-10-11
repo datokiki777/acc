@@ -398,32 +398,32 @@ export function App() {
                 <path d="m16.5 16.5 4 4" />
               </svg>
               <input
-                aria-label="Search by name"
+                aria-label={t('Search by name')}
                 autoCapitalize="none"
                 autoComplete="off"
                 enterKeyHint="search"
                 inputMode="search"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search"
+                placeholder={t('Search')}
                 spellCheck={false}
                 type="search"
                 value={search}
               />
             </label>
-            <div aria-label="People filter" className="filter-switch" role="group">
+            <div aria-label={t('People filter')} className="filter-switch" role="group">
               <button
                 className={filter === 'active' ? 'is-selected' : ''}
                 onClick={() => setFilter('active')}
                 type="button"
               >
-                Active <span>{activeCount}</span>
+                {t('Active')} <span>{activeCount}</span>
               </button>
               <button
                 className={filter === 'archived' ? 'is-selected' : ''}
                 onClick={() => setFilter('archived')}
                 type="button"
               >
-                Archived <span>{archivedCount}</span>
+                {t('Archived')} <span>{archivedCount}</span>
               </button>
             </div>
           </div>
@@ -448,7 +448,7 @@ export function App() {
 
       {initialized && (
         <div className="mode-switch-bar">
-          <ModeSwitch mode={mode} onChange={(next) => void setMode(next)} />
+          <ModeSwitch mode={mode} onChange={(next) => void setMode(next)} t={t} />
         </div>
       )}
       {initialized && mode === 'work' && (

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { PersistedPerson } from '../../types/persistence';
 import { filterByTag, sortPeopleByTagAndActivity } from '../../domain/people-sort';
 import { hasOutstandingSalaryBalance } from '../../domain/salary';
+import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import { PersonCard, type PersonSwipeAction } from './PersonCard';
 
@@ -17,6 +18,7 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
     personId: string;
     action: PersonSwipeAction;
   } | null>(null);
+  const t = useTranslation();
   const mode = useAppStore((state) => state.mode);
   const people = useAppStore((state) => state.peopleByMode[state.mode]);
   const tagFilter = useAppStore((state) => state.tagFilter);
@@ -56,28 +58,28 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
         </div>
         <h2>
           {search
-            ? 'No matches'
+            ? t('No matches')
             : tagActive
-              ? 'No matches for this tag'
+              ? t('No matches for this tag')
               : filter === 'archived'
-                ? 'No archived people'
-                : 'No records yet'}
+                ? t('No archived people')
+                : t('No records yet')}
         </h2>
         <p>
           {search
-            ? 'Try another name.'
+            ? t('Try another name.')
             : tagActive
-              ? 'Try a different tag, or All.'
+              ? t('Try a different tag, or All.')
               : filter === 'archived'
-                ? 'Archived records will appear here.'
-                : 'Tap the plus button to add your first person.'}
+                ? t('Archived records will appear here.')
+                : t('Tap the plus button to add your first person.')}
         </p>
       </section>
     );
   }
 
   return (
-    <section aria-label={mode === 'work' ? 'Teams' : 'People'} className="people-list">
+    <section aria-label={mode === 'work' ? t('Teams') : t('People')} className="people-list">
       {filtered.map((person) => (
         <PersonCard
           key={person.id}

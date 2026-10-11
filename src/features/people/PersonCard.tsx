@@ -4,6 +4,7 @@ import { personOpenBalance, personTotals } from '../../domain/balances';
 import { useAppNavigation } from '../../app/useAppNavigation';
 import { entryEffect } from '../../domain/entries';
 import { calculateSalary, getEffectiveTimeline, giftSummary } from '../../domain/salary';
+import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import { useLongPress } from '../../hooks/useLongPress';
 import type { PersistedEntry, PersistedPerson } from '../../types/persistence';
@@ -53,6 +54,7 @@ export function PersonCard({
   onSwipeOpen,
 }: PersonCardProps) {
   const { requestClose } = useAppNavigation();
+  const t = useTranslation();
   const dragRef = useRef<SwipeDrag | null>(null);
   const currentOffsetRef = useRef(0);
   const suppressClickRef = useRef(false);
@@ -228,7 +230,7 @@ export function PersonCard({
       <div className="swipe-summary-shell">
         <div aria-hidden={swipeOpen !== 'archive'} className="swipe-action swipe-action-archive">
           <button
-            aria-label={`${person.archived ? 'Unarchive' : 'Archive'} ${person.name}`}
+            aria-label={`${person.archived ? t('Unarchive') : t('Archive')} ${person.name}`}
             onClick={() => {
               onSwipeOpen(null);
               onToggleArchive();
@@ -240,12 +242,12 @@ export function PersonCard({
               <path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6" />
               <path d={person.archived ? 'm9 16 3-3 3 3' : 'm9 13 3 3 3-3'} />
             </svg>
-            <span>{person.archived ? 'Unarchive' : 'Archive'}</span>
+            <span>{person.archived ? t('Unarchive') : t('Archive')}</span>
           </button>
         </div>
         <div aria-hidden={swipeOpen !== 'delete'} className="swipe-action swipe-action-delete">
           <button
-            aria-label={`Delete ${person.name}`}
+            aria-label={`${t('Delete')} ${person.name}`}
             onClick={() => {
               onSwipeOpen(null);
               onDeletePerson();
@@ -256,7 +258,7 @@ export function PersonCard({
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" />
             </svg>
-            <span>Delete</span>
+            <span>{t('Delete')}</span>
           </button>
         </div>
         <button
@@ -294,8 +296,10 @@ export function PersonCard({
           <span className="person-identity">
             <span className="person-name-row">
               <strong>{person.name}</strong>
-              {person.archived && <span className="status-chip">Archived</span>}
-              {salary?.due ? <span className="status-chip status-overdue">Overdue</span> : null}
+              {person.archived && <span className="status-chip">{t('Archived')}</span>}
+              {salary?.due ? (
+                <span className="status-chip status-overdue">{t('Overdue')}</span>
+              ) : null}
               {person.tagLabel ? (
                 <span
                   className="tag-chip"
@@ -322,7 +326,7 @@ export function PersonCard({
             </span>
             <small>
               {person.currency} · {person.entries.length}{' '}
-              {person.entries.length === 1 ? 'entry' : 'entries'}
+              {person.entries.length === 1 ? t('entry') : t('entries')}
             </small>
           </span>
           <span
@@ -361,7 +365,7 @@ export function PersonCard({
                   <span>↑ {formatMoney(totals.gave, person.currency, false)}</span>
                   <span>↓ {formatMoney(totals.received, person.currency, false)}</span>
                   <span className="money-summary-pair">
-                    <span>Net</span>
+                    <span>{t('Net')}</span>
                     <strong
                       className={`money-value-pill money-net-pill ${moneyTone(totals.balance)} ${moneyScale(totals.balance, person.currency)}`}
                     >
@@ -373,7 +377,7 @@ export function PersonCard({
             </div>
             <section aria-label={`${person.name} entries`} className="entries-section">
               <div className="entries-section-heading">
-                <strong>Entries</strong>
+                <strong>{t('Entries')}</strong>
                 <small>{person.entries.length}</small>
               </div>
               <div className="entries-list">
@@ -395,13 +399,14 @@ export function PersonCard({
                         }
                         type="button"
                       >
-                        {isOpen ? '▾' : '▸'} {isOpen ? 'Hide' : 'Show'} {chunk.length} older entries
+                        {isOpen ? '▾' : '▸'} {isOpen ? t('Hide') : t('Show')} {chunk.length}{' '}
+                        {t('older entries')}
                       </button>
                       {isOpen && chunk.map((entry) => renderEntry(entry))}
                     </div>
                   );
                 })}
-                {!person.entries.length && <p className="mini-empty">No entries yet</p>}
+                {!person.entries.length && <p className="mini-empty">{t('No entries yet')}</p>}
               </div>
             </section>
 
@@ -411,7 +416,7 @@ export function PersonCard({
                 onClick={() => openSheet('entry-form', person.id)}
                 type="button"
               >
-                + Add Entry
+                + {t('Add Entry')}
               </button>
             </div>
           </div>

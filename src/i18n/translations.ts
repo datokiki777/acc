@@ -26,6 +26,43 @@ const ka: Record<string, string> = {
   'Primary navigation': 'მთავარი ნავიგაცია',
   'Backup & Data': 'ბექაფი და მონაცემები',
   'Export, import, and cloud sync': 'ექსპორტი, იმპორტი და ღრუბლოვანი სინქი',
+
+  // Home screen: search, filters, mode switch
+  'Search by name': 'ძებნა სახელით',
+  Search: 'ძებნა',
+  'People filter': 'ფილტრი',
+  Active: 'აქტიური',
+  Archived: 'დაარქივებული',
+  'Account mode': 'ანგარიშის რეჟიმი',
+  Personal: 'პირადი',
+  Work: 'სამუშაო',
+  Teams: 'გუნდები',
+  People: 'ადამიანები',
+
+  // Home screen: empty states
+  'No matches': 'არაფერი მოიძებნა',
+  'No matches for this tag': 'ამ ტეგზე არაფერი მოიძებნა',
+  'No archived people': 'დაარქივებული არავინაა',
+  'No records yet': 'ჯერ არაფერია დამატებული',
+  'Try another name.': 'სცადე სხვა სახელი.',
+  'Try a different tag, or All.': 'სცადე სხვა ტეგი, ან აირჩიე ყველა.',
+  'Archived records will appear here.': 'დაარქივებული ჩანაწერები აქ გამოჩნდება.',
+  'Tap the plus button to add your first person.':
+    'დააჭირე + ღილაკს პირველი ჩანაწერის დასამატებლად.',
+
+  // Person card
+  Unarchive: 'დაბრუნება',
+  Archive: 'დაარქივება',
+  Delete: 'წაშლა',
+  Overdue: 'ვადაგადაცილებული',
+  entry: 'ჩანაწერი',
+  entries: 'ჩანაწერი',
+  Net: 'სუფთა',
+  Entries: 'ჩანაწერები',
+  Show: 'ჩვენება',
+  'older entries': 'ძველი ჩანაწერი',
+  'No entries yet': 'ჩანაწერები ჯერ არ არის',
+  'Add Entry': 'ჩანაწერის დამატება',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

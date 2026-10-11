@@ -3263,7 +3263,7 @@ a:focus-visible {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   width: min(100%, 760px);
   min-height: calc(64px + env(safe-area-inset-bottom));
   padding: 5px 8px max(5px, env(safe-area-inset-bottom));

@@ -197,6 +197,25 @@ describe('ACC application', () => {
     expect(reloaded.getState().language).toBe('ka');
   });
 
+  it('translates the Home screen (search, filters, mode switch, empty state) once Georgian is picked', async () => {
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+
+    expect(screen.getByPlaceholderText('Search')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Active/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Personal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No records yet' })).toBeInTheDocument();
+
+    await act(async () => store.getState().setLanguage('ka'));
+
+    expect(screen.getByPlaceholderText('ძებნა')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /აქტიური/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /დაარქივებული/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'პირადი' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'სამუშაო' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ჯერ არაფერია დამატებული' })).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();
