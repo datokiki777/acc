@@ -85,6 +85,26 @@ const ka: Record<string, string> = {
   'Other balance': 'სხვა ბალანსი',
   Gave: 'მისცა',
   Received: 'მიიღო',
+
+  // Entry form
+  'Edit Entry': 'ჩანაწერის რედაქტირება',
+  Amount: 'თანხა',
+  Kind: 'ტიპი',
+  Salary: 'ხელფასი',
+  Direction: 'მიმართულება',
+  Type: 'სახეობა',
+  Refunded: 'დაბრუნებული',
+  Date: 'თარიღი',
+  Comment: 'კომენტარი',
+  optional: 'არასავალდებულო',
+  Cancel: 'გაუქმება',
+  Save: 'შენახვა',
+  'Amount is required': 'თანხა სავალდებულოა',
+  'Enter a valid amount': 'შეიყვანე სწორი თანხა',
+  'Amount must be at least 1': 'თანხა უნდა იყოს მინიმუმ 1',
+  'Date is required': 'თარიღი სავალდებულოა',
+  'Check the entry': 'გადაამოწმე ჩანაწერი',
+  'Could not save entry': 'ჩანაწერის შენახვა ვერ მოხერხდა',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

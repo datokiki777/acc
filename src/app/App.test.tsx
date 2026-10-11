@@ -240,6 +240,31 @@ describe('ACC application', () => {
     expect(screen.getByText('გადახდილი')).toBeInTheDocument();
   });
 
+  it('translates the Entry form into Georgian, including a validation error', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().addPerson(draft('Georgian entry person'));
+      await store.getState().setLanguage('ka');
+    });
+
+    const summary = await findPersonSummary('Georgian entry person');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /ჩანაწერის დამატება/ }));
+    const dialog = screen.getByRole('dialog', { name: /ჩანაწერის დამატება/ });
+
+    expect(within(dialog).getByText('თანხა')).toBeInTheDocument();
+    expect(within(dialog).getByText('თარიღი')).toBeInTheDocument();
+    expect(within(dialog).getByText('კომენტარი')).toBeInTheDocument();
+    expect(within(dialog).getByText('არასავალდებულო')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'გაუქმება' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'შენახვა' })).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'შენახვა' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('თანხა სავალდებულოა');
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

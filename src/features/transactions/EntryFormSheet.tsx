@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
+import { useTranslation } from '../../i18n/useTranslation';
 import type { EntryDraft } from '../../store/app-store';
 import { useAppStore } from '../../store/hooks';
 import { localDateString } from '../../utils/format';
@@ -25,6 +26,7 @@ const entrySchema = z.object({
 type EntryFormValues = Omit<EntryDraft, 'amount'> & { amount: string };
 
 export function EntryFormSheet() {
+  const t = useTranslation();
   const mode = useAppStore((state) => state.mode);
   const personId = useAppStore((state) => state.ui.personId);
   const entryId = useAppStore((state) => state.ui.entryId);
@@ -83,11 +85,11 @@ export function EntryFormSheet() {
   return (
     <BottomSheet
       onClose={requestClose}
-      title={existing ? 'Edit Entry' : `Add Entry · ${person.name}`}
+      title={existing ? t('Edit Entry') : `${t('Add Entry')} · ${person.name}`}
     >
       <form autoComplete="off" className="form-grid" onSubmit={(event) => void submit(event)}>
         <label className="field">
-          <span>Amount</span>
+          <span>{t('Amount')}</span>
           <input
             autoComplete="off"
             autoFocus
@@ -102,7 +104,7 @@ export function EntryFormSheet() {
 
         {mode === 'work' && (
           <div className="field choice-panel">
-            <span>Kind</span>
+            <span>{t('Kind')}</span>
             <div className="choice-row">
               <button
                 aria-pressed={category === 'salary'}
@@ -110,7 +112,7 @@ export function EntryFormSheet() {
                 onClick={() => setValue('category', 'salary', { shouldDirty: true })}
                 type="button"
               >
-                Salary
+                {t('Salary')}
               </button>
               <button
                 aria-pressed={category === 'gift'}
@@ -118,14 +120,14 @@ export function EntryFormSheet() {
                 onClick={() => setValue('category', 'gift', { shouldDirty: true })}
                 type="button"
               >
-                Other
+                {t('Other')}
               </button>
             </div>
           </div>
         )}
 
         <div className="field choice-panel">
-          <span>{category === 'salary' ? 'Direction' : 'Type'}</span>
+          <span>{category === 'salary' ? t('Direction') : t('Type')}</span>
           <div className="choice-row">
             <button
               aria-pressed={type === 'Gave'}
@@ -135,7 +137,7 @@ export function EntryFormSheet() {
               onClick={() => setValue('type', 'Gave', { shouldDirty: true })}
               type="button"
             >
-              {category === 'salary' ? '↗ Paid' : '↗ Gave'}
+              {category === 'salary' ? `↗ ${t('Paid')}` : `↗ ${t('Gave')}`}
             </button>
             <button
               aria-pressed={type === 'Received'}
@@ -145,18 +147,18 @@ export function EntryFormSheet() {
               onClick={() => setValue('type', 'Received', { shouldDirty: true })}
               type="button"
             >
-              {category === 'salary' ? '↘ Refunded' : '↘ Received'}
+              {category === 'salary' ? `↘ ${t('Refunded')}` : `↘ ${t('Received')}`}
             </button>
           </div>
         </div>
 
         <label className="field">
-          <span>Date</span>
+          <span>{t('Date')}</span>
           <input autoComplete="off" type="date" {...register('date')} />
         </label>
         <label className="field">
           <span>
-            Comment <small>optional</small>
+            {t('Comment')} <small>{t('optional')}</small>
           </span>
           <textarea
             autoCapitalize="sentences"
@@ -169,15 +171,15 @@ export function EntryFormSheet() {
         </label>
         {formError && (
           <p className="form-error" role="alert">
-            {formError}
+            {t(formError)}
           </p>
         )}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">
-            Cancel
+            {t('Cancel')}
           </button>
           <button className="primary-button" disabled={isSubmitting} type="submit">
-            Save
+            {t('Save')}
           </button>
         </div>
       </form>
