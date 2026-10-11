@@ -15,7 +15,7 @@ export const DEFAULT_LANGUAGE = 'en';
 const ka: Record<string, string> = {
   Home: 'მთავარი',
   Stats: 'სტატისტიკა',
-  Backup: 'ბექაფი',
+  Settings: 'პარამეტრები',
   Theme: 'თემა',
   Hide: 'დამალვა',
   Language: 'ენა',
@@ -23,8 +23,9 @@ const ka: Record<string, string> = {
   'Light theme': 'ნათელი თემა',
   'System theme': 'სისტემური თემა',
   'Hide amounts': 'თანხების დამალვა',
-  'Show amounts': 'თანხების ჩვენება',
   'Primary navigation': 'მთავარი ნავიგაცია',
+  'Backup & Data': 'ბექაფი და მონაცემები',
+  'Export, import, and cloud sync': 'ექსპორტი, იმპორტი და ღრუბლოვანი სინქი',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

@@ -122,7 +122,7 @@ describe('ACC application', () => {
       'page',
     );
     expect(within(navigation).getByRole('button', { name: 'Stats' })).toBeInTheDocument();
-    expect(within(navigation).getByRole('button', { name: 'Backup' })).toBeInTheDocument();
+    expect(within(navigation).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
     expect(within(navigation).getByRole('button', { name: /theme/i })).toBeInTheDocument();
     expect(within(navigation).getByRole('switch', { name: 'Hide amounts' })).toBeInTheDocument();
   });
@@ -138,7 +138,9 @@ describe('ACC application', () => {
     expect(screen.getByRole('dialog', { name: 'Statistics' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Close' }));
 
-    await user.click(within(navigation).getByRole('button', { name: 'Backup' }));
+    await user.click(within(navigation).getByRole('button', { name: 'Settings' }));
+    const settings = screen.getByRole('dialog', { name: 'Settings' });
+    await user.click(within(settings).getByRole('button', { name: 'Backup & Data' }));
     const backup = screen.getByRole('dialog', { name: 'Data & Backup' });
     expect(backup).toBeVisible();
     expect(within(backup).getByRole('heading', { name: 'PDF Reports' })).toBeVisible();
@@ -155,7 +157,7 @@ describe('ACC application', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
 
-  it('cycles the navigation language between English and Georgian, and remembers the choice', async () => {
+  it('switches the whole app language from Settings, and remembers the choice', async () => {
     const user = userEvent.setup();
     const store = renderApp();
     await waitFor(() => expect(store.getState().initialized).toBe(true));
@@ -164,19 +166,31 @@ describe('ACC application', () => {
     expect(within(navigation).getByText('Stats')).toBeInTheDocument();
     expect(within(navigation).queryByText('სტატისტიკა')).not.toBeInTheDocument();
 
-    await user.click(within(navigation).getByRole('button', { name: 'Language' }));
+    await user.click(within(navigation).getByRole('button', { name: 'Settings' }));
+    const settings = screen.getByRole('dialog', { name: 'Settings' });
+    const languagePicker = within(settings).getByRole('group', { name: 'Language' });
+    expect(within(languagePicker).getByRole('button', { name: 'English' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await user.click(within(languagePicker).getByRole('button', { name: 'ქართული' }));
     expect(store.getState().language).toBe('ka');
-    // The whole bar is now in Georgian — including its own aria-label — not just one button.
+    // The whole app is now in Georgian — the nav bar behind Settings, and Settings itself.
     expect(screen.getByRole('navigation', { name: 'მთავარი ნავიგაცია' })).toBeInTheDocument();
     expect(within(navigation).getByText('სტატისტიკა')).toBeInTheDocument();
-    expect(within(navigation).queryByText('Stats')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'პარამეტრები' })).toBeInTheDocument();
+    expect(within(languagePicker).getByRole('button', { name: 'ქართული' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
-    await user.click(within(navigation).getByRole('button', { name: 'ენა' }));
+    await user.click(within(languagePicker).getByRole('button', { name: 'English' }));
     expect(store.getState().language).toBe('en');
     expect(within(navigation).getByText('Stats')).toBeInTheDocument();
 
     // Pick Georgian again and confirm it survives a reload, same as theme/tagFilter do.
-    await user.click(within(navigation).getByRole('button', { name: 'Language' }));
+    await user.click(within(languagePicker).getByRole('button', { name: 'ქართული' }));
     expect(store.getState().language).toBe('ka');
     const reloaded = createAppStore({ repository: createAppRepository(database) });
     await reloaded.getState().initialize();
@@ -245,11 +259,20 @@ describe('ACC application', () => {
       'page',
     );
 
-    await user.click(within(navigation).getByRole('button', { name: 'Backup' }));
+    await user.click(within(navigation).getByRole('button', { name: 'Settings' }));
+    const settings = screen.getByRole('dialog', { name: 'Settings' });
+    await user.click(within(settings).getByRole('button', { name: 'Backup & Data' }));
     expect(screen.getByRole('dialog', { name: 'Data & Backup' })).toBeVisible();
+    // Backup was reached by drilling into Settings, so Back returns one level — to Settings —
+    // not all the way home.
     pressBrowserBack();
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Data & Backup' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    pressBrowserBack();
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Settings' })).not.toBeInTheDocument(),
     );
     expect(within(navigation).getByRole('button', { name: 'Home' })).toHaveAttribute(
       'aria-current',

@@ -3423,6 +3423,23 @@ a:focus-visible {
   gap: 14px;
 }
 
+.settings-row-button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.settings-row-button:active {
+  opacity: 0.7;
+}
+
+.settings-row-button .picker-chevron {
+  flex: 0 0 auto;
+}
+
 .settings-icon-button {
   display: flex;
   flex: 0 0 auto;

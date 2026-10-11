@@ -6,6 +6,7 @@ import { FabMenu } from '../components/FabMenu';
 import { InstallPrompt } from '../components/InstallPrompt';
 import { ModeSwitch } from '../components/ModeSwitch';
 import { PersonPickerSheet } from '../components/PersonPickerSheet';
+import { SettingsSheet } from '../components/SettingsSheet';
 import { StartupScreen } from '../components/StartupScreen';
 import { UndoToast } from '../components/UndoToast';
 import { filterByTag } from '../domain/people-sort';
@@ -19,7 +20,6 @@ import { SalarySyncSheet } from '../features/salary/SalarySyncSheet';
 import { StatisticsSheet } from '../features/statistics/StatisticsSheet';
 import { EntryFormSheet } from '../features/transactions/EntryFormSheet';
 import { useThemeEffect } from '../hooks/useThemeEffect';
-import { AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
 import type { SheetName } from '../store/app-store';
 import { useAppStore } from '../store/hooks';
@@ -64,11 +64,6 @@ function nextTheme(current: ThemeMode): ThemeMode {
   return order[(order.indexOf(current) + 1) % order.length]!;
 }
 
-function nextLanguage(current: string): string {
-  const index = AVAILABLE_LANGUAGES.indexOf(current);
-  return AVAILABLE_LANGUAGES[(index + 1) % AVAILABLE_LANGUAGES.length]!;
-}
-
 function hasMeaningfulNavigationState(snapshot: NavigationSnapshot) {
   return snapshot.sheet !== 'none' || snapshot.expandedPersonId !== null;
 }
@@ -84,8 +79,6 @@ export function App() {
   const setMode = useAppStore((state) => state.setMode);
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
-  const language = useAppStore((state) => state.language);
-  const setLanguage = useAppStore((state) => state.setLanguage);
   const t = useTranslation();
   const privacyMode = useAppStore((state) => state.privacyMode);
   const setPrivacyMode = useAppStore((state) => state.setPrivacyMode);
@@ -164,7 +157,11 @@ export function App() {
     visiblePeople.filter((person) => !person.archived).length + stillOwedArchived.length;
   const archivedCount = visiblePeople.filter((person) => person.archived).length;
   const activeDestination: AppDestination =
-    sheet === 'statistics' ? 'statistics' : sheet === 'backup' ? 'backup' : 'home';
+    sheet === 'statistics'
+      ? 'statistics'
+      : sheet === 'settings' || sheet === 'backup'
+        ? 'settings'
+        : 'home';
 
   const navigationSnapshot = useMemo<NavigationSnapshot>(
     () => ({
@@ -382,7 +379,7 @@ export function App() {
     if (destination === activeDestination) return;
     if (destination === 'home') closeSheet();
     if (destination === 'statistics') openSheet('statistics');
-    if (destination === 'backup') openSheet('backup');
+    if (destination === 'settings') openSheet('settings');
   }
 
   return (
@@ -476,8 +473,6 @@ export function App() {
       {initialized && (
         <BottomNavigation
           active={activeDestination}
-          language={language}
-          onCycleLanguage={() => void setLanguage(nextLanguage(language))}
           onCycleTheme={() => void setTheme(nextTheme(theme))}
           onNavigate={navigate}
           onTogglePrivacy={() => void setPrivacyMode(!privacyMode)}
@@ -502,6 +497,7 @@ export function App() {
       {sheet === 'salary-sync' && <SalarySyncSheet />}
       {sheet === 'salary-history' && <SalaryHistorySheet />}
       {sheet === 'statistics' && <StatisticsSheet />}
+      {sheet === 'settings' && <SettingsSheet />}
       {sheet === 'backup' && <BackupSheet />}
       {sheet === 'tag-filter' && <TagFilterSheet />}
       {fabMenuOpen && (

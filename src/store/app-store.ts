@@ -42,6 +42,7 @@ export type SheetName =
   | 'person-form'
   | 'entry-form'
   | 'statistics'
+  | 'settings'
   | 'backup'
   | 'salary-sync'
   | 'salary-history'
