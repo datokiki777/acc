@@ -205,6 +205,18 @@ const ka: Record<string, string> = {
   'Edit dates first': 'ჯერ თარიღების შესწორება',
   'Delete entry?': 'წავშალო ჩანაწერი?',
   'Are you sure you want to delete this entry?': 'დარწმუნებული ხარ, რომ გინდა წაშალო ეს ჩანაწერი?',
+
+  // Statistics
+  Statistics: 'სტატისტიკა',
+  All: 'ყველა',
+  Balance: 'ბალანსი',
+  'Last 6 Months': 'ბოლო 6 თვე',
+  'Quick Insights': 'სწრაფი შეჯამება',
+  Average: 'საშუალო',
+  'Most active': 'ყველაზე აქტიური',
+  'Top Balances': 'ტოპ ბალანსები',
+  'No open balances': 'ღია ბალანსი არ არის',
+  'Filter by tag': 'ტეგის ფილტრი',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

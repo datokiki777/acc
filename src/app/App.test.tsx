@@ -397,6 +397,35 @@ describe('ACC application', () => {
     expect(within(discard).getByRole('button', { name: 'გაუქმება' })).toBeInTheDocument();
   });
 
+  it('translates Statistics into Georgian', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().addPerson(draft('Stats person'));
+      await store.getState().setLanguage('ka');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'სტატისტიკა' }));
+    const dialog = screen.getByRole('dialog', { name: 'სტატისტიკა' });
+
+    expect(within(dialog).getByRole('button', { name: 'აქტიური' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'დაარქივებული' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'ყველა' })).toBeInTheDocument();
+    expect(within(dialog).getByText('ადამიანები')).toBeInTheDocument();
+    expect(within(dialog).getByText('ბალანსი')).toBeInTheDocument();
+    expect(within(dialog).getByText('ბოლო 6 თვე')).toBeInTheDocument();
+    expect(within(dialog).getByText('მისცა', { exact: false })).toBeInTheDocument();
+    expect(within(dialog).getByText('მიიღო', { exact: false })).toBeInTheDocument();
+    expect(within(dialog).getByText('სწრაფი შეჯამება')).toBeInTheDocument();
+    expect(within(dialog).getByText('ჩანაწერები')).toBeInTheDocument();
+    expect(within(dialog).getByText('საშუალო')).toBeInTheDocument();
+    expect(within(dialog).getByText('ყველაზე აქტიური')).toBeInTheDocument();
+    expect(within(dialog).getByText('ტოპ ბალანსები')).toBeInTheDocument();
+    // No entries yet, so balance is 0 and Top Balances is empty — confirms that empty state too.
+    expect(within(dialog).getByText('ღია ბალანსი არ არის')).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

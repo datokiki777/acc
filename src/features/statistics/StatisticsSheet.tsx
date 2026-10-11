@@ -10,10 +10,18 @@ import {
   topBalances,
   type StatisticsScope,
 } from '../../domain/statistics';
+import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import { formatDate, formatMoney } from '../../utils/format';
 
+const SCOPE_LABELS: Record<StatisticsScope, string> = {
+  active: 'Active',
+  archived: 'Archived',
+  all: 'All',
+};
+
 export function StatisticsSheet() {
+  const t = useTranslation();
   const mode = useAppStore((state) => state.mode);
   const rawPeople = useAppStore((state) => state.peopleByMode[state.mode]);
   const tagFilter = useAppStore((state) => state.tagFilter);
@@ -41,7 +49,7 @@ export function StatisticsSheet() {
   const maxMonthly = Math.max(1, ...monthly.flatMap((month) => [month.gave, month.received]));
 
   return (
-    <BottomSheet onClose={requestClose} title="Statistics" wide>
+    <BottomSheet onClose={requestClose} title={t('Statistics')} wide>
       <div className="scope-switch">
         {(['active', 'archived', 'all'] as const).map((value) => (
           <button
@@ -50,18 +58,17 @@ export function StatisticsSheet() {
             onClick={() => setScope(value)}
             type="button"
           >
-            {value[0]?.toUpperCase()}
-            {value.slice(1)}
+            {t(SCOPE_LABELS[value])}
           </button>
         ))}
       </div>
       <div className="stats-overview">
         <div>
-          <small>{mode === 'work' ? 'Teams' : 'People'}</small>
+          <small>{mode === 'work' ? t('Teams') : t('People')}</small>
           <strong>{stats.peopleCount}</strong>
         </div>
         <div>
-          <small>Balance</small>
+          <small>{t('Balance')}</small>
           <strong>
             {Object.entries(stats.balancesByCurrency).map(([currency, amount]) => (
               <span key={currency}>
@@ -74,18 +81,18 @@ export function StatisticsSheet() {
 
       {payroll && (
         <section className="stats-section">
-          <h3>Payroll</h3>
+          <h3>{t('Payroll')}</h3>
           <div className="payroll-totals">
             {Object.entries(payroll.totalsByCurrency).map(([currency, total]) => (
               <div key={currency}>
                 {total.due > 0 && (
                   <span className="money-pill overdue">
-                    Overdue{' '}
+                    {t('Overdue')}{' '}
                     {formatMoney(total.due, currency as 'EUR' | 'USD' | 'GEL' | 'CAD', false)}
                   </span>
                 )}
                 <span className="money-pill upcoming">
-                  Upcoming{' '}
+                  {t('Upcoming')}{' '}
                   {formatMoney(total.upcoming, currency as 'EUR' | 'USD' | 'GEL' | 'CAD', false)}
                 </span>
               </div>
@@ -102,7 +109,7 @@ export function StatisticsSheet() {
 
       <section className="stats-section">
         <div className="stats-section-heading">
-          <h3>Last 6 Months</h3>
+          <h3>{t('Last 6 Months')}</h3>
           {selectedPerson && (
             <button className="text-button" onClick={() => setSelectedPersonId(null)} type="button">
               ✕ {selectedPerson.name}
@@ -149,33 +156,33 @@ export function StatisticsSheet() {
           ))}
         </div>
         <div className="chart-legend">
-          <span>● Gave</span>
-          <span>● Received</span>
+          <span>● {t('Gave')}</span>
+          <span>● {t('Received')}</span>
         </div>
       </section>
 
       <section className="stats-section">
-        <h3>Quick Insights</h3>
+        <h3>{t('Quick Insights')}</h3>
         <div className="insight-grid">
           <div>
             <strong>{stats.entryCount}</strong>
-            <small>Entries</small>
+            <small>{t('Entries')}</small>
           </div>
           <div>
             <strong>
               {formatMoney(stats.averageEntry, stats.topBalances[0]?.currency ?? 'EUR', false)}
             </strong>
-            <small>Average</small>
+            <small>{t('Average')}</small>
           </div>
           <div>
             <strong>{stats.mostActiveName ?? '—'}</strong>
-            <small>Most active</small>
+            <small>{t('Most active')}</small>
           </div>
         </div>
       </section>
 
       <section className="stats-section">
-        <h3>Top Balances</h3>
+        <h3>{t('Top Balances')}</h3>
         <div className="top-balance-list">
           {allBalances.map((item) => (
             <button
@@ -190,7 +197,7 @@ export function StatisticsSheet() {
               <strong>{formatMoney(item.balance, item.currency)}</strong>
             </button>
           ))}
-          {!allBalances.length && <p className="mini-empty">No open balances</p>}
+          {!allBalances.length && <p className="mini-empty">{t('No open balances')}</p>}
         </div>
       </section>
     </BottomSheet>
