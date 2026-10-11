@@ -934,6 +934,15 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  transition: background 150ms ease;
+}
+
+.payroll-action:active {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .payroll-action-icon {
