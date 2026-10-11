@@ -362,6 +362,41 @@ describe('ACC application', () => {
     ).toBeInTheDocument();
   });
 
+  it('translates confirmation dialogs into Georgian (delete, archive, discard)', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().addPerson(draft('Confirm person'));
+      await store.getState().setLanguage('ka');
+    });
+
+    const summary = await findPersonSummary('Confirm person');
+    swipe(summary, 100, 220);
+    await user.click(screen.getByRole('button', { name: /დაარქივება Confirm person/ }));
+    expect(screen.getByRole('dialog', { name: 'დავაარქივო?' })).toBeVisible();
+    expect(
+      screen.getByText('დარწმუნებული ხარ, რომ გინდა დაარქივო Confirm person?'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'გაუქმება' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'დაარქივება' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'გაუქმება' }));
+    expect(screen.queryByRole('dialog', { name: 'დავაარქივო?' })).not.toBeInTheDocument();
+
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /ჩანაწერის დამატება/ }));
+    const entryDialog = screen.getByRole('dialog', { name: /ჩანაწერის დამატება/ });
+    await user.type(within(entryDialog).getByRole('spinbutton'), '5');
+    pressBrowserBack();
+    const discard = await screen.findByRole('dialog', { name: 'გავაუქმო ცვლილებები?' });
+    expect(discard).toBeVisible();
+    expect(screen.getByText('შენახული არ გაქვს ცვლილებები, დაიკარგება.')).toBeInTheDocument();
+    expect(
+      within(discard).getByRole('button', { name: 'გავაგრძელო რედაქტირება' }),
+    ).toBeInTheDocument();
+    expect(within(discard).getByRole('button', { name: 'გაუქმება' })).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

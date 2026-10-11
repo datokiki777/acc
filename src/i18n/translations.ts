@@ -186,6 +186,25 @@ const ka: Record<string, string> = {
   'At least one entry is required': 'მინიმუმ ერთი ჩანაწერია საჭირო',
   'Every entry needs a date': 'ყველა ჩანაწერს თარიღი სჭირდება',
   'Could not update salary history': 'ხელფასის ისტორიის განახლება ვერ მოხერხდა',
+
+  // Confirmation dialogs
+  'Discard changes?': 'გავაუქმო ცვლილებები?',
+  'Your unsaved changes will be lost.': 'შენახული არ გაქვს ცვლილებები, დაიკარგება.',
+  'Keep editing': 'გავაგრძელო რედაქტირება',
+  Discard: 'გაუქმება',
+  'Delete?': 'წავშალო?',
+  'Are you sure you want to delete': 'დარწმუნებული ხარ, რომ გინდა წაშალო',
+  'Archive?': 'დავაარქივო?',
+  'Salary will stop accruing as of today.': 'ხელფასის დარიცხვა დღეიდან შეჩერდება.',
+  'Are you sure you want to archive': 'დარწმუნებული ხარ, რომ გინდა დაარქივო',
+  'Unarchive?': 'დავაბრუნო?',
+  'Are you sure you want to unarchive': 'დარწმუნებული ხარ, რომ გინდა დააბრუნო',
+  'Salary tracking will resume from today — you can adjust the dates first if needed.':
+    'ხელფასის თვალყურის დევნება განახლდება დღევანდელი დღიდან — საჭიროების შემთხვევაში ჯერ თარიღები შეგიძლია შეასწორო.',
+  'Resume from today': 'განახლება დღევანდელი დღიდან',
+  'Edit dates first': 'ჯერ თარიღების შესწორება',
+  'Delete entry?': 'წავშალო ჩანაწერი?',
+  'Are you sure you want to delete this entry?': 'დარწმუნებული ხარ, რომ გინდა წაშალო ეს ჩანაწერი?',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };

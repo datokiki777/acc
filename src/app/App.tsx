@@ -203,10 +203,10 @@ export function App() {
 
   const showDiscardConfirmation = useCallback(() => {
     const next: Confirmation = {
-      title: 'Discard changes?',
-      message: 'Your unsaved changes will be lost.',
-      cancelLabel: 'Keep editing',
-      confirmLabel: 'Discard',
+      title: t('Discard changes?'),
+      message: t('Your unsaved changes will be lost.'),
+      cancelLabel: t('Keep editing'),
+      confirmLabel: t('Discard'),
       action: () => {
         closeAfterSave();
         return Promise.resolve();
@@ -214,7 +214,7 @@ export function App() {
     };
     confirmationRef.current = next;
     setConfirmation(next);
-  }, [closeAfterSave]);
+  }, [closeAfterSave, t]);
 
   const requestClose = useCallback(() => {
     if (dirtyRef.current) showDiscardConfirmation();
@@ -319,8 +319,8 @@ export function App() {
 
   function confirmPersonDelete(person: PersistedPerson) {
     setConfirmation({
-      title: 'Delete?',
-      message: `Are you sure you want to delete ${person.name}?`,
+      title: t('Delete?'),
+      message: `${t('Are you sure you want to delete')} ${person.name}?`,
       action: () => deletePerson(person.id),
     });
   }
@@ -330,12 +330,12 @@ export function App() {
 
     if (!person.archived) {
       setConfirmation({
-        title: 'Archive?',
+        title: t('Archive?'),
         message:
           isSalaried && !person.salaryEndDate
-            ? `Archive ${person.name}? Salary will stop accruing as of today.`
-            : `Are you sure you want to archive ${person.name}?`,
-        confirmLabel: 'Archive',
+            ? `${t('Archive')} ${person.name}? ${t('Salary will stop accruing as of today.')}`
+            : `${t('Are you sure you want to archive')} ${person.name}?`,
+        confirmLabel: t('Archive'),
         confirmVariant: 'primary',
         action: () => toggleArchive(person.id),
       });
@@ -344,9 +344,9 @@ export function App() {
 
     if (!isSalaried) {
       setConfirmation({
-        title: 'Unarchive?',
-        message: `Are you sure you want to unarchive ${person.name}?`,
-        confirmLabel: 'Unarchive',
+        title: t('Unarchive?'),
+        message: `${t('Are you sure you want to unarchive')} ${person.name}?`,
+        confirmLabel: t('Unarchive'),
         confirmVariant: 'primary',
         action: () => toggleArchive(person.id),
       });
@@ -354,11 +354,11 @@ export function App() {
     }
 
     setConfirmation({
-      title: 'Unarchive?',
-      message: `Unarchive ${person.name}? Salary tracking will resume from today — you can adjust the dates first if needed.`,
-      confirmLabel: 'Resume from today',
+      title: t('Unarchive?'),
+      message: `${t('Unarchive')} ${person.name}? ${t('Salary tracking will resume from today — you can adjust the dates first if needed.')}`,
+      confirmLabel: t('Resume from today'),
       confirmVariant: 'primary',
-      tertiaryLabel: 'Edit dates first',
+      tertiaryLabel: t('Edit dates first'),
       action: () => toggleArchive(person.id),
       tertiaryAction: async () => {
         await toggleArchive(person.id);
@@ -369,8 +369,8 @@ export function App() {
 
   function confirmEntryDelete(person: PersistedPerson, entryId: string) {
     setConfirmation({
-      title: 'Delete entry?',
-      message: 'Are you sure you want to delete this entry?',
+      title: t('Delete entry?'),
+      message: t('Are you sure you want to delete this entry?'),
       action: () => deleteEntry(person.id, entryId),
     });
   }

@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { useTranslation } from '../i18n/useTranslation';
+
 interface ConfirmDialogProps {
   title: string;
   message: string;
@@ -15,14 +17,15 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   message,
-  cancelLabel = 'Cancel',
-  confirmLabel = 'Delete',
+  cancelLabel,
+  confirmLabel,
   confirmVariant = 'danger',
   tertiaryLabel,
   onCancel,
   onConfirm,
   onTertiary,
 }: ConfirmDialogProps) {
+  const t = useTranslation();
   const titleId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +74,7 @@ export function ConfirmDialog({
             ref={cancelRef}
             type="button"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('Cancel')}
           </button>
           <button
             className={confirmVariant === 'primary' ? 'primary-button' : 'danger-button'}
@@ -82,7 +85,7 @@ export function ConfirmDialog({
             }}
             type="button"
           >
-            {confirmLabel}
+            {confirmLabel ?? t('Delete')}
           </button>
         </div>
       </section>
