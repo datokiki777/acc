@@ -216,6 +216,30 @@ describe('ACC application', () => {
     expect(screen.getByRole('heading', { name: 'ჯერ არაფერია დამატებული' })).toBeInTheDocument();
   });
 
+  it('translates the Payroll panel into Georgian', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Salaried team'),
+        salaryEnabled: true,
+        salaryAmount: 2000,
+        salaryStartDate: '2026-07-01',
+      });
+      await store.getState().setLanguage('ka');
+    });
+
+    const summary = await findPersonSummary('Salaried team');
+    await user.click(summary);
+
+    expect(screen.getByText('ხელფასი')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ხელფასის შეცვლა/ })).toBeInTheDocument();
+    expect(screen.getByText('დაწყება')).toBeInTheDocument();
+    expect(screen.getByText('გადახდილი')).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

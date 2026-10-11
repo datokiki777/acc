@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { PersonTotals } from '../../domain/balances';
 import type { GiftSummary } from '../../domain/salary';
+import { useTranslation, type TranslateFn } from '../../i18n/useTranslation';
 import type { SalaryCalculationResult, SalaryTimelineEntry } from '../../types/domain';
 import type { PersistedPerson } from '../../types/persistence';
 import { formatDate, formatMoney } from '../../utils/format';
@@ -21,21 +22,22 @@ interface FlowTotalsRowProps {
   gave: number;
   net: number;
   received: number;
+  t: TranslateFn;
 }
 
-function FlowTotalsRow({ className, currency, gave, net, received }: FlowTotalsRowProps) {
+function FlowTotalsRow({ className, currency, gave, net, received, t }: FlowTotalsRowProps) {
   return (
     <div className={className}>
       <span>
-        <small>Gave</small>
+        <small>{t('Gave')}</small>
         <strong className={moneyTone(gave)}>{formatMoney(gave, currency, false)}</strong>
       </span>
       <span>
-        <small>Received</small>
+        <small>{t('Received')}</small>
         <strong className={moneyTone(-received)}>{formatMoney(received, currency, false)}</strong>
       </span>
       <span className="money-summary-pair">
-        <small>Net</small>
+        <small>{t('Net')}</small>
         <strong
           className={`money-value-pill money-net-pill ${moneyTone(net)} ${moneyScale(net, currency)}`}
         >
@@ -68,6 +70,7 @@ export function PayrollSummaryCard({
   timeline,
   totals,
 }: PayrollSummaryCardProps) {
+  const t = useTranslation();
   const [historyOpen, setHistoryOpen] = useState(false);
   // The starting segment isn't a 'change' in its own right, so only show it as history once
   // there's actually been at least one change since.
@@ -77,21 +80,22 @@ export function PayrollSummaryCard({
     <section className="payroll-panel work-summary-panel">
       <div className="panel-heading">
         <div>
-          <strong>Payroll</strong>
+          <strong>{t('Payroll')}</strong>
           <small>
-            {formatMoney(salary.monthly, salary.currency, false)} / month · every{' '}
-            {salary.periodWeeks}w
+            {formatMoney(salary.monthly, salary.currency, false)} / {t('month')} · {t('every')}{' '}
+            {salary.periodWeeks}
+            {t('w')}
           </small>
         </div>
         <div className="payroll-pills">
           {salary.due > 0 && (
             <span className="money-pill overdue">
-              Overdue {formatMoney(salary.due, salary.currency, false)}
+              {t('Overdue')} {formatMoney(salary.due, salary.currency, false)}
             </span>
           )}
           {salary.upcoming > 0 && (
             <span className={`money-pill upcoming ${salary.paySoon ? 'soon' : ''}`}>
-              {salary.paySoon ? 'Due soon' : 'Upcoming'}{' '}
+              {salary.paySoon ? t('Due soon') : t('Upcoming')}{' '}
               {formatMoney(salary.upcoming, salary.currency, false)}
             </span>
           )}
@@ -99,13 +103,13 @@ export function PayrollSummaryCard({
       </div>
       <div className="panel-grid">
         <span>
-          Started <strong>{salary.startDate ? formatDate(salary.startDate) : '—'}</strong>
+          {t('Started')} <strong>{salary.startDate ? formatDate(salary.startDate) : '—'}</strong>
         </span>
         <span>
-          Paid <strong>{formatMoney(salary.paid, salary.currency, false)}</strong>
+          {t('Paid')} <strong>{formatMoney(salary.paid, salary.currency, false)}</strong>
         </span>
         <span>
-          {salary.ended ? 'Ended' : 'Next pay'}{' '}
+          {salary.ended ? t('Ended') : t('Next pay')}{' '}
           <strong>{formatDate(salary.ended ? salary.endDate : salary.nextPayDate)}</strong>
         </span>
       </div>
@@ -114,7 +118,7 @@ export function PayrollSummaryCard({
           <svg aria-hidden="true" className="payroll-action-icon" viewBox="0 0 24 24">
             <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          Change Salary
+          {t('Change Salary')}
         </button>
         {changes.length > 0 && (
           <button
@@ -134,7 +138,7 @@ export function PayrollSummaryCard({
             >
               <path d="m6 9 6 6 6-6" />
             </svg>
-            Salary history ({changes.length})
+            {t('Salary history')} ({changes.length})
           </button>
         )}
       </div>
@@ -144,9 +148,9 @@ export function PayrollSummaryCard({
             <li key={change.effectiveDate}>
               <span className="salary-history-date">{formatDate(change.effectiveDate)}</span>
               <span className="salary-history-change">
-                <strong>{formatMoney(change.amount, currency, false)}</strong> · every{' '}
-                {change.periodWeeks}w ·{' '}
-                {PAY_DELAY_LABELS[change.payDelayMode] ?? change.payDelayMode}
+                <strong>{formatMoney(change.amount, currency, false)}</strong> · {t('every')}{' '}
+                {change.periodWeeks}
+                {t('w')} · {t(PAY_DELAY_LABELS[change.payDelayMode] ?? change.payDelayMode)}
               </span>
             </li>
           ))}
@@ -158,6 +162,7 @@ export function PayrollSummaryCard({
         gave={totals.gave}
         net={totals.balance}
         received={totals.received}
+        t={t}
       />
     </section>
   );
@@ -168,12 +173,13 @@ interface OtherSummaryCardProps {
 }
 
 export function OtherSummaryCard({ summary }: OtherSummaryCardProps) {
+  const t = useTranslation();
   return (
     <section className="other-summary-panel work-summary-panel">
       <div className="other-panel-heading">
         <span>
-          <strong>Other</strong>
-          <small>Other balance</small>
+          <strong>{t('Other')}</strong>
+          <small>{t('Other balance')}</small>
         </span>
         <strong
           className={`money-value-pill ${moneyTone(summary.net)} ${moneyScale(summary.net, summary.currency)}`}
@@ -183,13 +189,13 @@ export function OtherSummaryCard({ summary }: OtherSummaryCardProps) {
       </div>
       <div className="other-totals-row">
         <span>
-          <small>Gave</small>
+          <small>{t('Gave')}</small>
           <strong className={moneyTone(summary.gave)}>
             {formatMoney(summary.gave, summary.currency, false)}
           </strong>
         </span>
         <span>
-          <small>Received</small>
+          <small>{t('Received')}</small>
           <strong className={moneyTone(-summary.received)}>
             {formatMoney(summary.received, summary.currency, false)}
           </strong>

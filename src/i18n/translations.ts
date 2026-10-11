@@ -63,6 +63,28 @@ const ka: Record<string, string> = {
   'older entries': 'ძველი ჩანაწერი',
   'No entries yet': 'ჩანაწერები ჯერ არ არის',
   'Add Entry': 'ჩანაწერის დამატება',
+
+  // Payroll panel
+  Payroll: 'ხელფასი',
+  month: 'თვეში',
+  every: 'ყოველ',
+  w: 'კვ',
+  'Due soon': 'მალე გადასახდელი',
+  Upcoming: 'მომავალი',
+  Started: 'დაწყება',
+  Paid: 'გადახდილი',
+  Ended: 'დასრულდა',
+  'Next pay': 'შემდეგი გადახდა',
+  'Change Salary': 'ხელფასის შეცვლა',
+  'Salary history': 'ხელფასის ისტორია',
+  'no delay': 'დაყოვნების გარეშე',
+  '+2w delay': '+2კვ დაყოვნება',
+  '+4w delay': '+4კვ დაყოვნება',
+  '1st of next month': 'მომავალი თვის 1-ელი',
+  Other: 'სხვა',
+  'Other balance': 'სხვა ბალანსი',
+  Gave: 'მისცა',
+  Received: 'მიიღო',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };
