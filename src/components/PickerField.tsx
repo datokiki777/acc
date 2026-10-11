@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useTranslation } from '../i18n/useTranslation';
 import { BottomSheet } from './BottomSheet';
 
 export interface PickerOption {
@@ -25,6 +26,7 @@ export function PickerField({
   disabled = false,
   placeholder = 'Select…',
 }: PickerFieldProps) {
+  const t = useTranslation();
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
 
@@ -39,7 +41,7 @@ export function PickerField({
         type="button"
       >
         <span className={selected ? undefined : 'picker-placeholder'}>
-          {selected?.label ?? placeholder}
+          {selected ? t(selected.label) : t(placeholder)}
         </span>
         <svg aria-hidden="true" className="picker-chevron" viewBox="0 0 24 24">
           <path d="m6 9 6 6 6-6" />
@@ -61,8 +63,8 @@ export function PickerField({
                 type="button"
               >
                 <span className="picker-option-text">
-                  <span>{option.label}</span>
-                  {option.description && <small>{option.description}</small>}
+                  <span>{t(option.label)}</span>
+                  {option.description && <small>{t(option.description)}</small>}
                 </span>
                 {option.value === value && (
                   <svg aria-hidden="true" className="picker-check" viewBox="0 0 24 24">

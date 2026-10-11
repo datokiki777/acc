@@ -7,6 +7,7 @@ import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { addDays, computeSalaryPayDate } from '../../domain/pay-dates';
 import { calculateSalary } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
+import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
 import { formatDate, formatMoney, localDateString } from '../../utils/format';
@@ -20,6 +21,7 @@ interface SyncForm {
 }
 
 export function SalarySyncSheet() {
+  const t = useTranslation();
   const personId = useAppStore((state) => state.ui.personId);
   const person = useAppStore((state) =>
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
@@ -90,11 +92,15 @@ export function SalarySyncSheet() {
   });
 
   return (
-    <BottomSheet onClose={requestClose} title={wasConfigured ? 'Change Salary' : 'Set Up Salary'}>
+    <BottomSheet
+      onClose={requestClose}
+      title={wasConfigured ? t('Change Salary') : t('Set Up Salary')}
+    >
       <form autoComplete="off" className="form-grid" onSubmit={(event) => void submit(event)}>
         {wasConfigured && (
           <p className="inline-note">
-            Earned but not yet paid: <strong>{formatMoney(owed, salary.currency, false)}</strong>
+            {t('Earned but not yet paid:')}{' '}
+            <strong>{formatMoney(owed, salary.currency, false)}</strong>
           </p>
         )}
         {wasConfigured && (
@@ -103,16 +109,16 @@ export function SalarySyncSheet() {
             onClick={() => openSheet('salary-history', person.id)}
             type="button"
           >
-            ✎ Correct or add a past salary change…
+            ✎ {t('Correct or add a past salary change…')}
           </button>
         )}
         <label className="field">
-          <span>{wasConfigured ? 'New cycle start date' : 'Salary start date'}</span>
+          <span>{wasConfigured ? t('New cycle start date') : t('Salary start date')}</span>
           <input autoComplete="off" type="date" {...register('effectiveDate')} />
-          {wasConfigured && <small>Only resets the schedule if you change this date.</small>}
+          {wasConfigured && <small>{t('Only resets the schedule if you change this date.')}</small>}
         </label>
         <label className="field">
-          <span>{wasConfigured ? 'New monthly salary' : 'Monthly salary'}</span>
+          <span>{wasConfigured ? t('New monthly salary') : t('Monthly salary')}</span>
           <input
             autoComplete="off"
             inputMode="decimal"
@@ -122,11 +128,13 @@ export function SalarySyncSheet() {
             {...register('amount', { valueAsNumber: true })}
           />
           {wasConfigured && (
-            <small>Applies from the date above onward. Leave as-is to keep the current rate.</small>
+            <small>
+              {t('Applies from the date above onward. Leave as-is to keep the current rate.')}
+            </small>
           )}
         </label>
         <label className="field">
-          <span>Pay period (weeks)</span>
+          <span>{t('Pay period (weeks)')}</span>
           <input
             autoComplete="off"
             inputMode="numeric"
@@ -137,22 +145,24 @@ export function SalarySyncSheet() {
             {...register('periodWeeks', { valueAsNumber: true })}
           />
           <small>
-            How often salaries recur — 2 means every 2 weeks, going forward from the date above.
+            {t(
+              'How often salaries recur — 2 means every 2 weeks, going forward from the date above.',
+            )}
           </small>
         </label>
         <PickerField
-          label="Payment timing"
+          label={t('Payment timing')}
           onChange={(next) => setValue('payDelayMode', next as PayDelayMode, { shouldDirty: true })}
           options={PAY_DELAY_OPTIONS}
           value={payDelayMode}
         />
         <div className="schedule-preview">
           <div>
-            <small>Period ends</small>
+            <small>{t('Period ends')}</small>
             <strong>{formatDate(previewDueDate)}</strong>
           </div>
           <div>
-            <small>You'll be paid</small>
+            <small>{t("You'll be paid")}</small>
             <strong className={previewDueDate !== previewPayDate ? 'is-delayed' : undefined}>
               {formatDate(previewPayDate)}
             </strong>
@@ -160,14 +170,15 @@ export function SalarySyncSheet() {
         </div>
         {previewDueDate !== previewPayDate && (
           <p className="inline-note">
-            Payment timing adds a delay <em>on top of</em> the pay period above — it doesn't change
-            how often periods happen. Pick "No delay" if you just want to be paid the day each
-            period ends.
+            {t('Payment timing adds a delay')} <em>{t('on top of')}</em>{' '}
+            {t(
+              'the pay period above — it doesn\'t change how often periods happen. Pick "No delay" if you just want to be paid the day each period ends.',
+            )}
           </p>
         )}
         {wasConfigured && (
           <label className="field">
-            <span>One-time adjustment</span>
+            <span>{t('One-time adjustment')}</span>
             <input
               autoComplete="off"
               inputMode="decimal"
@@ -177,18 +188,19 @@ export function SalarySyncSheet() {
               {...register('adjustmentAmount', { valueAsNumber: true })}
             />
             <small>
-              Records an extra payment today, if you type an amount here. Leave at 0 to add nothing
-              — this won't happen automatically.
+              {t(
+                "Records an extra payment today, if you type an amount here. Leave at 0 to add nothing — this won't happen automatically.",
+              )}
             </small>
           </label>
         )}
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error">{t(error)}</p>}
         <div className="form-actions">
           <button className="secondary-button" onClick={requestClose} type="button">
-            Cancel
+            {t('Cancel')}
           </button>
           <button className="primary-button" disabled={isSubmitting} type="submit">
-            Save
+            {t('Save')}
           </button>
         </div>
       </form>

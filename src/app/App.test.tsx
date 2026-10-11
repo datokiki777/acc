@@ -284,6 +284,47 @@ describe('ACC application', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('სახელი სავალდებულოა');
   });
 
+  it('translates Change Salary, including the payment-timing picker options', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Already salaried'),
+        salaryEnabled: true,
+        salaryAmount: 2000,
+        salaryStartDate: '2026-07-01',
+      });
+      await store.getState().setLanguage('ka');
+    });
+
+    const summary = await findPersonSummary('Already salaried');
+    await user.click(summary);
+    await user.click(screen.getByRole('button', { name: /ხელფასის შეცვლა/ }));
+    const dialog = screen.getByRole('dialog', { name: 'ხელფასის შეცვლა' });
+
+    expect(within(dialog).getByText('ახალი ციკლის დაწყების თარიღი')).toBeInTheDocument();
+    expect(within(dialog).getByText('ახალი ყოველთვიური ხელფასი')).toBeInTheDocument();
+    expect(within(dialog).getByText('გადახდის პერიოდი (კვირებში)')).toBeInTheDocument();
+    expect(within(dialog).getByText('პერიოდი სრულდება')).toBeInTheDocument();
+    expect(within(dialog).getByText('გადაგეხდება')).toBeInTheDocument();
+
+    expect(within(dialog).getByText('გადახდის დრო')).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'დაყოვნების გარეშე — გადაიხდება პერიოდის დასრულების დღესვე',
+      }),
+    );
+    const timingDialog = screen.getByRole('dialog', { name: 'გადახდის დრო' });
+    expect(
+      within(timingDialog).getByText('დაყოვნების გარეშე — გადაიხდება პერიოდის დასრულების დღესვე'),
+    ).toBeInTheDocument();
+    expect(
+      within(timingDialog).getByText('გადაიხდება პერიოდის დასრულებიდან 2 კვირაში'),
+    ).toBeInTheDocument();
+  });
+
   it('uses browser Back to collapse an expanded card', async () => {
     const user = userEvent.setup();
     const store = renderApp();

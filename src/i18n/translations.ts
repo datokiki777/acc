@@ -130,6 +130,44 @@ const ka: Record<string, string> = {
   'Create a new record': 'შექმენი ახალი ჩანაწერი',
   'Choose a': 'აირჩიე',
   'to log it for': 'რომლისთვისაც დაამატო',
+
+  // Change Salary / Set Up Salary form
+  'Set Up Salary': 'ხელფასის დაყენება',
+  'Earned but not yet paid:': 'გამომუშავებული, მაგრამ გადაუხდელი:',
+  'Correct or add a past salary change…': 'შეასწორე ან დაამატე წარსული ხელფასის ცვლილება…',
+  'New cycle start date': 'ახალი ციკლის დაწყების თარიღი',
+  'Salary start date': 'ხელფასის დაწყების თარიღი',
+  'Only resets the schedule if you change this date.':
+    'გრაფიკი განულდება მხოლოდ მაშინ, თუ ამ თარიღს შეცვლი.',
+  'New monthly salary': 'ახალი ყოველთვიური ხელფასი',
+  'Monthly salary': 'ყოველთვიური ხელფასი',
+  'Applies from the date above onward. Leave as-is to keep the current rate.':
+    'ვრცელდება ზემოთ მითითებული თარიღიდან. დატოვე უცვლელად, რომ მიმდინარე განაკვეთი შენარჩუნდეს.',
+  'Pay period (weeks)': 'გადახდის პერიოდი (კვირებში)',
+  'How often salaries recur — 2 means every 2 weeks, going forward from the date above.':
+    'რამდენად ხშირად მეორდება ხელფასი — 2 ნიშნავს ყოველ 2 კვირაში, ზემოთ მითითებული თარიღიდან დაწყებული.',
+  'Payment timing': 'გადახდის დრო',
+  'Period ends': 'პერიოდი სრულდება',
+  "You'll be paid": 'გადაგეხდება',
+  'Payment timing adds a delay': 'გადახდის დრო ამატებს დაყოვნებას',
+  'on top of': 'ზემოდან',
+  'the pay period above — it doesn\'t change how often periods happen. Pick "No delay" if you just want to be paid the day each period ends.':
+    'ზემოთ მითითებულ გადახდის პერიოდს — ის არ ცვლის რამდენად ხშირად მეორდება პერიოდები. აირჩიე „დაყოვნების გარეშე", თუ გინდა რომ გადახდა მოხდეს ზუსტად პერიოდის დასრულების დღეს.',
+  'One-time adjustment': 'ერთჯერადი კორექტირება',
+  "Records an extra payment today, if you type an amount here. Leave at 0 to add nothing — this won't happen automatically.":
+    'ჩაწერს დამატებით გადახდას დღევანდელი თარიღით, თუ აქ თანხას მიუთითებ. დატოვე 0, რომ არაფერი არ დაემატოს — ეს ავტომატურად არ მოხდება.',
+  'New cycle date is required': 'ახალი ციკლის თარიღი სავალდებულოა',
+  'Start date is required': 'დაწყების თარიღი სავალდებულოა',
+  'Monthly salary is required': 'ყოველთვიური ხელფასი სავალდებულოა',
+  'Could not update salary': 'ხელფასის განახლება ვერ მოხერხდა',
+  'Select…': 'აირჩიე…',
+
+  // Payment-timing options (shown via PickerField, translated generically by option.label)
+  'No delay — paid the day the period ends':
+    'დაყოვნების გარეშე — გადაიხდება პერიოდის დასრულების დღესვე',
+  'Paid 2 weeks after the period ends': 'გადაიხდება პერიოდის დასრულებიდან 2 კვირაში',
+  'Paid 4 weeks after the period ends': 'გადაიხდება პერიოდის დასრულებიდან 4 კვირაში',
+  'Paid on the 1st of the following month': 'გადაიხდება მომდევნო თვის 1-ელ რიცხვში',
 };
 
 const dictionaries: Record<string, Record<string, string>> = { ka };
