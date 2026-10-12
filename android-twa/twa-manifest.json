@@ -22,7 +22,14 @@
   },
   "appVersionName": "1.0.0",
   "appVersionCode": 1,
-  "shortcuts": [],
+  "shortcuts": [
+    {
+      "name": "Add entry",
+      "shortName": "Add entry",
+      "url": "/?shortcut=add-entry",
+      "chosenIconUrl": "https://acc.dbuilder.eu/icons/icon-192x192.png"
+    }
+  ],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://acc.dbuilder.eu/manifest.webmanifest",
   "fallbackType": "customtabs",
