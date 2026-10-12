@@ -26,6 +26,14 @@ export function createAccPwaManifest(basePath: string): Partial<ManifestOptions>
     lang: 'en',
     dir: 'ltr',
     categories: ['finance', 'business', 'productivity'],
+    shortcuts: [
+      {
+        name: 'Add entry',
+        short_name: 'Add entry',
+        url: `${normalizedBase}?shortcut=add-entry`,
+        icons: [{ src: 'icons/icon-192x192.png', sizes: '192x192', type: 'image/png' }],
+      },
+    ],
     icons: [
       { src: 'icons/icon-167x167.png', sizes: '167x167', type: 'image/png', purpose: 'any' },
       { src: 'icons/icon-180x180.png', sizes: '180x180', type: 'image/png', purpose: 'any' },

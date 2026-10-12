@@ -134,6 +134,23 @@ export function App() {
   }, [initialized, initCloudAuth]);
 
   useEffect(() => {
+    if (!initialized) return;
+    // Launched from the home-screen icon's long-press shortcut (see pwa.ts) — go straight to
+    // 'pick who to add an entry for', same as tapping + then Add Entry. The query param is
+    // stripped right after so a refresh or Back doesn't reopen it. setState is deferred into a
+    // timeout rather than called straight from the effect body, same as the idle-deferred cloud
+    // auth above.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('shortcut') !== 'add-entry') return;
+    params.delete('shortcut');
+    const query = params.toString();
+    const cleanedUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', cleanedUrl);
+    const timer = window.setTimeout(() => setEntryPersonPickerOpen(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialized]);
+
+  useEffect(() => {
     confirmationRef.current = confirmation;
   }, [confirmation]);
 

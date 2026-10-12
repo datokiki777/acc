@@ -120,6 +120,19 @@ describe('ACC application', () => {
     await waitForElementToBeRemoved(() => screen.queryByRole('status', { name: 'ACC is loading' }));
   });
 
+  it('opens the Add Entry picker when launched from the "Add entry" home-screen shortcut', async () => {
+    window.history.pushState(null, '', '/?shortcut=add-entry&other=kept');
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+
+    await screen.findByRole('dialog', { name: 'Add entry for…' });
+    // The shortcut param is stripped so Back/refresh doesn't reopen the picker, but any other
+    // query params are left alone.
+    expect(window.location.search).toBe('?other=kept');
+
+    window.history.replaceState(null, '', '/');
+  });
+
   it('renders the initialized application shell', async () => {
     const store = renderApp();
 

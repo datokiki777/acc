@@ -29,6 +29,15 @@ describe('PWA configuration', () => {
     expect(normalizeBasePath('acc')).toBe('/acc/');
   });
 
+  it('offers an Add entry home-screen shortcut, scoped under each base path', () => {
+    expect(createAccPwaManifest(DEFAULT_BASE_PATH).shortcuts).toEqual([
+      expect.objectContaining({ name: 'Add entry', url: '/?shortcut=add-entry' }),
+    ]);
+    expect(createAccPwaManifest(GITHUB_BASE_PATH).shortcuts).toEqual([
+      expect.objectContaining({ name: 'Add entry', url: '/acc/?shortcut=add-entry' }),
+    ]);
+  });
+
   it('retains regular and maskable icons', () => {
     expect(createAccPwaManifest(DEFAULT_BASE_PATH).icons).toEqual(
       expect.arrayContaining([
