@@ -26,7 +26,7 @@
     {
       "name": "Add entry",
       "shortName": "Add entry",
-      "url": "/?shortcut=add-entry",
+      "url": "https://acc.dbuilder.eu/?shortcut=add-entry",
       "chosenIconUrl": "https://acc.dbuilder.eu/icons/icon-192x192.png"
     }
   ],
