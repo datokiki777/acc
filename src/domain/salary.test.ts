@@ -1,5 +1,6 @@
 import {
   calculateSalary,
+  calculateUpcomingPayments,
   getEffectiveTimeline,
   giftSummary,
   hasOutstandingSalaryBalance,
@@ -629,5 +630,55 @@ describe('reported scenarios: end-to-end regression coverage', () => {
     expect(result.due).toBe(0);
     expect(result.upcoming).toBe(1500);
     expect(result.nextPayDate).toBe('2026-10-07');
+  });
+});
+
+describe('calculateUpcomingPayments', () => {
+  // 4000/month on a 1-week period = 1000 per week, paid 2 weeks after each period ends. Worked
+  // 09-30 to 10-12: one full week (pays 10-21) plus a 5-day tail that rounds to a week (pays
+  // 10-26, the cutoff plus the same delay).
+  const endedTeam = (overrides = {}) =>
+    weeklySalaryPerson({
+      salaryAmount: 4000,
+      salaryStartDate: '2026-09-30',
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: '2weeks',
+      salaryEndDate: '2026-10-12',
+      entries: [],
+      ...overrides,
+    });
+
+  it('lists each pay date separately with its own amount instead of one lump sum', () => {
+    const team = endedTeam();
+    const payments = calculateUpcomingPayments(team, date(2026, 10, 13));
+    expect(payments).toEqual([
+      { date: '2026-10-21', amount: 1000 },
+      { date: '2026-10-26', amount: 1000 },
+    ]);
+    // Same installments, same waterfall as the headline number — just not collapsed.
+    expect(calculateSalary(team, date(2026, 10, 13)).upcoming).toBe(2000);
+  });
+
+  it('only lists what is still uncovered once part of it has been paid, oldest date first', () => {
+    const team = endedTeam({
+      entries: [entry({ id: 'p1', amount: 1000, category: 'salary', date: '2026-10-13' })],
+    });
+    // The first 1000 settles the 10-21 payment, leaving only the 10-26 one.
+    expect(calculateUpcomingPayments(team, date(2026, 10, 13))).toEqual([
+      { date: '2026-10-26', amount: 1000 },
+    ]);
+  });
+
+  it('drops a payment from the list the moment its own date arrives (it is due, not upcoming)', () => {
+    const team = endedTeam();
+    expect(calculateUpcomingPayments(team, date(2026, 10, 21))).toEqual([
+      { date: '2026-10-26', amount: 1000 },
+    ]);
+  });
+
+  it('is empty for someone with no salary at all', () => {
+    expect(
+      calculateUpcomingPayments(weeklySalaryPerson({ salaryAmount: 0 }), date(2026, 3, 8)),
+    ).toEqual([]);
   });
 });

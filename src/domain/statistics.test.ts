@@ -85,4 +85,25 @@ describe('statistics parity', () => {
     // missing from the date group.
     expect(overview?.totalsByCurrency.EUR?.upcoming).toBe(group?.rows[0]?.upcoming);
   });
+
+  it("lists a team under each of its own pay dates with that date's amount, not lumped under the first", () => {
+    const team = weeklySalaryPerson({
+      id: 'team',
+      name: 'Team A',
+      salaryAmount: 4000,
+      salaryStartDate: '2026-09-30',
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: '2weeks',
+      salaryEndDate: '2026-10-12',
+      entries: [],
+    });
+    const overview = calculatePayrollOverview([team], date(2026, 10, 13));
+    expect(overview?.payDates.map((group) => group.date)).toEqual(['2026-10-21', '2026-10-26']);
+    expect(overview?.payDates.map((group) => group.rows.map((row) => row.upcoming))).toEqual([
+      [1000],
+      [1000],
+    ]);
+    // The currency total is still the whole amount owed, counted once.
+    expect(overview?.totalsByCurrency.EUR?.upcoming).toBe(2000);
+  });
 });

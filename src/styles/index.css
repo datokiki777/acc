@@ -986,6 +986,14 @@ a:focus-visible {
   font-size: 0.82rem;
 }
 
+.payroll-upcoming-schedule small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .salary-history-date {
   color: var(--muted);
   font-weight: 600;

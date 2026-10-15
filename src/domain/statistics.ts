@@ -10,7 +10,7 @@ import type {
 } from '../types/domain';
 import { personOpenBalance } from './balances';
 import { normalizeAmount } from './entries';
-import { calculateSalary, getSalarySettings } from './salary';
+import { calculateSalary, calculateUpcomingPayments, getSalarySettings } from './salary';
 
 export type StatisticsScope = 'active' | 'archived' | 'all';
 
@@ -124,22 +124,22 @@ export function calculatePayrollOverview(
   people: readonly Person[],
   referenceDate: Date,
 ): PayrollOverview | null {
-  const rows = people.flatMap((person) => {
-    if (!getSalarySettings(person)) return [];
+  const rowsByPersonIndex = new Map<number, PayrollPayDateGroup['rows'][number]>();
+  people.forEach((person, index) => {
+    if (!getSalarySettings(person)) return;
     const summary = calculateSalary(person, referenceDate);
-    return [
-      {
-        name: person.name,
-        due: summary.due,
-        upcoming: summary.upcoming,
-        nextPayDate: summary.nextPayDate,
-        daysUntilNextPay: summary.daysUntilNextPay,
-        paySoon: summary.paySoon,
-        ended: summary.ended,
-        currency: summary.currency,
-      },
-    ];
+    rowsByPersonIndex.set(index, {
+      name: person.name,
+      due: summary.due,
+      upcoming: summary.upcoming,
+      nextPayDate: summary.nextPayDate,
+      daysUntilNextPay: summary.daysUntilNextPay,
+      paySoon: summary.paySoon,
+      ended: summary.ended,
+      currency: summary.currency,
+    });
   });
+  const rows = [...rowsByPersonIndex.values()];
   if (!rows.length) return null;
 
   const totalsByCurrency: PayrollOverview['totalsByCurrency'] = {};
@@ -151,16 +151,20 @@ export function calculatePayrollOverview(
   });
 
   const groups = new Map<string, PayrollPayDateGroup['rows']>();
-  rows.forEach((row) => {
+  people.forEach((person, index) => {
     // 'ended' only means the salary schedule itself has finished — it says nothing about whether
-    // the final installment has been paid. As long as there's a real upcoming amount and a date
-    // for it, the row belongs in its date group just like anyone still actively salaried; leaving
-    // 'ended' people out here silently dropped their name from every date group while their money
-    // stayed counted in the currency totals above.
-    if (!row.nextPayDate || row.upcoming <= 0) return;
-    const group = groups.get(row.nextPayDate) ?? [];
-    group.push(row);
-    groups.set(row.nextPayDate, group);
+    // the final installment has been paid. As long as something is still upcoming, the person
+    // belongs in the date groups just like anyone still actively salaried.
+    const row = rowsByPersonIndex.get(index);
+    if (!row) return;
+    // One entry per actual pay date, each with only that date's amount — so a team owed 1000 on
+    // the 21st and 750 on the 28th shows up under both dates with those amounts, instead of the
+    // whole 1750 lumped under the 21st and the 28th not appearing at all.
+    calculateUpcomingPayments(person, referenceDate).forEach((payment) => {
+      const group = groups.get(payment.date) ?? [];
+      group.push({ ...row, upcoming: payment.amount, nextPayDate: payment.date });
+      groups.set(payment.date, group);
+    });
   });
 
   const payDates = [...groups.entries()]

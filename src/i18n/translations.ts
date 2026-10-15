@@ -71,6 +71,7 @@ const ka: Record<string, string> = {
   w: 'კვ',
   'Due soon': 'მალე გადასახდელი',
   Upcoming: 'მომავალი',
+  'Upcoming payments': 'მომავალი გადახდები',
   Started: 'დაწყება',
   Paid: 'გადახდილი',
   Ended: 'დასრულდა',

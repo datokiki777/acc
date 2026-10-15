@@ -101,7 +101,11 @@ export function StatisticsSheet() {
           {payroll.payDates.map((group) => (
             <div className="pay-date-row" key={group.date}>
               <strong>{formatDate(group.date)}</strong>
-              <span>{group.rows.map((row) => row.name).join(', ')}</span>
+              <span>
+                {group.rows
+                  .map((row) => `${row.name} ${formatMoney(row.upcoming, row.currency, false)}`)
+                  .join(', ')}
+              </span>
             </div>
           ))}
         </section>

@@ -233,10 +233,16 @@ function buildInstallments(
   return installments;
 }
 
+export interface UpcomingPayment {
+  date: string;
+  amount: number;
+}
+
 interface InstallmentClassification {
   due: number;
   upcoming: number;
   nextPayDate: string;
+  upcomingPayments: UpcomingPayment[];
 }
 
 /**
@@ -256,6 +262,7 @@ function classifyInstallments(
   let due = 0;
   let upcoming = 0;
   let nextPayDate = '';
+  const upcomingByDate = new Map<string, number>();
   for (const installment of installments) {
     cumulative = normalizeAmount(cumulative + installment.amount);
     const uncovered = Math.max(0, Math.min(installment.amount, cumulative - paid));
@@ -267,10 +274,21 @@ function classifyInstallments(
       else {
         upcoming = normalizeAmount(upcoming + uncovered);
         if (!nextPayDate) nextPayDate = installment.payDate;
+        // Two installments landing on the same date are one payment from the person's point of
+        // view, so they're summed per date.
+        upcomingByDate.set(
+          installment.payDate,
+          normalizeAmount((upcomingByDate.get(installment.payDate) ?? 0) + uncovered),
+        );
       }
     }
   }
-  return { due, upcoming, nextPayDate };
+  // Sorted by date explicitly: a later segment with a shorter payment delay can pay out before an
+  // earlier segment's last installment, so generation order isn't guaranteed to be date order.
+  const upcomingPayments = [...upcomingByDate.entries()]
+    .sort(([first], [second]) => compareDateStrings(first, second))
+    .map(([date, amount]) => ({ date, amount }));
+  return { due, upcoming, nextPayDate, upcomingPayments };
 }
 
 /**
@@ -359,6 +377,21 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
     endDate,
     payDelayMode: latest.payDelayMode,
   };
+}
+
+/**
+ * What's still owed and not yet due, broken out by the date each part actually gets paid —
+ * e.g. 1000 on the 21st and then 750 on the 28th — instead of one lump sum under the first date.
+ * The amounts add up to calculateSalary().upcoming exactly (same installments, same payment
+ * waterfall), just not collapsed.
+ */
+export function calculateUpcomingPayments(person: Person, referenceDate: Date): UpcomingPayment[] {
+  const timeline = getEffectiveTimeline(person);
+  if (timeline.length === 0) return [];
+  const config = getSalarySettings(person)!;
+  const installments = buildInstallments(timeline, config.endDate, referenceDate);
+  return classifyInstallments(installments, salaryPaid(person), formatReferenceDate(referenceDate))
+    .upcomingPayments;
 }
 
 /**

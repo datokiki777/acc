@@ -3,7 +3,12 @@ import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } f
 import { personOpenBalance, personTotals } from '../../domain/balances';
 import { useAppNavigation } from '../../app/useAppNavigation';
 import { entryEffect } from '../../domain/entries';
-import { calculateSalary, getEffectiveTimeline, giftSummary } from '../../domain/salary';
+import {
+  calculateSalary,
+  calculateUpcomingPayments,
+  getEffectiveTimeline,
+  giftSummary,
+} from '../../domain/salary';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import { useLongPress } from '../../hooks/useLongPress';
@@ -70,6 +75,7 @@ export function PersonCard({
   const balance = personOpenBalance(person, mode);
   const totals = personTotals(person);
   const salary = mode === 'work' ? calculateSalary(person, new Date()) : null;
+  const upcomingPayments = mode === 'work' ? calculateUpcomingPayments(person, new Date()) : [];
   const effectiveTimeline = mode === 'work' ? getEffectiveTimeline(person) : [];
   const gifts = mode === 'work' ? giftSummary(person) : null;
   const otherSummary =
@@ -353,6 +359,7 @@ export function PersonCard({
                   salary={salary}
                   timeline={effectiveTimeline}
                   totals={totals}
+                  upcomingPayments={upcomingPayments}
                 />
               )}
 
