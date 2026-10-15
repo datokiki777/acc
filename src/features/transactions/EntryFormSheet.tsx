@@ -103,7 +103,7 @@ export function EntryFormSheet() {
         </label>
 
         {mode === 'work' && (
-          <div className="field choice-panel">
+          <div className="field choice-panel kind-panel">
             <span>{t('Kind')}</span>
             <div className="choice-row">
               <button

@@ -1591,6 +1591,13 @@ a:focus-visible {
   box-shadow: inset 0 1px rgb(255 255 255 / 3%);
 }
 
+/* The Kind (Salary / Other) card in the entry form: same shape as the Direction card below it, but
+   tinted with the theme's own accent so it reads as a separate card in both light and dark. */
+.kind-panel {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+}
+
 .choice-button {
   flex: 1;
 }
