@@ -95,7 +95,6 @@ export function EntryFormSheet() {
             autoFocus
             inputMode="decimal"
             min={1}
-            placeholder="0"
             step={1}
             type="number"
             {...register('amount')}

@@ -986,7 +986,8 @@ describe('ACC application', () => {
     await user.click(screen.getByRole('button', { name: /Add Entry/ }));
     const amount = screen.getByRole('spinbutton', { name: 'Amount' });
     expect(amount).toHaveValue(null);
-    expect(amount).toHaveAttribute('placeholder', '0');
+    // Empty and with no grey '0' hint either — it looked like a value that had to be deleted.
+    expect(amount).not.toHaveAttribute('placeholder');
     const gave = screen.getByRole('button', { name: /Gave/ });
     const received = screen.getByRole('button', { name: /Received/ });
     expect(gave).toHaveAttribute('aria-pressed', 'true');
