@@ -270,6 +270,25 @@ describe('Zustand application actions', () => {
     expect(calculateSalary(corrected, NOW).nextPayDate).toBe('2026-08-17');
   });
 
+  it('saves the chosen rest days, treating Sunday-only as the unset default', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+
+    await store.getState().setSalaryRestDays(employee.id, [6, 0]);
+    expect(store.getState().peopleByMode.work[0]!.salaryRestDays).toEqual([0, 6]);
+    const reloaded = (await createAppRepository(database).getPeople('work'))[0]!;
+    expect(reloaded.salaryRestDays).toEqual([0, 6]);
+
+    await store.getState().setSalaryRestDays(employee.id, []);
+    expect(store.getState().peopleByMode.work[0]!.salaryRestDays).toEqual([]);
+
+    await store.getState().setSalaryRestDays(employee.id, [0]);
+    expect(store.getState().peopleByMode.work[0]!.salaryRestDays).toBeUndefined();
+  });
+
   it('saves salary adjustments, which change what the period is worth and survive a reload', async () => {
     const store = makeStore();
     await store.getState().initialize();
@@ -289,8 +308,8 @@ describe('Zustand application actions', () => {
     ]);
     const adjusted = store.getState().peopleByMode.work[0]!;
     expect(adjusted.salaryAdjustments).toHaveLength(1);
-    // 400/month is 100 a week, a seventh of it per stopped day: two days off the first period.
-    expect(calculateSalary(adjusted, new Date(2026, 6, 10, 12)).accrued).toBe(before - 29);
+    // 400/month over 24 working days (Sunday off) is 16.67 a day: two days off the first period.
+    expect(calculateSalary(adjusted, new Date(2026, 6, 10, 12)).accrued).toBe(before - 33);
 
     const reloaded = (await createAppRepository(database).getPeople('work'))[0]!;
     expect(reloaded.salaryAdjustments).toEqual(adjusted.salaryAdjustments);

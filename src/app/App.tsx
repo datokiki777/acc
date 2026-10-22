@@ -210,6 +210,18 @@ export function App() {
     dirtyRef.current = dirty;
   }, []);
 
+  // When a sheet is swapped for another (not stacked on top), the next navigation snapshot takes
+  // over the current history entry instead of adding one — otherwise Back from the second sheet
+  // would land on the first, which is already finished (e.g. a saved Add Team form).
+  const replaceNextSnapshotRef = useRef(false);
+  const replaceSheet = useCallback(
+    (nextSheet: SheetName, personId: string | null) => {
+      replaceNextSnapshotRef.current = true;
+      openSheet(nextSheet, personId);
+    },
+    [openSheet],
+  );
+
   const closeAfterSave = useCallback(() => {
     dirtyRef.current = false;
     if (historyReadyRef.current && historyDepthRef.current > 0) {
@@ -260,6 +272,16 @@ export function App() {
       return;
     }
     if (lastSnapshotKeyRef.current === key) return;
+
+    if (replaceNextSnapshotRef.current) {
+      replaceNextSnapshotRef.current = false;
+      window.history.replaceState(
+        { acc: true, depth: historyDepthRef.current, snapshot: navigationSnapshot },
+        '',
+      );
+      lastSnapshotKeyRef.current = key;
+      return;
+    }
 
     const depth = historyDepthRef.current + 1;
     const nextState: AccHistoryState = { acc: true, depth, snapshot: navigationSnapshot };
@@ -404,6 +426,7 @@ export function App() {
   return (
     <AppNavigationProvider
       closeAfterSave={closeAfterSave}
+      replaceSheet={replaceSheet}
       reportFormDirty={reportFormDirty}
       requestClose={requestClose}
     >

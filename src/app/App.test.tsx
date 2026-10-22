@@ -163,10 +163,12 @@ describe('ACC application', () => {
     await waitFor(() => expect(store.getState().initialized).toBe(true));
     const started = new Date();
     started.setDate(started.getDate() - 60);
+    // Monday to Thursday of last week: always four working days, whatever today is.
     const from = new Date();
-    from.setDate(from.getDate() - 10);
-    const to = new Date();
-    to.setDate(to.getDate() - 7);
+    from.setDate(from.getDate() - 8);
+    from.setDate(from.getDate() - ((from.getDay() + 6) % 7));
+    const to = new Date(from);
+    to.setDate(to.getDate() + 3);
     await act(async () => {
       await store.getState().setMode('work');
       await store.getState().addPerson({
@@ -203,6 +205,70 @@ describe('ACC application', () => {
     await waitFor(() =>
       expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toBeUndefined(),
     );
+  });
+
+  it('closes the Add Team form for good once the salary set-up it leads into is saved', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => store.getState().setMode('work'));
+
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(await screen.findByRole('button', { name: 'Add Team' }));
+    const form = await screen.findByRole('dialog', { name: 'Add Team' });
+    await user.type(within(form).getByRole('textbox', { name: 'Name' }), 'Roof crew');
+    await user.click(within(form).getByRole('checkbox', { name: 'Salaried employee' }));
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    // Saving a salaried team hands over to the salary set-up…
+    const setup = await screen.findByRole('dialog', { name: 'Set Up Salary' });
+    fireEvent.change(within(setup).getByLabelText('Salary start date'), {
+      target: { value: '2026-07-01' },
+    });
+    await user.type(within(setup).getByRole('spinbutton', { name: 'Monthly salary' }), '3000');
+    await user.click(within(setup).getByRole('button', { name: 'Save' }));
+
+    // …and once that is saved, nothing is left open — not the Add Team form behind it.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(store.getState().peopleByMode.work.map((person) => person.name)).toEqual(['Roof crew']);
+    expect(store.getState().peopleByMode.work[0]?.salaryAmount).toBe(3000);
+  });
+
+  it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Rest day team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+
+    await user.click(await findPersonSummary('Rest day team'));
+    await user.click(await screen.findByRole('button', { name: /Change Salary/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Change Salary' });
+
+    // Only Sunday is a rest day to begin with: 6 working days x 4 weeks = 24.
+    expect(within(dialog).getByRole('button', { name: 'Sun' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(dialog).getByRole('button', { name: 'Sat' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(within(dialog).getByText(/monthly salary ÷ 24/)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Sat' }));
+    expect(within(dialog).getByText(/monthly salary ÷ 20/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(store.getState().peopleByMode.work[0]?.salaryRestDays).toEqual([0, 6]);
   });
 
   it('renders the initialized application shell', async () => {

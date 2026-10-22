@@ -9,11 +9,14 @@ interface AppNavigationProviderProps extends AppNavigationContextValue {
 export function AppNavigationProvider({
   children,
   closeAfterSave,
+  replaceSheet,
   reportFormDirty,
   requestClose,
 }: AppNavigationProviderProps) {
   return (
-    <AppNavigationContext.Provider value={{ closeAfterSave, reportFormDirty, requestClose }}>
+    <AppNavigationContext.Provider
+      value={{ closeAfterSave, replaceSheet, reportFormDirty, requestClose }}
+    >
       {children}
     </AppNavigationContext.Provider>
   );

@@ -40,6 +40,7 @@ export const person = (overrides: Partial<Person> = {}): Person => ({
     : { salaryAccruedBaseline: overrides.salaryAccruedBaseline }),
   ...(overrides.salaryHistory === undefined ? {} : { salaryHistory: overrides.salaryHistory }),
   ...(overrides.salaryTimeline === undefined ? {} : { salaryTimeline: overrides.salaryTimeline }),
+  ...(overrides.salaryRestDays === undefined ? {} : { salaryRestDays: overrides.salaryRestDays }),
   ...(overrides.salaryAdjustments === undefined
     ? {}
     : { salaryAdjustments: overrides.salaryAdjustments }),

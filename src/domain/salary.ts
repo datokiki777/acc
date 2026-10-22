@@ -19,6 +19,37 @@ import {
 } from './pay-dates';
 
 export const SALARY_PAY_SOON_DAYS = 3;
+
+/** Sunday. Used when a person has never chosen their rest days. */
+export const DEFAULT_REST_DAYS: number[] = [0];
+
+/**
+ * The weekdays nobody works (0 = Sunday … 6 = Saturday). A stopped day only costs money if it was
+ * a working day, and the daily rate is the monthly salary over the working days in four weeks.
+ * Resting every day of the week would leave no working day to price, so that counts as none.
+ */
+export function getRestDays(person: Person): number[] {
+  if (!person.salaryRestDays) return DEFAULT_REST_DAYS;
+  const days = [
+    ...new Set(
+      person.salaryRestDays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
+    ),
+  ].sort();
+  return days.length >= 7 ? [] : days;
+}
+
+function weekdayOf(dateString: string): number {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year!, month! - 1, day).getDay();
+}
+
+function workingDaysBetween(from: string, to: string, restDays: number[]): number {
+  let count = 0;
+  for (let day = from; compareDateStrings(day, to) <= 0; day = addDays(day, 1)) {
+    if (!restDays.includes(weekdayOf(day))) count += 1;
+  }
+  return count;
+}
 export const SALARY_GRACE_DAYS = 0;
 
 function clampPeriodWeeks(value: number): number {
@@ -148,7 +179,7 @@ interface Installment {
   amount: number;
   /** What it was worth before any adjustment. */
   baseAmount: number;
-  /** What one day of this period's salary is (monthly over 28 days — a month here is 4 weeks). */
+  /** What one working day is worth: the monthly salary over the working days in four weeks. */
   dailyRate: number;
   applied: AppliedAdjustment[];
   completed: boolean;
@@ -181,6 +212,7 @@ function buildInstallments(
   endDate: string,
   referenceDate: Date,
   adjustments: SalaryAdjustment[] = [],
+  restDays: number[] = DEFAULT_REST_DAYS,
 ): Installment[] {
   const referenceDateString = formatReferenceDate(referenceDate);
   const installments: Installment[] = [];
@@ -227,7 +259,7 @@ function buildInstallments(
     }
 
     const amount = periodAmountFor(segment.amount, segment.periodWeeks);
-    const dailyRate = segment.amount / 28;
+    const dailyRate = segment.amount / (4 * (7 - restDays.length));
     for (let k = 1; k <= periodCount; k += 1) {
       const periodStartDate = addDays(segment.effectiveDate, (k - 1) * periodDays);
       const periodEndDate = addDays(segment.effectiveDate, k * periodDays);
@@ -264,11 +296,15 @@ function buildInstallments(
       }
     }
   }
-  return applyAdjustments(installments, adjustments);
+  return applyAdjustments(installments, adjustments, restDays);
 }
 
-/** How many of a period's own days (start included, end excluded) a stoppage covers. */
-function stoppedDaysWithin(adjustment: SalaryAdjustment, installment: Installment): number {
+/** How many WORKING days of a period (start included, end excluded) a stoppage covers. */
+function stoppedDaysWithin(
+  adjustment: SalaryAdjustment,
+  installment: Installment,
+  restDays: number[],
+): number {
   const lastDay = addDays(installment.periodEndDate, -1);
   const from =
     compareDateStrings(adjustment.startDate, installment.periodStartDate) > 0
@@ -276,7 +312,7 @@ function stoppedDaysWithin(adjustment: SalaryAdjustment, installment: Installmen
       : installment.periodStartDate;
   const stoppedTo = adjustment.endDate || adjustment.startDate;
   const to = compareDateStrings(stoppedTo, lastDay) < 0 ? stoppedTo : lastDay;
-  return compareDateStrings(to, from) >= 0 ? daysBetweenDates(from, to) + 1 : 0;
+  return compareDateStrings(to, from) >= 0 ? workingDaysBetween(from, to, restDays) : 0;
 }
 
 /**
@@ -299,13 +335,14 @@ function periodIndexFor(date: string, installments: Installment[]): number {
 /**
  * Lets recorded stoppages, bonuses and deductions change what each period is worth, before the
  * payment waterfall ever sees the amounts — so due, upcoming, the strip and the period list all
- * agree without any of them knowing adjustments exist. A stoppage costs its days at the period's
- * daily rate (a day of a period split across two periods is charged to whichever period holds it);
- * a period can't go below zero.
+ * agree without any of them knowing adjustments exist. A stoppage costs its WORKING days (rest days
+ * are free) at the period's daily rate, each charged to whichever period holds it; a period can't
+ * go below zero.
  */
 function applyAdjustments(
   installments: Installment[],
   adjustments: SalaryAdjustment[],
+  restDays: number[],
 ): Installment[] {
   if (adjustments.length === 0 || installments.length === 0) return installments;
   const indexById = new Map(
@@ -317,7 +354,7 @@ function applyAdjustments(
     const applied: AppliedAdjustment[] = [];
     for (const adjustment of adjustments) {
       if (adjustment.type === 'stoppage') {
-        const days = stoppedDaysWithin(adjustment, installment);
+        const days = stoppedDaysWithin(adjustment, installment, restDays);
         if (days > 0) {
           applied.push({
             id: adjustment.id,
@@ -460,6 +497,7 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
     endDate,
     referenceDate,
     person.salaryAdjustments,
+    getRestDays(person),
   );
   const accrued = installments.reduce(
     (sum, installment) => sum + (installment.completed ? installment.amount : 0),
@@ -528,6 +566,7 @@ export function calculatePeriodStatuses(person: Person, referenceDate: Date): Pe
     config.endDate,
     referenceDate,
     person.salaryAdjustments,
+    getRestDays(person),
   );
   const paid = salaryPaid(person);
   const referenceDateString = formatReferenceDate(referenceDate);
@@ -573,6 +612,7 @@ export function calculateUpcomingPayments(person: Person, referenceDate: Date): 
     config.endDate,
     referenceDate,
     person.salaryAdjustments,
+    getRestDays(person),
   );
   return classifyInstallments(installments, salaryPaid(person), formatReferenceDate(referenceDate))
     .upcomingPayments;

@@ -5,7 +5,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { PickerField } from '../../components/PickerField';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { addDays, computeSalaryPayDate } from '../../domain/pay-dates';
-import { calculateSalary } from '../../domain/salary';
+import { calculateSalary, getRestDays } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
@@ -18,7 +18,19 @@ interface SyncForm {
   amount: number;
   payDelayMode: PayDelayMode;
   periodWeeks: number;
+  restDays: number[];
 }
+
+// Monday first, as a working week reads; the numbers are Date.getDay() values (0 = Sunday).
+const WEEK: { day: number; label: string }[] = [
+  { day: 1, label: 'Mon' },
+  { day: 2, label: 'Tue' },
+  { day: 3, label: 'Wed' },
+  { day: 4, label: 'Thu' },
+  { day: 5, label: 'Fri' },
+  { day: 6, label: 'Sat' },
+  { day: 0, label: 'Sun' },
+];
 
 export function SalarySyncSheet() {
   const t = useTranslation();
@@ -27,6 +39,7 @@ export function SalarySyncSheet() {
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
   );
   const sync = useAppStore((state) => state.syncSalary);
+  const setRestDays = useAppStore((state) => state.setSalaryRestDays);
   const openSheet = useAppStore((state) => state.openSheet);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const [error, setError] = useState('');
@@ -45,14 +58,25 @@ export function SalarySyncSheet() {
       amount: person?.salaryAmount ?? 0,
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
       periodWeeks: Number(person?.salaryPayPeriodWeeks ?? person?.salaryPayDay ?? 2),
+      restDays: person ? getRestDays(person) : [0],
     },
   });
   const payDelayMode = useWatch({ control, name: 'payDelayMode' });
   const watchedEffectiveDate = useWatch({ control, name: 'effectiveDate' });
   const watchedPeriodWeeks = useWatch({ control, name: 'periodWeeks' });
+  const restDays = useWatch({ control, name: 'restDays' });
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
   const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
+
+  const toggleRestDay = (day: number) => {
+    const next = restDays.includes(day)
+      ? restDays.filter((item) => item !== day)
+      : [...restDays, day];
+    // Resting all seven days would leave nothing to price a working day with.
+    if (next.length >= 7) return;
+    setValue('restDays', next, { shouldDirty: true });
+  };
 
   const previewDate = watchedEffectiveDate || person.salaryStartDate || localDateString();
   const previewPeriodWeeks =
@@ -85,6 +109,7 @@ export function SalarySyncSheet() {
         values.payDelayMode,
         values.periodWeeks,
       );
+      await setRestDays(person.id, values.restDays);
       closeAfterSave();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not update salary');
@@ -150,6 +175,28 @@ export function SalarySyncSheet() {
             )}
           </small>
         </label>
+        <div className="field choice-panel">
+          <span>{t('Rest days')}</span>
+          <div className="weekday-row">
+            {WEEK.map((item) => (
+              <button
+                aria-pressed={restDays.includes(item.day)}
+                className={
+                  restDays.includes(item.day) ? 'choice-button is-selected' : 'choice-button'
+                }
+                key={item.day}
+                onClick={() => toggleRestDay(item.day)}
+                type="button"
+              >
+                {t(item.label)}
+              </button>
+            ))}
+          </div>
+          <small>
+            {t('Not charged when work stops. One working day = monthly salary ÷')}{' '}
+            {4 * (7 - restDays.length)}
+          </small>
+        </div>
         <PickerField
           label={t('Payment timing')}
           onChange={(next) => setValue('payDelayMode', next as PayDelayMode, { shouldDirty: true })}

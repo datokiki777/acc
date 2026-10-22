@@ -38,8 +38,7 @@ export function PersonFormSheet() {
   const personId = useAppStore((state) => state.ui.personId);
   const addPerson = useAppStore((state) => state.addPerson);
   const editPerson = useAppStore((state) => state.editPerson);
-  const openSheet = useAppStore((state) => state.openSheet);
-  const { closeAfterSave, requestClose } = useAppNavigation();
+  const { closeAfterSave, replaceSheet, requestClose } = useAppNavigation();
   const existing = people.find((person) => person.id === personId);
   const [formError, setFormError] = useState('');
   const {
@@ -87,7 +86,7 @@ export function PersonFormSheet() {
       if (newlyEnabled) {
         // Amount, start date, and schedule are no longer collected here — Change Salary is the
         // one place that configures a salary, including for the very first time.
-        openSheet('salary-sync', savedId);
+        replaceSheet('salary-sync', savedId);
       } else {
         closeAfterSave();
       }

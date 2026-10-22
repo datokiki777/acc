@@ -3813,3 +3813,15 @@ a:focus-visible {
   font-size: 0.95rem;
   font-weight: 700;
 }
+
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.weekday-row .choice-button {
+  padding-right: 0;
+  padding-left: 0;
+  font-size: 0.78rem;
+}

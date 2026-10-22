@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
-import { calculatePeriodStatuses } from '../../domain/salary';
+import { calculatePeriodStatuses, getRestDays } from '../../domain/salary';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import type { SalaryAdjustment, SalaryAdjustmentType } from '../../types/domain';
@@ -223,7 +223,9 @@ export function SalaryAdjustmentSheet() {
         )}
 
         {isStoppage && (
-          <p className="inline-note">{t('One day is the monthly salary divided by 28.')}</p>
+          <p className="inline-note">
+            {t('One working day = monthly salary ÷')} {4 * (7 - getRestDays(person).length)}
+          </p>
         )}
         {preview && (
           <p className="adjustment-preview" role="status">

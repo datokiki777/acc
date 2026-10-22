@@ -130,6 +130,7 @@ export interface AppStoreState {
   ) => Promise<void>;
   updateSalaryTimeline: (personId: string, timeline: SalaryTimelineEntry[]) => Promise<void>;
   setSalaryAdjustments: (personId: string, adjustments: SalaryAdjustment[]) => Promise<void>;
+  setSalaryRestDays: (personId: string, restDays: number[]) => Promise<void>;
   importBackup: (
     inspection: Extract<BackupInspection, { valid: true }>,
     mode: ImportMode,
@@ -238,6 +239,7 @@ function applyDraftToPerson(original: PersistedPerson, draft: PersonDraft): Pers
     delete next.salaryHistory;
     delete next.salaryTimeline;
     delete next.salaryAdjustments;
+    delete next.salaryRestDays;
   }
   return next;
 }
@@ -587,6 +589,22 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             const next = { ...person };
             if (adjustments.length > 0) next.salaryAdjustments = adjustments;
             else delete next.salaryAdjustments;
+            return next;
+          });
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async setSalaryRestDays(personId, restDays) {
+        await withError(async () => {
+          const state = get();
+          const chosen = [...new Set(restDays)].sort();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            const next = { ...person };
+            // Sunday only is what an unset value already means, so it isn't stored.
+            if (chosen.length === 1 && chosen[0] === 0) delete next.salaryRestDays;
+            else next.salaryRestDays = chosen;
             return next;
           });
           await persistModePeople(state.mode, people);

@@ -85,6 +85,8 @@ export interface Person {
   salaryHistory?: SalaryChangeRecord[];
   salaryTimeline?: SalaryTimelineEntry[];
   salaryAdjustments?: SalaryAdjustment[];
+  /** Weekdays nobody works (0 = Sunday … 6 = Saturday). Unset means Sunday only. */
+  salaryRestDays?: number[];
 }
 
 export interface SalaryCalculationResult {

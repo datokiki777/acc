@@ -3,6 +3,7 @@ import {
   calculateSalary,
   calculateUpcomingPayments,
   getEffectiveTimeline,
+  getRestDays,
   giftSummary,
   hasOutstandingSalaryBalance,
   salaryPaid,
@@ -805,14 +806,15 @@ describe('salary adjustments', () => {
     );
 
   it('charges a stoppage at the daily rate to the period that holds those days', () => {
-    // The car broke down: 30.09 to 03.10, four days, all inside the period 23.09 - 07.10.
+    // The car broke down: Wed 30.09 to Sat 03.10, four working days, all inside the period
+    // 23.09 - 07.10. Sunday is a rest day, so a day is 3000 / 24 = 125.
     const periods = byPayDate(
       crew([{ id: 'a', type: 'stoppage', startDate: '2026-09-30', endDate: '2026-10-03' }]),
     );
     expect(periods['2026-10-07']).toMatchObject({
       baseAmount: 1500,
-      amount: 1071,
-      adjustments: [{ id: 'a', type: 'stoppage', days: 4, amount: -429 }],
+      amount: 1000,
+      adjustments: [{ id: 'a', type: 'stoppage', days: 4, amount: -500 }],
     });
     // Its neighbours are untouched.
     expect(periods['2026-09-23']).toMatchObject({ amount: 1500, adjustments: [] });
@@ -820,15 +822,16 @@ describe('salary adjustments', () => {
   });
 
   it('splits a stoppage across the periods it runs through, each day charged once', () => {
-    // 05.10 - 10.10 is six days: two in the period ending 07.10 (05, 06), four in the next.
+    // Mon 05.10 - Sat 10.10 is six working days: two in the period ending 07.10 (05, 06), four in
+    // the next.
     const periods = byPayDate(
       crew([{ id: 'a', type: 'stoppage', startDate: '2026-10-05', endDate: '2026-10-10' }]),
     );
     expect(periods['2026-10-07']?.adjustments).toEqual([
-      { id: 'a', type: 'stoppage', days: 2, amount: -214 },
+      { id: 'a', type: 'stoppage', days: 2, amount: -250 },
     ]);
     expect(periods['2026-10-21']?.adjustments).toEqual([
-      { id: 'a', type: 'stoppage', days: 4, amount: -429 },
+      { id: 'a', type: 'stoppage', days: 4, amount: -500 },
     ]);
   });
 
@@ -872,8 +875,8 @@ describe('salary adjustments', () => {
     expect(salary.due + salary.upcoming).toBe(
       periods.reduce((sum, period) => sum + (period.amount - period.paidAmount), 0),
     );
-    // 1500 + 100 (first period), 1071 (stoppage period), 1500 (forecast) — nothing paid yet.
-    expect(salary.due + salary.upcoming).toBe(1600 + 1071 + 1500);
+    // 1500 + 100 (first period), 1000 (stoppage period), 1500 (forecast) — nothing paid yet.
+    expect(salary.due + salary.upcoming).toBe(1600 + 1000 + 1500);
   });
 
   it('changes nothing when there are no adjustments', () => {
@@ -890,4 +893,50 @@ describe('salary adjustments', () => {
       calculatePeriodStatuses(without, reference),
     );
   });
+
+  it('does not charge a Sunday: it is a rest day', () => {
+    // Fri 02.10 - Mon 05.10 is four calendar days but three working ones (the Sunday is free).
+    const periods = byPayDate(
+      crew([{ id: 'a', type: 'stoppage', startDate: '2026-10-02', endDate: '2026-10-05' }]),
+    );
+    expect(periods['2026-10-07']?.adjustments).toEqual([
+      { id: 'a', type: 'stoppage', days: 3, amount: -375 },
+    ]);
+    // A stoppage that is only a Sunday costs nothing and leaves no trace.
+    const sundayOnly = byPayDate(
+      crew([{ id: 'b', type: 'stoppage', startDate: '2026-10-04', endDate: '2026-10-04' }]),
+    );
+    expect(sundayOnly['2026-10-07']).toMatchObject({ amount: 1500, adjustments: [] });
+  });
+
+  it('follows the rest days chosen for the person', () => {
+    const stoppage: SalaryAdjustment = {
+      id: 'a',
+      type: 'stoppage',
+      startDate: '2026-09-30',
+      endDate: '2026-10-03',
+    };
+    // Saturday and Sunday off: 20 working days a month, 150 a day, and the Saturday is free —
+    // Wed, Thu, Fri are charged.
+    expect(
+      byPayDate(crew([stoppage], { salaryRestDays: [0, 6] }))['2026-10-07']?.adjustments,
+    ).toEqual([{ id: 'a', type: 'stoppage', days: 3, amount: -450 }]);
+    // No rest days at all: every day counts, a month is 28 of them (107.14 a day).
+    expect(byPayDate(crew([stoppage], { salaryRestDays: [] }))['2026-10-07']?.adjustments).toEqual([
+      { id: 'a', type: 'stoppage', days: 4, amount: -429 },
+    ]);
+  });
 });
+
+describe('getRestDays', () => {
+  it('defaults to Sunday, tidies what is stored, and never rests every day', () => {
+    expect(getRestDays(crewPerson())).toEqual([0]);
+    expect(getRestDays(crewPerson({ salaryRestDays: [6, 0, 6, 9, -1, 2.5] }))).toEqual([0, 6]);
+    expect(getRestDays(crewPerson({ salaryRestDays: [] }))).toEqual([]);
+    expect(getRestDays(crewPerson({ salaryRestDays: [0, 1, 2, 3, 4, 5, 6] }))).toEqual([]);
+  });
+});
+
+function crewPerson(overrides = {}) {
+  return weeklySalaryPerson({ salaryAmount: 3000, entries: [], ...overrides });
+}
