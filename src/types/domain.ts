@@ -58,6 +58,10 @@ export interface SalaryAdjustment {
   type: SalaryAdjustmentType;
   startDate: string;
   endDate?: string;
+  /**
+   * Bonus / deduction: the amount. Stoppage: optional — a corrected total that replaces the one
+   * worked out from the days (for half a day, say); left out, the amount follows the daily rate.
+   */
   amount?: number;
   note?: string;
 }

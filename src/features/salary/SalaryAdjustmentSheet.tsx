@@ -25,6 +25,8 @@ interface FormState {
   startDate: string;
   endDate: string;
   amountText: string;
+  /** Stoppage only: the amount was typed in, instead of following the daily rate. */
+  amountEdited: boolean;
   note: string;
 }
 
@@ -47,9 +49,17 @@ export function SalaryAdjustmentSheet() {
           startDate: existing.startDate,
           endDate: existing.endDate ?? existing.startDate,
           amountText: existing.amount === undefined ? '' : String(existing.amount),
+          amountEdited: existing.type === 'stoppage' && existing.amount !== undefined,
           note: existing.note ?? '',
         }
-      : { type: 'stoppage', startDate: today, endDate: today, amountText: '', note: '' };
+      : {
+          type: 'stoppage',
+          startDate: today,
+          endDate: today,
+          amountText: '',
+          amountEdited: false,
+          note: '',
+        };
   });
   const [form, setForm] = useState<FormState>(initial);
   const [error, setError] = useState('');
@@ -67,10 +77,18 @@ export function SalaryAdjustmentSheet() {
     if (isStoppage && form.endDate < form.startDate)
       return 'The last day can’t be before the first';
     if (!isStoppage && !(Number(form.amountText) > 0)) return 'Enter an amount';
+    if (
+      isStoppage &&
+      form.amountEdited &&
+      !(form.amountText.trim() !== '' && Number(form.amountText) >= 0)
+    )
+      return 'Enter an amount';
     return '';
   }
 
-  function build(id: string): SalaryAdjustment {
+  // withCustom = false gives the stoppage as the daily rate would price it, ignoring a typed amount
+  // — that's the 'calculated' figure shown next to a corrected one.
+  function build(id: string, withCustom = true): SalaryAdjustment {
     const note = form.note.trim();
     return {
       id,
@@ -78,26 +96,44 @@ export function SalaryAdjustmentSheet() {
       startDate: form.startDate,
       ...(isStoppage ? { endDate: form.endDate || form.startDate } : {}),
       ...(isStoppage ? {} : { amount: Math.round(Number(form.amountText)) }),
+      ...(isStoppage && withCustom && form.amountEdited
+        ? { amount: Math.round(Number(form.amountText)) }
+        : {}),
       ...(note ? { note } : {}),
     };
   }
 
-  // What this would do to the pay periods, worked out the same way the periods themselves are —
-  // so the number shown here is exactly the one that lands after saving.
-  let preview = '';
-  if (!validate()) {
-    const candidate = build(existing?.id ?? 'preview');
+  function effectOf(candidate: SalaryAdjustment) {
     const periods = calculatePeriodStatuses(
-      { ...person, salaryAdjustments: [...others, candidate] },
+      { ...person!, salaryAdjustments: [...others, candidate] },
       new Date(),
     );
     const applied = periods.flatMap((period) =>
       period.adjustments.filter((item) => item.id === candidate.id),
     );
-    const net = applied.reduce((sum, item) => sum + item.amount, 0);
-    const days = applied.reduce((sum, item) => sum + (item.days ?? 0), 0);
-    if (applied.length > 0) {
-      preview = `${days > 0 ? `${days} ${t('days')} · ` : ''}${net < 0 ? '−' : '+'}${formatMoney(Math.abs(net), person.currency, false)}`;
+    return {
+      applied: applied.length,
+      net: applied.reduce((sum, item) => sum + item.amount, 0),
+      days: applied.reduce((sum, item) => sum + (item.days ?? 0), 0),
+    };
+  }
+
+  const datesValid = Boolean(form.startDate) && !(isStoppage && form.endDate < form.startDate);
+  const calculated =
+    isStoppage && datesValid ? Math.abs(effectOf(build(existing?.id ?? 'preview', false)).net) : 0;
+  const shownAmount = form.amountEdited
+    ? form.amountText
+    : calculated > 0
+      ? String(calculated)
+      : '';
+
+  // What this would do to the pay periods, worked out the same way the periods themselves are —
+  // so the number shown here is exactly the one that lands after saving.
+  let preview = '';
+  if (!validate()) {
+    const effect = effectOf(build(existing?.id ?? 'preview'));
+    if (effect.applied > 0) {
+      preview = `${effect.days > 0 ? `${effect.days} ${t('days')} · ` : ''}${effect.net < 0 ? '−' : '+'}${formatMoney(Math.abs(effect.net), person.currency, false)}`;
     }
   }
 
@@ -172,7 +208,7 @@ export function SalaryAdjustmentSheet() {
         {isStoppage ? (
           <div className="salary-history-edit-row">
             <label className="field">
-              <span>{t('From')}</span>
+              <span>{t('First day of the stoppage')}</span>
               <input
                 autoComplete="off"
                 onChange={(event) =>
@@ -186,7 +222,7 @@ export function SalaryAdjustmentSheet() {
               />
             </label>
             <label className="field">
-              <span>{t('To')}</span>
+              <span>{t('Last day of the stoppage')}</span>
               <input
                 autoComplete="off"
                 min={form.startDate}
@@ -220,6 +256,35 @@ export function SalaryAdjustmentSheet() {
               />
             </label>
           </div>
+        )}
+
+        {isStoppage && (
+          <label className="field">
+            <span>{t('Amount to deduct')}</span>
+            <input
+              autoComplete="off"
+              inputMode="decimal"
+              min={0}
+              onChange={(event) => update({ amountText: event.target.value, amountEdited: true })}
+              step={1}
+              type="number"
+              value={shownAmount}
+            />
+            <small>
+              {form.amountEdited
+                ? `${t('Calculated:')} ${formatMoney(calculated, person.currency, false)}`
+                : t('Change it if it should be different, for example for half a day.')}
+            </small>
+          </label>
+        )}
+        {isStoppage && form.amountEdited && (
+          <button
+            className="text-button"
+            onClick={() => update({ amountEdited: false, amountText: '' })}
+            type="button"
+          >
+            {t('Reset to calculated')}
+          </button>
         )}
 
         {isStoppage && (

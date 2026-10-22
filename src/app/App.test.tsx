@@ -184,10 +184,12 @@ describe('ACC application', () => {
     await user.click(await screen.findByRole('button', { name: '+ Add adjustment' }));
 
     const form = await screen.findByRole('dialog', { name: 'Add adjustment' });
-    fireEvent.change(within(form).getByLabelText('From'), {
+    fireEvent.change(within(form).getByLabelText('First day of the stoppage'), {
       target: { value: localDateString(from) },
     });
-    fireEvent.change(within(form).getByLabelText('To'), { target: { value: localDateString(to) } });
+    fireEvent.change(within(form).getByLabelText('Last day of the stoppage'), {
+      target: { value: localDateString(to) },
+    });
     // Four days at the period's daily rate: the preview says so before anything is saved.
     expect(await within(form).findByRole('status')).toHaveTextContent(/^4 days · −\d+€$/);
     await user.click(within(form).getByRole('button', { name: 'Save' }));
@@ -232,6 +234,68 @@ describe('ACC application', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(store.getState().peopleByMode.work.map((person) => person.name)).toEqual(['Roof crew']);
     expect(store.getState().peopleByMode.work[0]?.salaryAmount).toBe(3000);
+  });
+
+  it('lets a stoppage amount be corrected, then reset back to the calculated one', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    const started = new Date();
+    started.setDate(started.getDate() - 60);
+    // Monday to Thursday of last week: always four working days, whatever today is.
+    const from = new Date();
+    from.setDate(from.getDate() - 8);
+    from.setDate(from.getDate() - ((from.getDay() + 6) % 7));
+    const to = new Date(from);
+    to.setDate(to.getDate() + 3);
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Half day team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: localDateString(started),
+      });
+    });
+
+    await user.click(await findPersonSummary('Half day team'));
+    await user.click(await screen.findByRole('button', { name: 'Show pay periods' }));
+    await user.click(await screen.findByRole('button', { name: '+ Add adjustment' }));
+    const form = await screen.findByRole('dialog', { name: 'Add adjustment' });
+    fireEvent.change(within(form).getByLabelText('First day of the stoppage'), {
+      target: { value: localDateString(from) },
+    });
+    fireEvent.change(within(form).getByLabelText('Last day of the stoppage'), {
+      target: { value: localDateString(to) },
+    });
+
+    // Untouched, the amount is the calculated one: 4 working days x 125.
+    const amount = within(form).getByLabelText(/^Amount to deduct/);
+    expect(amount).toHaveValue(500);
+    // Correct it (say a half day was worked): the preview follows, the calculated figure stays.
+    await user.clear(amount);
+    await user.type(amount, '437');
+    expect(await within(form).findByRole('status')).toHaveTextContent(/^4 days · −437€$/);
+    expect(within(form).getByText('Calculated: 500€')).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    const periods = await screen.findByRole('dialog', { name: 'Pay periods' });
+    const lines = await within(periods).findAllByRole('button', { name: /^Stoppage · / });
+    expect(lines.map((line) => line.textContent).join(' ')).toMatch(/−\d+€/);
+    expect(store.getState().peopleByMode.work[0]?.salaryAdjustments?.[0]?.amount).toBe(437);
+
+    // Reopen it: the typed amount is there, and Reset puts it back on the daily rate.
+    await user.click(lines[0]!);
+    const edit = await screen.findByRole('dialog', { name: 'Edit adjustment' });
+    expect(within(edit).getByLabelText(/^Amount to deduct/)).toHaveValue(437);
+    await user.click(within(edit).getByRole('button', { name: 'Reset to calculated' }));
+    expect(within(edit).getByLabelText(/^Amount to deduct/)).toHaveValue(500);
+    await user.click(within(edit).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(store.getState().peopleByMode.work[0]?.salaryAdjustments?.[0]).not.toHaveProperty(
+        'amount',
+      ),
+    );
   });
 
   it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {

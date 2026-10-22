@@ -940,3 +940,71 @@ describe('getRestDays', () => {
 function crewPerson(overrides = {}) {
   return weeklySalaryPerson({ salaryAmount: 3000, entries: [], ...overrides });
 }
+
+describe('stoppages with a corrected amount', () => {
+  // 3000/month, two-week periods from 09.09, no delay: 1500 a period, Sunday off (125 a day).
+  const crew = (adjustments: SalaryAdjustment[]) =>
+    weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      salaryAdjustments: adjustments,
+      entries: [],
+    });
+  const byPayDate = (adjustments: SalaryAdjustment[]) =>
+    Object.fromEntries(
+      calculatePeriodStatuses(crew(adjustments), date(2026, 10, 10)).map((period) => [
+        period.payDate,
+        period,
+      ]),
+    );
+
+  it('charges the corrected amount instead of days times the daily rate', () => {
+    // Four working days would be 500; say a half day was worked, so 437 is what's right.
+    const periods = byPayDate([
+      { id: 'a', type: 'stoppage', startDate: '2026-09-30', endDate: '2026-10-03', amount: 437 },
+    ]);
+    expect(periods['2026-10-07']).toMatchObject({
+      baseAmount: 1500,
+      amount: 1063,
+      adjustments: [{ id: 'a', type: 'stoppage', days: 4, amount: -437 }],
+    });
+  });
+
+  it('shares a corrected amount between the periods it runs through, adding up exactly', () => {
+    // Mon 05.10 - Sat 10.10: two working days in one period, four in the next.
+    const even = byPayDate([
+      { id: 'a', type: 'stoppage', startDate: '2026-10-05', endDate: '2026-10-10', amount: 600 },
+    ]);
+    expect(even['2026-10-07']?.adjustments[0]?.amount).toBe(-200);
+    expect(even['2026-10-21']?.adjustments[0]?.amount).toBe(-400);
+
+    // 100 doesn't divide by thirds: 33 + 67, never 99 or 101.
+    const odd = byPayDate([
+      { id: 'a', type: 'stoppage', startDate: '2026-10-05', endDate: '2026-10-10', amount: 100 },
+    ]);
+    expect(
+      (odd['2026-10-07']?.adjustments[0]?.amount ?? 0) +
+        (odd['2026-10-21']?.adjustments[0]?.amount ?? 0),
+    ).toBe(-100);
+    expect(odd['2026-10-07']?.adjustments[0]?.amount).toBe(-33);
+  });
+
+  it('treats a corrected amount of zero as no charge at all', () => {
+    const periods = byPayDate([
+      { id: 'a', type: 'stoppage', startDate: '2026-09-30', endDate: '2026-10-03', amount: 0 },
+    ]);
+    expect(periods['2026-10-07']).toMatchObject({ amount: 1500, adjustments: [] });
+  });
+
+  it('puts the amount on the period where it starts when only rest days are covered', () => {
+    const periods = byPayDate([
+      { id: 'a', type: 'stoppage', startDate: '2026-10-04', endDate: '2026-10-04', amount: 100 },
+    ]);
+    expect(periods['2026-10-07']).toMatchObject({
+      amount: 1400,
+      adjustments: [{ id: 'a', type: 'stoppage', amount: -100 }],
+    });
+  });
+});

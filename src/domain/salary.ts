@@ -350,17 +350,51 @@ function applyAdjustments(
       .filter((adjustment) => adjustment.type !== 'stoppage')
       .map((adjustment) => [adjustment.id, periodIndexFor(adjustment.startDate, installments)]),
   );
+  // A stoppage with its own amount (a corrected figure — say, for half a day) replaces the
+  // calculated one. It is still charged to the periods that hold its working days, shared out in
+  // proportion to them, with the last share taking the rounding so the shares add up exactly.
+  const customShares = new Map<string, number[]>();
+  for (const adjustment of adjustments) {
+    if (adjustment.type !== 'stoppage' || adjustment.amount === undefined) continue;
+    const total = normalizeAmount(adjustment.amount);
+    const dayCounts = installments.map((installment) =>
+      stoppedDaysWithin(adjustment, installment, restDays),
+    );
+    // Only rest days inside it: nothing to share by, so the whole amount lands where it starts.
+    const weights = dayCounts.some((days) => days > 0)
+      ? dayCounts
+      : installments.map((_, index) =>
+          index === periodIndexFor(adjustment.startDate, installments) ? 1 : 0,
+        );
+    const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+    const lastIndex = weights.reduce((last, weight, index) => (weight > 0 ? index : last), -1);
+    let assigned = 0;
+    customShares.set(
+      adjustment.id,
+      weights.map((weight, index) => {
+        if (weight === 0) return 0;
+        const share =
+          index === lastIndex ? total - assigned : Math.round((total * weight) / weightSum);
+        assigned += share;
+        return share;
+      }),
+    );
+  }
   return installments.map((installment, index) => {
     const applied: AppliedAdjustment[] = [];
     for (const adjustment of adjustments) {
       if (adjustment.type === 'stoppage') {
         const days = stoppedDaysWithin(adjustment, installment, restDays);
-        if (days > 0) {
+        const custom = customShares.get(adjustment.id);
+        const charge = custom
+          ? (custom[index] ?? 0)
+          : normalizeAmount(days * installment.dailyRate);
+        if (custom ? charge > 0 : days > 0) {
           applied.push({
             id: adjustment.id,
             type: 'stoppage',
-            days,
-            amount: -normalizeAmount(days * installment.dailyRate),
+            ...(days > 0 ? { days } : {}),
+            amount: -charge,
             ...(adjustment.note ? { note: adjustment.note } : {}),
           });
         }
