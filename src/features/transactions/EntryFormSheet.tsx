@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { BottomSheet } from '../../components/BottomSheet';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
+import { getSalarySettings } from '../../domain/salary';
 import { useTranslation } from '../../i18n/useTranslation';
 import type { EntryDraft } from '../../store/app-store';
 import { useAppStore } from '../../store/hooks';
@@ -33,7 +34,7 @@ export function EntryFormSheet() {
   const people = useAppStore((state) => state.peopleByMode[state.mode]);
   const addEntry = useAppStore((state) => state.addEntry);
   const editEntry = useAppStore((state) => state.editEntry);
-  const { closeAfterSave, requestClose } = useAppNavigation();
+  const { closeAfterSave, replaceSheet, requestClose } = useAppNavigation();
   const person = people.find((candidate) => candidate.id === personId);
   const existing = person?.entries.find((candidate) => candidate.id === entryId);
   const [formError, setFormError] = useState('');
@@ -121,6 +122,15 @@ export function EntryFormSheet() {
               >
                 {t('Other')}
               </button>
+              {!existing && getSalarySettings(person) && (
+                <button
+                  className="choice-button"
+                  onClick={() => replaceSheet('salary-adjustment', person.id)}
+                  type="button"
+                >
+                  {t('Adjustment')}
+                </button>
+              )}
             </div>
           </div>
         )}

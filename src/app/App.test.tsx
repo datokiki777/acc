@@ -298,6 +298,85 @@ describe('ACC application', () => {
     );
   });
 
+  it('records an adjustment straight from the Add Entry form, without going through Payroll', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Quick team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+
+    await user.click(await findPersonSummary('Quick team'));
+    await user.click(screen.getByRole('button', { name: /Add Entry/ }));
+    const entry = await screen.findByRole('dialog', { name: /Add Entry/ });
+    await user.click(within(entry).getByRole('button', { name: 'Adjustment' }));
+
+    // The entry form hands over to the adjustment form — starting today, as it just happened.
+    const form = await screen.findByRole('dialog', { name: 'Add adjustment' });
+    expect(screen.queryByRole('dialog', { name: /Add Entry/ })).not.toBeInTheDocument();
+    expect(within(form).getByLabelText('First day of the stoppage')).toHaveValue(localDateString());
+    await user.click(within(form).getByRole('button', { name: 'Bonus' }));
+    await user.type(within(form).getByLabelText(/^Amount/), '100');
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    // Saved, and nothing is left open behind it — not the entry form it came from.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toMatchObject([
+      { type: 'bonus', amount: 100, startDate: localDateString() },
+    ]);
+  });
+
+  it('only offers Adjustment for someone with a salary, and not when editing an entry', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson(draft('No salary team'));
+      await store.getState().addPerson({
+        ...draft('Salaried team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const [plain, salaried] = ['No salary team', 'Salaried team'].map((name) =>
+      store.getState().peopleByMode.work.find((person) => person.name === name)!,
+    );
+    await act(async () => {
+      await store.getState().addEntry(salaried!.id, {
+        amount: 50,
+        type: 'Gave',
+        date: '2026-08-01',
+        comment: '',
+        category: 'salary',
+      });
+    });
+
+    await user.click(await findPersonSummary(plain!.name));
+    await user.click(screen.getByRole('button', { name: /Add Entry/ }));
+    const noSalary = await screen.findByRole('dialog', { name: /Add Entry/ });
+    expect(within(noSalary).getByRole('button', { name: 'Salary' })).toBeInTheDocument();
+    expect(within(noSalary).queryByRole('button', { name: 'Adjustment' })).not.toBeInTheDocument();
+    pressBrowserBack();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    // Editing an existing entry of the salaried team: it is an entry being changed, not a new
+    // record, so there's no hand-over to the adjustment form.
+    const entryId = store.getState().peopleByMode.work.find((person) => person.id === salaried!.id)
+      ?.entries[0]?.id;
+    expect(entryId).toBeTruthy();
+    act(() => store.getState().openSheet('entry-form', salaried!.id, entryId));
+    const editing = await screen.findByRole('dialog', { name: 'Edit Entry' });
+    expect(within(editing).queryByRole('button', { name: 'Adjustment' })).not.toBeInTheDocument();
+  });
+
   it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {
     const user = userEvent.setup();
     const store = renderApp();

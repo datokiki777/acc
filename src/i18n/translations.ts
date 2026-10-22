@@ -76,6 +76,7 @@ const ka: Record<string, string> = {
   'Pay periods': 'გადახდის პერიოდები',
   'Partly paid': 'ნაწილობრივ გადახდილი',
   'Pay date': 'გადახდის თარიღი',
+  Adjustment: 'კორექტირება',
   'Add adjustment': 'კორექტირების დამატება',
   'Edit adjustment': 'კორექტირების რედაქტირება',
   Stoppage: 'გაჩერება',
