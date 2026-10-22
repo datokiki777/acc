@@ -440,6 +440,36 @@ describe('ACC application', () => {
     );
   });
 
+  it("shows a team's adjustments as one line on its card, opening into the list and its editor", async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Adjusted team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const team = store.getState().peopleByMode.work[0]!;
+    await act(async () => {
+      await store
+        .getState()
+        .setSalaryAdjustments(team.id, [
+          { id: 'b1', type: 'bonus', startDate: '2026-07-10', amount: 100, note: 'good month' },
+        ]);
+    });
+
+    await user.click(await findPersonSummary('Adjusted team'));
+    const toggle = await screen.findByRole('button', { name: /1 adjustment/ });
+    expect(within(toggle).getByText('+100€')).toBeInTheDocument();
+    await user.click(toggle);
+    await user.click(await screen.findByRole('button', { name: /good month/ }));
+    expect(await screen.findByRole('dialog', { name: 'Edit adjustment' })).toBeVisible();
+  });
+
   it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {
     const user = userEvent.setup();
     const store = renderApp();

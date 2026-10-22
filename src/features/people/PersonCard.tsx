@@ -15,6 +15,7 @@ import { useLongPress } from '../../hooks/useLongPress';
 import type { PersistedEntry, PersistedPerson } from '../../types/persistence';
 import { formatMoney } from '../../utils/format';
 import { EntryCard } from './EntryCard';
+import { AdjustmentsSummary } from './AdjustmentsSummary';
 import { OtherSummaryCard, PayrollSummaryCard } from './WorkSummaryCards';
 
 export type PersonSwipeAction = 'archive' | 'delete';
@@ -360,6 +361,16 @@ export function PersonCard({
                   timeline={effectiveTimeline}
                   totals={totals}
                   onOpenPeriods={() => openSheet('salary-periods', person.id)}
+                  periods={periods}
+                />
+              )}
+
+              {salary?.enabled && (
+                <AdjustmentsSummary
+                  adjustments={person.salaryAdjustments ?? []}
+                  currency={person.currency}
+                  onAdd={() => openSheet('salary-adjustment', person.id)}
+                  onEdit={(adjustmentId) => openSheet('salary-adjustment', person.id, adjustmentId)}
                   periods={periods}
                 />
               )}

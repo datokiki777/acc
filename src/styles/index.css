@@ -3825,3 +3825,149 @@ a:focus-visible {
   padding-left: 0;
   font-size: 0.78rem;
 }
+
+/* Adjustments on a team card: one closed line (count + net), opening into the list on a tap. */
+.adjustments-summary {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-raised) 70%, transparent);
+}
+
+.adjustments-summary-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adjustments-summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+  flex: 0 0 auto;
+}
+
+.adjustments-summary-icon svg,
+.adjustments-chevron {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.adjustments-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  transition: transform 160ms ease;
+  flex: 0 0 auto;
+}
+
+.adjustments-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.adjustments-summary-text,
+.adjustments-row-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.adjustments-summary-text small,
+.adjustments-row-text small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adjustments-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adjustments-amount.is-negative {
+  color: var(--danger);
+}
+
+.adjustments-amount.is-positive {
+  color: var(--success);
+}
+
+.adjustments-amount.is-zero {
+  color: var(--muted);
+}
+
+.adjustments-summary-list {
+  display: grid;
+  padding: 0 14px 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.adjustments-row {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  gap: 12px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adjustments-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1.05rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.adjustments-row-icon.is-negative {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+.adjustments-row-icon.is-positive {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.adjustments-row-icon.is-zero {
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--muted);
+}
+
+.adjustments-add {
+  justify-self: start;
+  margin-top: 6px;
+}
