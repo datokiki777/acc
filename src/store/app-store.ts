@@ -46,6 +46,7 @@ export type SheetName =
   | 'backup'
   | 'salary-sync'
   | 'salary-history'
+  | 'salary-periods'
   | 'tag-filter';
 
 export interface TransientUiState {

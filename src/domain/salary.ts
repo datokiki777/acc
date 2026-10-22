@@ -130,6 +130,7 @@ function periodAmountFor(monthly: number, periodWeeks: number): number {
 }
 
 interface Installment {
+  periodStartDate: string;
   periodEndDate: string;
   payDate: string;
   amount: number;
@@ -209,9 +210,16 @@ function buildInstallments(
 
     const amount = periodAmountFor(segment.amount, segment.periodWeeks);
     for (let k = 1; k <= periodCount; k += 1) {
+      const periodStartDate = addDays(segment.effectiveDate, (k - 1) * periodDays);
       const periodEndDate = addDays(segment.effectiveDate, k * periodDays);
       const payDate = computeSalaryPayDate(periodEndDate, segment.payDelayMode);
-      installments.push({ periodEndDate, payDate, amount, completed: k <= completedCount });
+      installments.push({
+        periodStartDate,
+        periodEndDate,
+        payDate,
+        amount,
+        completed: k <= completedCount,
+      });
     }
 
     if (cutoffDate) {
@@ -222,6 +230,7 @@ function buildInstallments(
         const remainderAmount = periodAmountFor(segment.amount, remainderWeeks);
         const payDate = computeSalaryPayDate(cutoffDate, segment.payDelayMode);
         installments.push({
+          periodStartDate: lastFullPeriodEnd,
           periodEndDate: cutoffDate,
           payDate,
           amount: remainderAmount,
@@ -377,6 +386,57 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
     endDate,
     payDelayMode: latest.payDelayMode,
   };
+}
+
+export type PeriodStatus = 'paid' | 'partial' | 'overdue' | 'upcoming';
+
+export interface PeriodSummary {
+  periodStartDate: string;
+  periodEndDate: string;
+  payDate: string;
+  amount: number;
+  paidAmount: number;
+  status: PeriodStatus;
+}
+
+/**
+ * Every pay period as the person sees it — its dates, what it's worth, how much of that has been
+ * covered, and one of four states: 'paid' (fully covered), 'partial' (some covered, some not),
+ * 'overdue' (nothing covered and its pay date has arrived) or 'upcoming' (nothing covered yet,
+ * pay date still ahead). It's the same installments and the same oldest-first payment waterfall
+ * that calculateSalary uses for due/upcoming, so what a period shows here always agrees with
+ * those totals — nothing is tracked or matched by hand.
+ */
+export function calculatePeriodStatuses(person: Person, referenceDate: Date): PeriodSummary[] {
+  const timeline = getEffectiveTimeline(person);
+  if (timeline.length === 0) return [];
+  const config = getSalarySettings(person)!;
+  const installments = buildInstallments(timeline, config.endDate, referenceDate);
+  const paid = salaryPaid(person);
+  const referenceDateString = formatReferenceDate(referenceDate);
+  let cumulative = 0;
+  return installments.map((installment) => {
+    cumulative = normalizeAmount(cumulative + installment.amount);
+    const uncovered = Math.max(0, Math.min(installment.amount, normalizeAmount(cumulative - paid)));
+    const paidAmount = normalizeAmount(installment.amount - uncovered);
+    const isDue = compareDateStrings(installment.payDate, referenceDateString) <= 0;
+    const status: PeriodStatus =
+      uncovered <= 0.0001
+        ? 'paid'
+        : paidAmount > 0.0001
+          ? 'partial'
+          : isDue
+            ? 'overdue'
+            : 'upcoming';
+    return {
+      periodStartDate: installment.periodStartDate,
+      periodEndDate: installment.periodEndDate,
+      payDate: installment.payDate,
+      amount: installment.amount,
+      paidAmount,
+      status,
+    };
+  });
 }
 
 /**

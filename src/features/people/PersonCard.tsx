@@ -5,7 +5,7 @@ import { useAppNavigation } from '../../app/useAppNavigation';
 import { entryEffect } from '../../domain/entries';
 import {
   calculateSalary,
-  calculateUpcomingPayments,
+  calculatePeriodStatuses,
   getEffectiveTimeline,
   giftSummary,
 } from '../../domain/salary';
@@ -75,7 +75,7 @@ export function PersonCard({
   const balance = personOpenBalance(person, mode);
   const totals = personTotals(person);
   const salary = mode === 'work' ? calculateSalary(person, new Date()) : null;
-  const upcomingPayments = mode === 'work' ? calculateUpcomingPayments(person, new Date()) : [];
+  const periods = mode === 'work' ? calculatePeriodStatuses(person, new Date()) : [];
   const effectiveTimeline = mode === 'work' ? getEffectiveTimeline(person) : [];
   const gifts = mode === 'work' ? giftSummary(person) : null;
   const otherSummary =
@@ -359,7 +359,8 @@ export function PersonCard({
                   salary={salary}
                   timeline={effectiveTimeline}
                   totals={totals}
-                  upcomingPayments={upcomingPayments}
+                  onOpenPeriods={() => openSheet('salary-periods', person.id)}
+                  periods={periods}
                 />
               )}
 

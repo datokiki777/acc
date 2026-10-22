@@ -1,4 +1,5 @@
 import {
+  calculatePeriodStatuses,
   calculateSalary,
   calculateUpcomingPayments,
   getEffectiveTimeline,
@@ -679,6 +680,85 @@ describe('calculateUpcomingPayments', () => {
   it('is empty for someone with no salary at all', () => {
     expect(
       calculateUpcomingPayments(weeklySalaryPerson({ salaryAmount: 0 }), date(2026, 3, 8)),
+    ).toEqual([]);
+  });
+});
+
+describe('calculatePeriodStatuses', () => {
+  const crew = (overrides = {}) =>
+    weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-07-01',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      entries: [],
+      ...overrides,
+    });
+  const reference = date(2026, 9, 20);
+
+  it('labels each period paid, partial, overdue or upcoming from the payments made so far', () => {
+    // 1500 per period; 4000 paid covers two periods, then 1000 of the third.
+    const person = crew({
+      entries: [entry({ id: 'p1', amount: 4000, category: 'salary', date: '2026-08-30' })],
+    });
+    const periods = calculatePeriodStatuses(person, reference);
+    expect(periods.map((period) => [period.payDate, period.status, period.paidAmount])).toEqual([
+      ['2026-07-15', 'paid', 1500],
+      ['2026-07-29', 'paid', 1500],
+      ['2026-08-12', 'partial', 1000],
+      ['2026-08-26', 'overdue', 0],
+      ['2026-09-09', 'overdue', 0],
+      ['2026-09-23', 'upcoming', 0],
+    ]);
+  });
+
+  it("carries each period's own start and end dates", () => {
+    const [first, second] = calculatePeriodStatuses(crew(), reference);
+    expect([first?.periodStartDate, first?.periodEndDate]).toEqual(['2026-07-01', '2026-07-15']);
+    expect([second?.periodStartDate, second?.periodEndDate]).toEqual(['2026-07-15', '2026-07-29']);
+  });
+
+  it('always agrees with the due and upcoming totals calculateSalary reports', () => {
+    const person = crew({
+      entries: [entry({ id: 'p1', amount: 4000, category: 'salary', date: '2026-08-30' })],
+    });
+    const owed = calculatePeriodStatuses(person, reference).reduce(
+      (sum, period) => sum + (period.amount - period.paidAmount),
+      0,
+    );
+    const salary = calculateSalary(person, reference);
+    expect(owed).toBe(salary.due + salary.upcoming);
+  });
+
+  it('shows the in-progress period as paid when it was paid in advance', () => {
+    // Started 08-18: one completed period (ends 09-01) plus the one in progress (ends 09-15).
+    const person = crew({
+      salaryStartDate: '2026-08-18',
+      entries: [entry({ id: 'p1', amount: 3000, category: 'salary', date: '2026-09-10' })],
+    });
+    const periods = calculatePeriodStatuses(person, date(2026, 9, 12));
+    expect(periods.map((period) => [period.payDate, period.status])).toEqual([
+      ['2026-09-01', 'paid'],
+      ['2026-09-15', 'paid'],
+    ]);
+  });
+
+  it('covers the tail period of an ended salary and is empty without any salary', () => {
+    const ended = weeklySalaryPerson({
+      salaryAmount: 4000,
+      salaryStartDate: '2026-09-30',
+      salaryPayPeriodWeeks: 1,
+      salaryPayDelayMode: '2weeks',
+      salaryEndDate: '2026-10-12',
+      entries: [entry({ id: 'p1', amount: 1000, category: 'salary', date: '2026-10-13' })],
+    });
+    const periods = calculatePeriodStatuses(ended, date(2026, 10, 13));
+    expect(periods.map((period) => [period.payDate, period.status])).toEqual([
+      ['2026-10-21', 'paid'],
+      ['2026-10-26', 'upcoming'],
+    ]);
+    expect(
+      calculatePeriodStatuses(weeklySalaryPerson({ salaryAmount: 0 }), date(2026, 3, 8)),
     ).toEqual([]);
   });
 });

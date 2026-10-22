@@ -19,6 +19,7 @@ import { TAG_COLORS } from '../domain/tag-colors';
 import { createAppStore, type PersonDraft } from '../store/app-store';
 import { AppStoreProvider } from '../store/provider';
 import { App } from './App';
+import { localDateString } from '../utils/format';
 
 function draft(name: string): PersonDraft {
   return {
@@ -131,6 +132,29 @@ describe('ACC application', () => {
     expect(window.location.search).toBe('?other=kept');
 
     window.history.replaceState(null, '', '/');
+  });
+
+  it('opens the pay-period list from the strip on a salaried card', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    const started = new Date();
+    started.setDate(started.getDate() - 60);
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Strip team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: localDateString(started),
+      });
+    });
+
+    await user.click(await findPersonSummary('Strip team'));
+    await user.click(await screen.findByRole('button', { name: 'Show pay periods' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pay periods' });
+    // Sixty days of a two-week salary: several periods, all in the list.
+    expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThan(2);
   });
 
   it('renders the initialized application shell', async () => {

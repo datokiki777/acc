@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
 import type { PersonTotals } from '../../domain/balances';
-import type { GiftSummary, UpcomingPayment } from '../../domain/salary';
+import type { GiftSummary, PeriodSummary } from '../../domain/salary';
 import { useTranslation, type TranslateFn } from '../../i18n/useTranslation';
 import type { SalaryCalculationResult, SalaryTimelineEntry } from '../../types/domain';
 import type { PersistedPerson } from '../../types/persistence';
 import { formatDate, formatMoney } from '../../utils/format';
+import { PeriodStrip } from './PeriodStrip';
 
 function moneyTone(value: number) {
   return value > 0 ? 'money-positive' : value < 0 ? 'money-negative' : 'money-neutral';
@@ -54,7 +55,8 @@ interface PayrollSummaryCardProps {
   salary: SalaryCalculationResult;
   timeline: SalaryTimelineEntry[];
   totals: PersonTotals;
-  upcomingPayments: UpcomingPayment[];
+  periods: PeriodSummary[];
+  onOpenPeriods: () => void;
 }
 
 const PAY_DELAY_LABELS: Record<string, string> = {
@@ -70,7 +72,8 @@ export function PayrollSummaryCard({
   salary,
   timeline,
   totals,
-  upcomingPayments,
+  periods,
+  onOpenPeriods,
 }: PayrollSummaryCardProps) {
   const t = useTranslation();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -103,6 +106,7 @@ export function PayrollSummaryCard({
           )}
         </div>
       </div>
+      <PeriodStrip onOpen={onOpenPeriods} periods={periods} />
       <div className="panel-grid">
         <span>
           {t('Started')} <strong>{salary.startDate ? formatDate(salary.startDate) : '—'}</strong>
@@ -157,21 +161,6 @@ export function PayrollSummaryCard({
             </li>
           ))}
         </ul>
-      )}
-      {upcomingPayments.length > 0 && (salary.ended || upcomingPayments.length > 1) && (
-        <div className="payroll-upcoming-schedule">
-          <small>{t('Upcoming payments')}</small>
-          <ul className="salary-history-list">
-            {upcomingPayments.map((payment) => (
-              <li key={payment.date}>
-                <span className="salary-history-date">{formatDate(payment.date)}</span>
-                <span className="salary-history-change">
-                  <strong>{formatMoney(payment.amount, currency, false)}</strong>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
       <FlowTotalsRow
         className="payroll-totals-row"

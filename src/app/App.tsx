@@ -16,6 +16,7 @@ import { PeopleList } from '../features/people/PeopleList';
 import { PersonFormSheet } from '../features/people/PersonFormSheet';
 import { TagFilterSheet } from '../features/people/TagFilterSheet';
 import { SalaryHistorySheet } from '../features/salary/SalaryHistorySheet';
+import { SalaryPeriodsSheet } from '../features/salary/SalaryPeriodsSheet';
 import { SalarySyncSheet } from '../features/salary/SalarySyncSheet';
 import { StatisticsSheet } from '../features/statistics/StatisticsSheet';
 import { EntryFormSheet } from '../features/transactions/EntryFormSheet';
@@ -513,6 +514,7 @@ export function App() {
       {sheet === 'entry-form' && <EntryFormSheet />}
       {sheet === 'salary-sync' && <SalarySyncSheet />}
       {sheet === 'salary-history' && <SalaryHistorySheet />}
+      {sheet === 'salary-periods' && <SalaryPeriodsSheet />}
       {sheet === 'statistics' && <StatisticsSheet />}
       {sheet === 'settings' && <SettingsSheet />}
       {sheet === 'backup' && <BackupSheet />}
