@@ -3766,3 +3766,50 @@ a:focus-visible {
 .period-list-amount {
   font-variant-numeric: tabular-nums;
 }
+
+.period-add-adjustment {
+  margin-bottom: 6px;
+}
+
+.period-list-amounts {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+}
+
+.period-list-base {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-decoration: line-through;
+}
+
+.period-adjustment {
+  max-width: 100%;
+  margin-top: 3px;
+  padding: 2px 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.period-adjustment.is-negative {
+  color: var(--danger);
+}
+
+.period-adjustment.is-positive {
+  color: var(--success);
+}
+
+.adjustment-preview {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 700;
+}

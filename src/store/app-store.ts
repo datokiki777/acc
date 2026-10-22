@@ -48,6 +48,7 @@ export type SheetName =
   | 'salary-sync'
   | 'salary-history'
   | 'salary-periods'
+  | 'salary-adjustment'
   | 'tag-filter';
 
 export interface TransientUiState {

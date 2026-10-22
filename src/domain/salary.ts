@@ -137,6 +137,7 @@ export interface AppliedAdjustment {
   type: SalaryAdjustmentType;
   amount: number;
   days?: number;
+  note?: string;
 }
 
 interface Installment {
@@ -323,6 +324,7 @@ function applyAdjustments(
             type: 'stoppage',
             days,
             amount: -normalizeAmount(days * installment.dailyRate),
+            ...(adjustment.note ? { note: adjustment.note } : {}),
           });
         }
       } else if (indexById.get(adjustment.id) === index) {
@@ -332,6 +334,7 @@ function applyAdjustments(
             id: adjustment.id,
             type: adjustment.type,
             amount: adjustment.type === 'bonus' ? amount : -amount,
+            ...(adjustment.note ? { note: adjustment.note } : {}),
           });
         }
       }

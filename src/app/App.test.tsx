@@ -157,6 +157,54 @@ describe('ACC application', () => {
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThan(2);
   });
 
+  it('records a stoppage from the pay-period list, shows its effect, then edits and deletes it', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    const started = new Date();
+    started.setDate(started.getDate() - 60);
+    const from = new Date();
+    from.setDate(from.getDate() - 10);
+    const to = new Date();
+    to.setDate(to.getDate() - 7);
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Breakdown team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: localDateString(started),
+      });
+    });
+
+    await user.click(await findPersonSummary('Breakdown team'));
+    await user.click(await screen.findByRole('button', { name: 'Show pay periods' }));
+    await user.click(await screen.findByRole('button', { name: '+ Add adjustment' }));
+
+    const form = await screen.findByRole('dialog', { name: 'Add adjustment' });
+    fireEvent.change(within(form).getByLabelText('From'), {
+      target: { value: localDateString(from) },
+    });
+    fireEvent.change(within(form).getByLabelText('To'), { target: { value: localDateString(to) } });
+    // Four days at the period's daily rate: the preview says so before anything is saved.
+    expect(await within(form).findByRole('status')).toHaveTextContent(/^4 days · −\d+€$/);
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    const periods = await screen.findByRole('dialog', { name: 'Pay periods' });
+    const line = await within(periods).findAllByRole('button', {
+      name: /^Stoppage · \d days · −\d+€/,
+    });
+    expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toHaveLength(1);
+
+    await user.click(line[0]!);
+    const edit = await screen.findByRole('dialog', { name: 'Edit adjustment' });
+    await user.click(within(edit).getByRole('button', { name: 'Delete' }));
+    await user.click(within(edit).getByRole('button', { name: 'Tap again to delete' }));
+    await waitFor(() =>
+      expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toBeUndefined(),
+    );
+  });
+
   it('renders the initialized application shell', async () => {
     const store = renderApp();
 

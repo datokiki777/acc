@@ -1,5 +1,5 @@
 import { PeriodStatusIcon } from '../../components/PeriodStatusIcon';
-import type { PeriodStatus, PeriodSummary } from '../../domain/salary';
+import type { AppliedAdjustment, PeriodStatus, PeriodSummary } from '../../domain/salary';
 import { useTranslation } from '../../i18n/useTranslation';
 import type { Currency } from '../../types/domain';
 import { formatDate, formatMoney } from '../../utils/format';
@@ -14,11 +14,22 @@ const STATUS_LABELS: Record<PeriodStatus, string> = {
 interface PeriodListProps {
   periods: PeriodSummary[];
   currency: Currency;
+  onEditAdjustment?: (adjustmentId: string) => void;
 }
 
 /** Newest and upcoming first — what you'd look for is at the top, the settled history below. */
-export function PeriodList({ periods, currency }: PeriodListProps) {
+export function PeriodList({ periods, currency, onEditAdjustment }: PeriodListProps) {
   const t = useTranslation();
+  const describe = (item: AppliedAdjustment) => {
+    const label =
+      item.type === 'stoppage'
+        ? `${t('Stoppage')} · ${item.days ?? 0} ${t('days')}`
+        : item.type === 'bonus'
+          ? t('Bonus')
+          : t('Deduction');
+    const sign = item.amount < 0 ? '−' : '+';
+    return `${label} · ${sign}${formatMoney(Math.abs(item.amount), currency, false)}${item.note ? ` · ${item.note}` : ''}`;
+  };
   return (
     <ul className="period-list">
       {[...periods].reverse().map((period) => (
@@ -43,10 +54,27 @@ export function PeriodList({ periods, currency }: PeriodListProps) {
                 {t('Pay date')} {formatDate(period.payDate)}
               </small>
             )}
+            {period.adjustments.map((item) => (
+              <button
+                className={`period-adjustment ${item.amount < 0 ? 'is-negative' : 'is-positive'}`}
+                key={item.id}
+                onClick={() => onEditAdjustment?.(item.id)}
+                type="button"
+              >
+                {describe(item)}
+              </button>
+            ))}
           </span>
-          <strong className="period-list-amount">
-            {formatMoney(period.amount, currency, false)}
-          </strong>
+          <span className="period-list-amounts">
+            <strong className="period-list-amount">
+              {formatMoney(period.amount, currency, false)}
+            </strong>
+            {period.baseAmount !== period.amount && (
+              <small className="period-list-base">
+                {formatMoney(period.baseAmount, currency, false)}
+              </small>
+            )}
+          </span>
         </li>
       ))}
     </ul>
