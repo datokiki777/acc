@@ -45,6 +45,23 @@ export interface SalaryTimelineEntry {
   payDelayMode: PayDelayMode;
 }
 
+/**
+ * Something that changes what one pay period is worth, recorded as it happened instead of being
+ * worked out by hand: a 'stoppage' (days nobody was paid for — the car broke down, say; from
+ * startDate to endDate, both inclusive), or a one-off 'bonus' / 'deduction' of a fixed amount on
+ * startDate. The period that holds the dates is what gets adjusted.
+ */
+export type SalaryAdjustmentType = 'stoppage' | 'bonus' | 'deduction';
+
+export interface SalaryAdjustment {
+  id: string;
+  type: SalaryAdjustmentType;
+  startDate: string;
+  endDate?: string;
+  amount?: number;
+  note?: string;
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -67,6 +84,7 @@ export interface Person {
   salaryAccruedBaseline?: number;
   salaryHistory?: SalaryChangeRecord[];
   salaryTimeline?: SalaryTimelineEntry[];
+  salaryAdjustments?: SalaryAdjustment[];
 }
 
 export interface SalaryCalculationResult {

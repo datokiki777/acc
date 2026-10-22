@@ -28,6 +28,8 @@ function period(
     periodEndDate,
     payDate,
     amount: 1000,
+    baseAmount: 1000,
+    adjustments: [],
     paidAmount: status === 'paid' ? 1000 : 0,
     status,
   };

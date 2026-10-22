@@ -270,6 +270,51 @@ describe('Zustand application actions', () => {
     expect(calculateSalary(corrected, NOW).nextPayDate).toBe('2026-08-17');
   });
 
+  it('saves salary adjustments, which change what the period is worth and survive a reload', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+    const before = calculateSalary(employee, new Date(2026, 6, 10, 12)).accrued;
+
+    await store.getState().setSalaryAdjustments(employee.id, [
+      {
+        id: 'adj-1',
+        type: 'stoppage',
+        startDate: '2026-07-02',
+        endDate: '2026-07-03',
+        note: 'car',
+      },
+    ]);
+    const adjusted = store.getState().peopleByMode.work[0]!;
+    expect(adjusted.salaryAdjustments).toHaveLength(1);
+    // 400/month is 100 a week, a seventh of it per stopped day: two days off the first period.
+    expect(calculateSalary(adjusted, new Date(2026, 6, 10, 12)).accrued).toBe(before - 29);
+
+    const reloaded = (await createAppRepository(database).getPeople('work'))[0]!;
+    expect(reloaded.salaryAdjustments).toEqual(adjusted.salaryAdjustments);
+
+    await store.getState().setSalaryAdjustments(employee.id, []);
+    expect(store.getState().peopleByMode.work[0]!.salaryAdjustments).toBeUndefined();
+  });
+
+  it("drops a person's adjustments along with the rest of the salary when it is switched off", async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+    await store
+      .getState()
+      .setSalaryAdjustments(employee.id, [
+        { id: 'adj-1', type: 'bonus', startDate: '2026-07-02', amount: 50 },
+      ]);
+
+    await store.getState().editPerson(employee.id, { ...salaryDraft(), salaryEnabled: false });
+    expect(store.getState().peopleByMode.work[0]!.salaryAdjustments).toBeUndefined();
+  });
+
   it('a schedule change genuinely tracks a shortfall from a completed-but-unpaid period, then a later entry edit stays live', async () => {
     const store = makeStore();
     await store.getState().initialize();

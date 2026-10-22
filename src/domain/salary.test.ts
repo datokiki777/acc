@@ -14,6 +14,7 @@ import {
   replaceTimeline,
   resetSalaryWhenUnarchiving,
 } from './salary-workflows';
+import type { SalaryAdjustment } from '../types/domain';
 import { date, entry, person, weeklySalaryPerson, workPerson } from '../test/fixtures/golden';
 
 describe('salary calculation parity', () => {
@@ -782,5 +783,111 @@ describe('calculatePeriodStatuses', () => {
     expect(
       calculatePeriodStatuses(weeklySalaryPerson({ salaryAmount: 0 }), date(2026, 3, 8)),
     ).toEqual([]);
+  });
+});
+
+describe('salary adjustments', () => {
+  // 3000/month on two-week periods from 09.09, no delay: 1500 per period, 3000/28 per day.
+  const crew = (adjustments: SalaryAdjustment[], overrides = {}) =>
+    weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      salaryAdjustments: adjustments,
+      entries: [],
+      ...overrides,
+    });
+  const reference = date(2026, 10, 10);
+  const byPayDate = (person: ReturnType<typeof crew>) =>
+    Object.fromEntries(
+      calculatePeriodStatuses(person, reference).map((period) => [period.payDate, period]),
+    );
+
+  it('charges a stoppage at the daily rate to the period that holds those days', () => {
+    // The car broke down: 30.09 to 03.10, four days, all inside the period 23.09 - 07.10.
+    const periods = byPayDate(
+      crew([{ id: 'a', type: 'stoppage', startDate: '2026-09-30', endDate: '2026-10-03' }]),
+    );
+    expect(periods['2026-10-07']).toMatchObject({
+      baseAmount: 1500,
+      amount: 1071,
+      adjustments: [{ id: 'a', type: 'stoppage', days: 4, amount: -429 }],
+    });
+    // Its neighbours are untouched.
+    expect(periods['2026-09-23']).toMatchObject({ amount: 1500, adjustments: [] });
+    expect(periods['2026-10-21']).toMatchObject({ amount: 1500, adjustments: [] });
+  });
+
+  it('splits a stoppage across the periods it runs through, each day charged once', () => {
+    // 05.10 - 10.10 is six days: two in the period ending 07.10 (05, 06), four in the next.
+    const periods = byPayDate(
+      crew([{ id: 'a', type: 'stoppage', startDate: '2026-10-05', endDate: '2026-10-10' }]),
+    );
+    expect(periods['2026-10-07']?.adjustments).toEqual([
+      { id: 'a', type: 'stoppage', days: 2, amount: -214 },
+    ]);
+    expect(periods['2026-10-21']?.adjustments).toEqual([
+      { id: 'a', type: 'stoppage', days: 4, amount: -429 },
+    ]);
+  });
+
+  it('adds a bonus and takes off a deduction on the period that holds their date', () => {
+    const periods = byPayDate(
+      crew([
+        { id: 'b', type: 'bonus', startDate: '2026-09-25', amount: 200 },
+        { id: 'd', type: 'deduction', startDate: '2026-09-26', amount: 50 },
+      ]),
+    );
+    expect(periods['2026-10-07']).toMatchObject({ baseAmount: 1500, amount: 1650 });
+    expect(periods['2026-10-07']?.adjustments.map((item) => item.amount)).toEqual([200, -50]);
+  });
+
+  it('never lets a period go below zero', () => {
+    const periods = byPayDate(
+      crew([{ id: 'd', type: 'deduction', startDate: '2026-09-25', amount: 5000 }]),
+    );
+    expect(periods['2026-10-07']).toMatchObject({ baseAmount: 1500, amount: 0 });
+  });
+
+  it('still counts a bonus dated before the first period or after the last', () => {
+    const periods = calculatePeriodStatuses(
+      crew([
+        { id: 'early', type: 'bonus', startDate: '2026-08-01', amount: 100 },
+        { id: 'late', type: 'bonus', startDate: '2027-01-01', amount: 300 },
+      ]),
+      reference,
+    );
+    expect(periods[0]?.amount).toBe(1600);
+    expect(periods[periods.length - 1]?.amount).toBe(1800);
+  });
+
+  it('flows into what is owed: due and upcoming agree with the adjusted periods', () => {
+    const person = crew([
+      { id: 'a', type: 'stoppage', startDate: '2026-09-30', endDate: '2026-10-03' },
+      { id: 'b', type: 'bonus', startDate: '2026-09-12', amount: 100 },
+    ]);
+    const periods = calculatePeriodStatuses(person, reference);
+    const salary = calculateSalary(person, reference);
+    expect(salary.due + salary.upcoming).toBe(
+      periods.reduce((sum, period) => sum + (period.amount - period.paidAmount), 0),
+    );
+    // 1500 + 100 (first period), 1071 (stoppage period), 1500 (forecast) — nothing paid yet.
+    expect(salary.due + salary.upcoming).toBe(1600 + 1071 + 1500);
+  });
+
+  it('changes nothing when there are no adjustments', () => {
+    const plain = crew([]);
+    const without = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-09-09',
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      entries: [],
+    });
+    expect(calculateSalary(plain, reference)).toEqual(calculateSalary(without, reference));
+    expect(calculatePeriodStatuses(plain, reference)).toEqual(
+      calculatePeriodStatuses(without, reference),
+    );
   });
 });

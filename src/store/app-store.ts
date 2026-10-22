@@ -15,6 +15,7 @@ import type {
   EntryType,
   PayDelayMode,
   Person,
+  SalaryAdjustment,
   SalaryTimelineEntry,
   ThemeMode,
 } from '../types/domain';
@@ -127,6 +128,7 @@ export interface AppStoreState {
     periodWeeks?: number,
   ) => Promise<void>;
   updateSalaryTimeline: (personId: string, timeline: SalaryTimelineEntry[]) => Promise<void>;
+  setSalaryAdjustments: (personId: string, adjustments: SalaryAdjustment[]) => Promise<void>;
   importBackup: (
     inspection: Extract<BackupInspection, { valid: true }>,
     mode: ImportMode,
@@ -234,6 +236,7 @@ function applyDraftToPerson(original: PersistedPerson, draft: PersonDraft): Pers
     delete next.salaryAccruedBaseline;
     delete next.salaryHistory;
     delete next.salaryTimeline;
+    delete next.salaryAdjustments;
   }
   return next;
 }
@@ -571,6 +574,20 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
               ? retainPersistedFields(person, replaceTimeline(person, timeline))
               : person,
           );
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async setSalaryAdjustments(personId, adjustments) {
+        await withError(async () => {
+          const state = get();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            const next = { ...person };
+            if (adjustments.length > 0) next.salaryAdjustments = adjustments;
+            else delete next.salaryAdjustments;
+            return next;
+          });
           await persistModePeople(state.mode, people);
         });
       },

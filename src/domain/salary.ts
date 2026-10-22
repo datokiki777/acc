@@ -2,6 +2,8 @@ import type {
   Currency,
   PayDelayMode,
   Person,
+  SalaryAdjustment,
+  SalaryAdjustmentType,
   SalaryCalculationResult,
   SalarySettings,
   SalaryTimelineEntry,
@@ -129,11 +131,25 @@ function periodAmountFor(monthly: number, periodWeeks: number): number {
   return normalizeAmount(monthly * (periodWeeks / 4));
 }
 
+/** One adjustment as it landed on one period: signed amount (negative reduces), plus days for a stoppage. */
+export interface AppliedAdjustment {
+  id: string;
+  type: SalaryAdjustmentType;
+  amount: number;
+  days?: number;
+}
+
 interface Installment {
   periodStartDate: string;
   periodEndDate: string;
   payDate: string;
+  /** What the period is worth after its adjustments. */
   amount: number;
+  /** What it was worth before any adjustment. */
+  baseAmount: number;
+  /** What one day of this period's salary is (monthly over 28 days — a month here is 4 weeks). */
+  dailyRate: number;
+  applied: AppliedAdjustment[];
   completed: boolean;
 }
 
@@ -163,6 +179,7 @@ function buildInstallments(
   timeline: SalaryTimelineEntry[],
   endDate: string,
   referenceDate: Date,
+  adjustments: SalaryAdjustment[] = [],
 ): Installment[] {
   const referenceDateString = formatReferenceDate(referenceDate);
   const installments: Installment[] = [];
@@ -209,6 +226,7 @@ function buildInstallments(
     }
 
     const amount = periodAmountFor(segment.amount, segment.periodWeeks);
+    const dailyRate = segment.amount / 28;
     for (let k = 1; k <= periodCount; k += 1) {
       const periodStartDate = addDays(segment.effectiveDate, (k - 1) * periodDays);
       const periodEndDate = addDays(segment.effectiveDate, k * periodDays);
@@ -218,6 +236,9 @@ function buildInstallments(
         periodEndDate,
         payDate,
         amount,
+        baseAmount: amount,
+        dailyRate,
+        applied: [],
         completed: k <= completedCount,
       });
     }
@@ -234,12 +255,91 @@ function buildInstallments(
           periodEndDate: cutoffDate,
           payDate,
           amount: remainderAmount,
+          baseAmount: remainderAmount,
+          dailyRate,
+          applied: [],
           completed: true,
         });
       }
     }
   }
-  return installments;
+  return applyAdjustments(installments, adjustments);
+}
+
+/** How many of a period's own days (start included, end excluded) a stoppage covers. */
+function stoppedDaysWithin(adjustment: SalaryAdjustment, installment: Installment): number {
+  const lastDay = addDays(installment.periodEndDate, -1);
+  const from =
+    compareDateStrings(adjustment.startDate, installment.periodStartDate) > 0
+      ? adjustment.startDate
+      : installment.periodStartDate;
+  const stoppedTo = adjustment.endDate || adjustment.startDate;
+  const to = compareDateStrings(stoppedTo, lastDay) < 0 ? stoppedTo : lastDay;
+  return compareDateStrings(to, from) >= 0 ? daysBetweenDates(from, to) + 1 : 0;
+}
+
+/**
+ * The one period a bonus or deduction belongs to: the one that holds its date. A date before the
+ * first period joins the first, one after the last joins the last, so nothing recorded is ever
+ * silently ignored.
+ */
+function periodIndexFor(date: string, installments: Installment[]): number {
+  const index = installments.findIndex(
+    (installment) =>
+      compareDateStrings(date, installment.periodStartDate) >= 0 &&
+      compareDateStrings(date, installment.periodEndDate) < 0,
+  );
+  if (index !== -1) return index;
+  return compareDateStrings(date, installments[0]!.periodStartDate) < 0
+    ? 0
+    : installments.length - 1;
+}
+
+/**
+ * Lets recorded stoppages, bonuses and deductions change what each period is worth, before the
+ * payment waterfall ever sees the amounts — so due, upcoming, the strip and the period list all
+ * agree without any of them knowing adjustments exist. A stoppage costs its days at the period's
+ * daily rate (a day of a period split across two periods is charged to whichever period holds it);
+ * a period can't go below zero.
+ */
+function applyAdjustments(
+  installments: Installment[],
+  adjustments: SalaryAdjustment[],
+): Installment[] {
+  if (adjustments.length === 0 || installments.length === 0) return installments;
+  const indexById = new Map(
+    adjustments
+      .filter((adjustment) => adjustment.type !== 'stoppage')
+      .map((adjustment) => [adjustment.id, periodIndexFor(adjustment.startDate, installments)]),
+  );
+  return installments.map((installment, index) => {
+    const applied: AppliedAdjustment[] = [];
+    for (const adjustment of adjustments) {
+      if (adjustment.type === 'stoppage') {
+        const days = stoppedDaysWithin(adjustment, installment);
+        if (days > 0) {
+          applied.push({
+            id: adjustment.id,
+            type: 'stoppage',
+            days,
+            amount: -normalizeAmount(days * installment.dailyRate),
+          });
+        }
+      } else if (indexById.get(adjustment.id) === index) {
+        const amount = normalizeAmount(adjustment.amount);
+        if (amount > 0) {
+          applied.push({
+            id: adjustment.id,
+            type: adjustment.type,
+            amount: adjustment.type === 'bonus' ? amount : -amount,
+          });
+        }
+      }
+    }
+    if (applied.length === 0) return installment;
+    const net = applied.reduce((sum, item) => sum + item.amount, 0);
+    return { ...installment, amount: Math.max(0, installment.baseAmount + net), applied };
+  });
 }
 
 export interface UpcomingPayment {
@@ -352,7 +452,12 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
   const days = daysBetweenDates(latest.effectiveDate, ended ? endDate : referenceDateString);
   const completedPeriods = Math.max(0, Math.floor(days / (latest.periodWeeks * 7)));
 
-  const installments = buildInstallments(timeline, endDate, referenceDate);
+  const installments = buildInstallments(
+    timeline,
+    endDate,
+    referenceDate,
+    person.salaryAdjustments,
+  );
   const accrued = installments.reduce(
     (sum, installment) => sum + (installment.completed ? installment.amount : 0),
     0,
@@ -394,7 +499,11 @@ export interface PeriodSummary {
   periodStartDate: string;
   periodEndDate: string;
   payDate: string;
+  /** What the period is worth after its adjustments. */
   amount: number;
+  /** What it was worth before them. */
+  baseAmount: number;
+  adjustments: AppliedAdjustment[];
   paidAmount: number;
   status: PeriodStatus;
 }
@@ -411,7 +520,12 @@ export function calculatePeriodStatuses(person: Person, referenceDate: Date): Pe
   const timeline = getEffectiveTimeline(person);
   if (timeline.length === 0) return [];
   const config = getSalarySettings(person)!;
-  const installments = buildInstallments(timeline, config.endDate, referenceDate);
+  const installments = buildInstallments(
+    timeline,
+    config.endDate,
+    referenceDate,
+    person.salaryAdjustments,
+  );
   const paid = salaryPaid(person);
   const referenceDateString = formatReferenceDate(referenceDate);
   let cumulative = 0;
@@ -433,6 +547,8 @@ export function calculatePeriodStatuses(person: Person, referenceDate: Date): Pe
       periodEndDate: installment.periodEndDate,
       payDate: installment.payDate,
       amount: installment.amount,
+      baseAmount: installment.baseAmount,
+      adjustments: installment.applied,
       paidAmount,
       status,
     };
@@ -449,7 +565,12 @@ export function calculateUpcomingPayments(person: Person, referenceDate: Date): 
   const timeline = getEffectiveTimeline(person);
   if (timeline.length === 0) return [];
   const config = getSalarySettings(person)!;
-  const installments = buildInstallments(timeline, config.endDate, referenceDate);
+  const installments = buildInstallments(
+    timeline,
+    config.endDate,
+    referenceDate,
+    person.salaryAdjustments,
+  );
   return classifyInstallments(installments, salaryPaid(person), formatReferenceDate(referenceDate))
     .upcomingPayments;
 }

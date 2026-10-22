@@ -93,6 +93,30 @@ describe('legacy-compatible backup services', () => {
     });
   });
 
+  it('keeps recorded salary adjustments through a backup and a restore', async () => {
+    const adjustments = [
+      {
+        id: 'adj-1',
+        type: 'stoppage',
+        startDate: '2026-07-02',
+        endDate: '2026-07-05',
+        note: 'car broke down',
+      },
+      { id: 'adj-2', type: 'bonus', startDate: '2026-07-04', amount: 80 },
+    ];
+    const backup = fixtureBackup();
+    backup.work[0] = { ...backup.work[0]!, salaryAdjustments: adjustments };
+
+    const inspection = inspectBackupText(JSON.stringify(backup), 'adjustments.json');
+    expect(inspection.valid).toBe(true);
+    if (!inspection.valid) throw new Error('Expected valid inspection');
+    expect(inspection.normalized.work[0]?.salaryAdjustments).toEqual(adjustments);
+
+    await applyInspectedBackup(repository, inspection, 'replace', REFERENCE_DATE, () => 'id');
+    const restored = (await repository.getPeople('work'))[0]!;
+    expect(restored.salaryAdjustments).toEqual(adjustments);
+  });
+
   it('rejects malformed JSON without changing React data', async () => {
     await repository.replacePeople('personal', [
       {
