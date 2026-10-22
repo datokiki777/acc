@@ -190,6 +190,48 @@ interface Installment {
  * left behind when a segment is cut short by the next one taking over, or by the end date. Half a
  * week rounds up, matching how a person would eyeball 'closer to which week is this'.
  */
+/**
+ * Where the first period ends when the cycle is anchored on `cycleDate` rather than on the day
+ * work began: the first cycle boundary after `start` (boundaries sit every `periodDays` from the
+ * cycle date, in both directions). `start` itself when it already falls on one — no short period.
+ */
+function firstCycleBoundary(start: string, cycleDate: string, periodDays: number): string {
+  const offset = ((daysBetweenDates(cycleDate, start) % periodDays) + periodDays) % periodDays;
+  return offset === 0 ? start : addDays(start, periodDays - offset);
+}
+
+/** What a stretch of working days is worth at one daily rate, in whole currency units. */
+function daysAmount(from: string, endExclusive: string, dailyRate: number, restDays: number[]) {
+  const lastDay = addDays(endExclusive, -1);
+  if (compareDateStrings(lastDay, from) < 0) return 0;
+  return normalizeAmount(workingDaysBetween(from, lastDay, restDays) * dailyRate);
+}
+
+/**
+ * The short first period a cycle date creates, for showing before saving: from the start up to the
+ * first cycle boundary, priced by working days. Null when the start already sits on the cycle.
+ */
+export function describeFirstPeriod(input: {
+  startDate: string;
+  cycleDate: string;
+  periodWeeks: number;
+  monthly: number;
+  restDays: number[];
+}): { startDate: string; endDate: string; workingDays: number; amount: number } | null {
+  if (!input.startDate || !input.cycleDate) return null;
+  const periodDays = clampPeriodWeeks(input.periodWeeks) * 7;
+  const endDate = firstCycleBoundary(input.startDate, input.cycleDate, periodDays);
+  if (endDate === input.startDate) return null;
+  const dailyRate = input.monthly / (4 * (7 - input.restDays.length));
+  const workingDays = workingDaysBetween(input.startDate, addDays(endDate, -1), input.restDays);
+  return {
+    startDate: input.startDate,
+    endDate,
+    workingDays,
+    amount: normalizeAmount(workingDays * dailyRate),
+  };
+}
+
 function roundToNearestWeek(days: number): number {
   return Math.round(days / 7);
 }
@@ -213,16 +255,56 @@ function buildInstallments(
   referenceDate: Date,
   adjustments: SalaryAdjustment[] = [],
   restDays: number[] = DEFAULT_REST_DAYS,
+  cycleDate = '',
 ): Installment[] {
   const referenceDateString = formatReferenceDate(referenceDate);
   const installments: Installment[] = [];
   const ended = Boolean(endDate) && compareDateStrings(endDate, referenceDateString) <= 0;
+  // A cycle date means this person's partial periods are priced by working days, not rounded to
+  // whole weeks — the short first period below, and the tail at an end date or a mid-period change.
+  const byDays = Boolean(cycleDate);
+  let segments = timeline;
+  let firstSegmentWaiting = false;
 
-  for (let index = 0; index < timeline.length; index += 1) {
-    const segment = timeline[index]!;
+  if (byDays && timeline.length > 0) {
+    const first = timeline[0]!;
+    const boundary = firstCycleBoundary(
+      first.effectiveDate,
+      cycleDate,
+      clampPeriodWeeks(first.periodWeeks) * 7,
+    );
+    if (boundary !== first.effectiveDate) {
+      const firstCutoff = timeline.length > 1 ? timeline[1]!.effectiveDate : ended ? endDate : null;
+      const stubEnd =
+        firstCutoff && compareDateStrings(firstCutoff, boundary) < 0 ? firstCutoff : boundary;
+      const dailyRate = first.amount / (4 * (7 - restDays.length));
+      const amount = daysAmount(first.effectiveDate, stubEnd, dailyRate, restDays);
+      const stubDone =
+        firstCutoff !== null || compareDateStrings(stubEnd, referenceDateString) <= 0;
+      if (amount > 0) {
+        installments.push({
+          periodStartDate: first.effectiveDate,
+          periodEndDate: stubEnd,
+          payDate: computeSalaryPayDate(stubEnd, first.payDelayMode),
+          amount,
+          baseAmount: amount,
+          dailyRate,
+          applied: [],
+          completed: stubDone,
+        });
+      }
+      // The regular periods start where the short one ends. If it's still in progress it already
+      // is the one 'what's next' period, so no further one is forecast behind it.
+      segments = [{ ...first, effectiveDate: stubEnd }, ...timeline.slice(1)];
+      firstSegmentWaiting = !stubDone;
+    }
+  }
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index]!;
     const periodDays = clampPeriodWeeks(segment.periodWeeks) * 7;
-    const isLastSegment = index === timeline.length - 1;
-    const nextSegmentStart = isLastSegment ? null : timeline[index + 1]!.effectiveDate;
+    const isLastSegment = index === segments.length - 1;
+    const nextSegmentStart = isLastSegment ? null : segments[index + 1]!.effectiveDate;
     let periodCount: number;
     let completedCount: number;
     let cutoffDate: string | null = null;
@@ -237,6 +319,9 @@ function buildInstallments(
       periodCount = Math.max(0, Math.floor(span / periodDays));
       completedCount = periodCount;
       cutoffDate = endDate;
+    } else if (index === 0 && firstSegmentWaiting) {
+      periodCount = 0;
+      completedCount = 0;
     } else {
       const span = daysBetweenDates(segment.effectiveDate, referenceDateString);
       completedCount = Math.max(0, Math.floor(span / periodDays));
@@ -280,8 +365,11 @@ function buildInstallments(
       const lastFullPeriodEnd = addDays(segment.effectiveDate, completedCount * periodDays);
       const remainderDays = daysBetweenDates(lastFullPeriodEnd, cutoffDate);
       const remainderWeeks = roundToNearestWeek(remainderDays);
-      if (remainderWeeks > 0) {
-        const remainderAmount = periodAmountFor(segment.amount, remainderWeeks);
+      const remainderAmount = byDays
+        ? daysAmount(lastFullPeriodEnd, cutoffDate, dailyRate, restDays)
+        : periodAmountFor(segment.amount, remainderWeeks);
+      // Exactly as before for anyone without a cycle date: a tail counts once it rounds to a week.
+      if (byDays ? remainderAmount > 0 : remainderWeeks > 0) {
         const payDate = computeSalaryPayDate(cutoffDate, segment.payDelayMode);
         installments.push({
           periodStartDate: lastFullPeriodEnd,
@@ -532,6 +620,7 @@ export function calculateSalary(person: Person, referenceDate: Date): SalaryCalc
     referenceDate,
     person.salaryAdjustments,
     getRestDays(person),
+    person.salaryCycleDate,
   );
   const accrued = installments.reduce(
     (sum, installment) => sum + (installment.completed ? installment.amount : 0),
@@ -601,6 +690,7 @@ export function calculatePeriodStatuses(person: Person, referenceDate: Date): Pe
     referenceDate,
     person.salaryAdjustments,
     getRestDays(person),
+    person.salaryCycleDate,
   );
   const paid = salaryPaid(person);
   const referenceDateString = formatReferenceDate(referenceDate);
@@ -647,6 +737,7 @@ export function calculateUpcomingPayments(person: Person, referenceDate: Date): 
     referenceDate,
     person.salaryAdjustments,
     getRestDays(person),
+    person.salaryCycleDate,
   );
   return classifyInstallments(installments, salaryPaid(person), formatReferenceDate(referenceDate))
     .upcomingPayments;

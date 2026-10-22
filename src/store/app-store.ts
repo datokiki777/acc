@@ -131,6 +131,7 @@ export interface AppStoreState {
   updateSalaryTimeline: (personId: string, timeline: SalaryTimelineEntry[]) => Promise<void>;
   setSalaryAdjustments: (personId: string, adjustments: SalaryAdjustment[]) => Promise<void>;
   setSalaryRestDays: (personId: string, restDays: number[]) => Promise<void>;
+  setSalaryCycleDate: (personId: string, cycleDate: string) => Promise<void>;
   importBackup: (
     inspection: Extract<BackupInspection, { valid: true }>,
     mode: ImportMode,
@@ -240,6 +241,7 @@ function applyDraftToPerson(original: PersistedPerson, draft: PersonDraft): Pers
     delete next.salaryTimeline;
     delete next.salaryAdjustments;
     delete next.salaryRestDays;
+    delete next.salaryCycleDate;
   }
   return next;
 }
@@ -605,6 +607,21 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             // Sunday only is what an unset value already means, so it isn't stored.
             if (chosen.length === 1 && chosen[0] === 0) delete next.salaryRestDays;
             else next.salaryRestDays = chosen;
+            return next;
+          });
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async setSalaryCycleDate(personId, cycleDate) {
+        await withError(async () => {
+          const state = get();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            const next = { ...person };
+            // Empty means 'no cycle date': back to the original behaviour.
+            if (cycleDate) next.salaryCycleDate = cycleDate;
+            else delete next.salaryCycleDate;
             return next;
           });
           await persistModePeople(state.mode, people);

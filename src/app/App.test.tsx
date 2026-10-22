@@ -377,6 +377,69 @@ describe('ACC application', () => {
     expect(within(editing).queryByRole('button', { name: 'Adjustment' })).not.toBeInTheDocument();
   });
 
+  it('sets a cycle date when setting a salary up, showing the short first period before saving', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => store.getState().setMode('work'));
+
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(await screen.findByRole('button', { name: 'Add Team' }));
+    const form = await screen.findByRole('dialog', { name: 'Add Team' });
+    await user.type(within(form).getByRole('textbox', { name: 'Name' }), 'Cycle crew');
+    await user.click(within(form).getByRole('checkbox', { name: 'Salaried employee' }));
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    const setup = await screen.findByRole('dialog', { name: 'Set Up Salary' });
+    // Work starts on a Wednesday; the pay cycle starts the Monday after.
+    fireEvent.change(within(setup).getByLabelText('Salary start date'), {
+      target: { value: '2026-08-12' },
+    });
+    await user.type(within(setup).getByRole('spinbutton', { name: 'Monthly salary' }), '3000');
+    fireEvent.change(within(setup).getByLabelText(/^Cycle starts on/), {
+      target: { value: '2026-08-17' },
+    });
+    // Wed-Sat is four working days at 3000 / 24 = 125.
+    expect(
+      await within(setup).findByText(/Short first period: 12\.08\.2026 – 17\.08\.2026 · 4 days/),
+    ).toHaveTextContent('500€');
+    await user.click(within(setup).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(store.getState().peopleByMode.work[0]?.salaryCycleDate).toBe('2026-08-17');
+  });
+
+  it('lets someone already set up opt in to a cycle date from the salary history', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Existing crew'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-08-12',
+      });
+    });
+    expect(store.getState().peopleByMode.work[0]?.salaryCycleDate).toBeUndefined();
+
+    await user.click(await findPersonSummary('Existing crew'));
+    await user.click(await screen.findByRole('button', { name: /Change Salary/ }));
+    const sync = await screen.findByRole('dialog', { name: 'Change Salary' });
+    await user.click(within(sync).getByRole('button', { name: /past salary change/ }));
+    const history = await screen.findByRole('dialog', { name: 'Manage Salary History' });
+    fireEvent.change(within(history).getByLabelText(/^Cycle starts on/), {
+      target: { value: '2026-08-17' },
+    });
+    expect(await within(history).findByText(/Short first period/)).toHaveTextContent('500€');
+    await user.click(within(history).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(store.getState().peopleByMode.work[0]?.salaryCycleDate).toBe('2026-08-17'),
+    );
+  });
+
   it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {
     const user = userEvent.setup();
     const store = renderApp();

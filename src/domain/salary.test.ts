@@ -2,6 +2,7 @@ import {
   calculatePeriodStatuses,
   calculateSalary,
   calculateUpcomingPayments,
+  describeFirstPeriod,
   getEffectiveTimeline,
   getRestDays,
   giftSummary,
@@ -1006,5 +1007,121 @@ describe('stoppages with a corrected amount', () => {
       amount: 1400,
       adjustments: [{ id: 'a', type: 'stoppage', amount: -100 }],
     });
+  });
+});
+
+describe('a cycle date: a short first period priced by working days', () => {
+  // 3000/month, two-week periods, Sunday off (125 a working day).
+  const crew = (overrides = {}) =>
+    weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryStartDate: '2026-08-12', // a Wednesday
+      salaryPayPeriodWeeks: 2,
+      salaryPayDelayMode: 'none',
+      entries: [],
+      ...overrides,
+    });
+  const reference = date(2026, 9, 20);
+  const rows = (person: ReturnType<typeof crew>, when = reference) =>
+    calculatePeriodStatuses(person, when).map((period) => [
+      period.periodStartDate,
+      period.periodEndDate,
+      period.amount,
+    ]);
+
+  it('gives the days before the first cycle day a period of their own, paid by working days', () => {
+    // Work starts Wed 12.08, the cycle starts Mon 17.08: Wed-Sat is four working days = 500.
+    expect(rows(crew({ salaryCycleDate: '2026-08-17' }))).toEqual([
+      ['2026-08-12', '2026-08-17', 500],
+      ['2026-08-17', '2026-08-31', 1500],
+      ['2026-08-31', '2026-09-14', 1500],
+      ['2026-09-14', '2026-09-28', 1500],
+    ]);
+  });
+
+  it('leaves everyone without a cycle date exactly as they were', () => {
+    expect(rows(crew())).toEqual([
+      ['2026-08-12', '2026-08-26', 1500],
+      ['2026-08-26', '2026-09-09', 1500],
+      ['2026-09-09', '2026-09-23', 1500],
+    ]);
+  });
+
+  it('works out the first boundary when work starts after the cycle day', () => {
+    // Cycle on Mon 17.08, work starts Thu 20.08: boundaries 17.08, 31.08 — the short period runs
+    // 20.08 to 31.08, nine working days (the two Sundays are free) = 1125.
+    expect(rows(crew({ salaryStartDate: '2026-08-20', salaryCycleDate: '2026-08-17' }))[0]).toEqual(
+      ['2026-08-20', '2026-08-31', 1125],
+    );
+  });
+
+  it('makes no short period when work starts on a cycle day', () => {
+    // 29.07 is exactly one period before 12.08, so 12.08 is already a boundary.
+    expect(rows(crew({ salaryCycleDate: '2026-07-29' }))[0]).toEqual([
+      '2026-08-12',
+      '2026-08-26',
+      1500,
+    ]);
+  });
+
+  it('pays the short period on its own pay date, following the same delay', () => {
+    const periods = calculatePeriodStatuses(
+      crew({ salaryCycleDate: '2026-08-17', salaryPayDelayMode: '2weeks' }),
+      reference,
+    );
+    expect(periods[0]).toMatchObject({ periodEndDate: '2026-08-17', payDate: '2026-08-31' });
+  });
+
+  it('shows the short first period as the only one while it is still in progress', () => {
+    const periods = calculatePeriodStatuses(
+      crew({ salaryCycleDate: '2026-08-17' }),
+      date(2026, 8, 14),
+    );
+    expect(periods).toHaveLength(1);
+    expect(periods[0]).toMatchObject({ amount: 500, status: 'upcoming' });
+  });
+
+  it('prices the tail at an end date by working days, not rounded to a whole week', () => {
+    // One full period 07.09 - 21.09, then 21.09 - 01.10: ten days, nine working (Sun 27 is free)
+    // = 1125 by days. Without a cycle date the same ten days round to a week: 750.
+    const ended = {
+      salaryStartDate: '2026-09-07',
+      salaryEndDate: '2026-10-01',
+    };
+    const byDays = calculatePeriodStatuses(
+      crew({ ...ended, salaryCycleDate: '2026-09-07' }),
+      date(2026, 10, 2),
+    );
+    const byWeeks = calculatePeriodStatuses(crew(ended), date(2026, 10, 2));
+    expect(byDays.map((period) => period.amount)).toEqual([1500, 1125]);
+    expect(byWeeks.map((period) => period.amount)).toEqual([1500, 750]);
+  });
+
+  it('flows into what is owed, like any other period', () => {
+    const person = crew({ salaryCycleDate: '2026-08-17' });
+    const periods = calculatePeriodStatuses(person, reference);
+    const salary = calculateSalary(person, reference);
+    expect(salary.due + salary.upcoming).toBe(
+      periods.reduce((sum, period) => sum + (period.amount - period.paidAmount), 0),
+    );
+    expect(salary.due + salary.upcoming).toBe(500 + 1500 * 3);
+  });
+
+  it('describes the first period for the form to preview', () => {
+    const input = {
+      startDate: '2026-08-12',
+      cycleDate: '2026-08-17',
+      periodWeeks: 2,
+      monthly: 3000,
+      restDays: [0],
+    };
+    expect(describeFirstPeriod(input)).toEqual({
+      startDate: '2026-08-12',
+      endDate: '2026-08-17',
+      workingDays: 4,
+      amount: 500,
+    });
+    expect(describeFirstPeriod({ ...input, cycleDate: '2026-07-29' })).toBeNull();
+    expect(describeFirstPeriod({ ...input, cycleDate: '' })).toBeNull();
   });
 });

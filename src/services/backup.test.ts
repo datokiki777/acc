@@ -93,7 +93,7 @@ describe('legacy-compatible backup services', () => {
     });
   });
 
-  it('keeps recorded salary adjustments through a backup and a restore', async () => {
+  it('keeps salary adjustments, rest days and the cycle date through a backup and a restore', async () => {
     const adjustments = [
       {
         id: 'adj-1',
@@ -105,7 +105,12 @@ describe('legacy-compatible backup services', () => {
       { id: 'adj-2', type: 'bonus', startDate: '2026-07-04', amount: 80 },
     ];
     const backup = fixtureBackup();
-    backup.work[0] = { ...backup.work[0]!, salaryAdjustments: adjustments };
+    backup.work[0] = {
+      ...backup.work[0]!,
+      salaryAdjustments: adjustments,
+      salaryCycleDate: '2026-07-06',
+      salaryRestDays: [0, 6],
+    };
 
     const inspection = inspectBackupText(JSON.stringify(backup), 'adjustments.json');
     expect(inspection.valid).toBe(true);
@@ -115,6 +120,8 @@ describe('legacy-compatible backup services', () => {
     await applyInspectedBackup(repository, inspection, 'replace', REFERENCE_DATE, () => 'id');
     const restored = (await repository.getPeople('work'))[0]!;
     expect(restored.salaryAdjustments).toEqual(adjustments);
+    expect(restored.salaryCycleDate).toBe('2026-07-06');
+    expect(restored.salaryRestDays).toEqual([0, 6]);
   });
 
   it('rejects malformed JSON without changing React data', async () => {

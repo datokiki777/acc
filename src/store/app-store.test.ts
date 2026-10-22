@@ -270,6 +270,26 @@ describe('Zustand application actions', () => {
     expect(calculateSalary(corrected, NOW).nextPayDate).toBe('2026-08-17');
   });
 
+  it('saves a cycle date, clears it when empty, and drops it with the salary', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+
+    await store.getState().setSalaryCycleDate(employee.id, '2026-07-06');
+    expect(store.getState().peopleByMode.work[0]!.salaryCycleDate).toBe('2026-07-06');
+    const reloaded = (await createAppRepository(database).getPeople('work'))[0]!;
+    expect(reloaded.salaryCycleDate).toBe('2026-07-06');
+
+    await store.getState().setSalaryCycleDate(employee.id, '');
+    expect(store.getState().peopleByMode.work[0]!.salaryCycleDate).toBeUndefined();
+
+    await store.getState().setSalaryCycleDate(employee.id, '2026-07-06');
+    await store.getState().editPerson(employee.id, { ...salaryDraft(), salaryEnabled: false });
+    expect(store.getState().peopleByMode.work[0]!.salaryCycleDate).toBeUndefined();
+  });
+
   it('saves the chosen rest days, treating Sunday-only as the unset default', async () => {
     const store = makeStore();
     await store.getState().initialize();

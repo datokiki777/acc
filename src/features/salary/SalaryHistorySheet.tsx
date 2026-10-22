@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { PickerField } from '../../components/PickerField';
 import { useAppNavigation } from '../../app/useAppNavigation';
-import { getEffectiveTimeline } from '../../domain/salary';
+import { describeFirstPeriod, getEffectiveTimeline, getRestDays } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
 import type { PayDelayMode } from '../../types/domain';
-import { localDateString } from '../../utils/format';
+import { formatDate, formatMoney, localDateString } from '../../utils/format';
 
 interface TimelineRow {
   id: string;
@@ -41,9 +41,11 @@ export function SalaryHistorySheet() {
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
   );
   const updateTimeline = useAppStore((state) => state.updateSalaryTimeline);
+  const setCycleDate = useAppStore((state) => state.setSalaryCycleDate);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cycleDate, setCycleDateText] = useState(person?.salaryCycleDate ?? '');
 
   const [rows, setRows] = useState<TimelineRow[]>(() => {
     if (!person) return [];
@@ -93,6 +95,17 @@ export function SalaryHistorySheet() {
     setRows((current) => current.filter((row) => row.id !== id));
   }
 
+  const firstRow = rows[0];
+  const firstPeriod = firstRow
+    ? describeFirstPeriod({
+        startDate: firstRow.effectiveDate,
+        cycleDate,
+        periodWeeks: parsePeriodWeeks(firstRow.periodWeeksText),
+        monthly: parseAmount(firstRow.amountText),
+        restDays: getRestDays(person),
+      })
+    : null;
+
   async function submit() {
     setError('');
     if (rows.length === 0) {
@@ -114,6 +127,7 @@ export function SalaryHistorySheet() {
           payDelayMode: row.payDelayMode,
         })),
       );
+      await setCycleDate(person!.id, cycleDate);
       closeAfterSave();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not update salary history');
@@ -172,6 +186,31 @@ export function SalaryHistorySheet() {
                 />
               </label>
             </div>
+            {index === 0 && (
+              <>
+                <label className="field">
+                  <span>
+                    {t('Cycle starts on')} <small>{t('optional')}</small>
+                  </span>
+                  <input
+                    autoComplete="off"
+                    onChange={(event) => setCycleDateText(event.target.value)}
+                    type="date"
+                    value={cycleDate}
+                  />
+                  <small>
+                    {t('Set it if the pay cycle starts on a different day than work did.')}
+                  </small>
+                </label>
+                {firstPeriod && (
+                  <p className="inline-note">
+                    {t('Short first period')}: {formatDate(firstPeriod.startDate)} –{' '}
+                    {formatDate(firstPeriod.endDate)} · {firstPeriod.workingDays} {t('days')} ·{' '}
+                    <strong>{formatMoney(firstPeriod.amount, person.currency, false)}</strong>
+                  </p>
+                )}
+              </>
+            )}
             <div className="salary-history-edit-row">
               <label className="field">
                 <span>{t('Pay period (weeks)')}</span>

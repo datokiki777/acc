@@ -5,7 +5,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { PickerField } from '../../components/PickerField';
 import { useAppNavigation, useUnsavedForm } from '../../app/useAppNavigation';
 import { addDays, computeSalaryPayDate } from '../../domain/pay-dates';
-import { calculateSalary, getRestDays } from '../../domain/salary';
+import { calculateSalary, describeFirstPeriod, getRestDays } from '../../domain/salary';
 import { PAY_DELAY_OPTIONS } from '../../domain/salary-options';
 import { useTranslation } from '../../i18n/useTranslation';
 import { useAppStore } from '../../store/hooks';
@@ -19,6 +19,7 @@ interface SyncForm {
   payDelayMode: PayDelayMode;
   periodWeeks: number;
   restDays: number[];
+  cycleDate: string;
 }
 
 // Monday first, as a working week reads; the numbers are Date.getDay() values (0 = Sunday).
@@ -40,6 +41,7 @@ export function SalarySyncSheet() {
   );
   const sync = useAppStore((state) => state.syncSalary);
   const setRestDays = useAppStore((state) => state.setSalaryRestDays);
+  const setCycleDate = useAppStore((state) => state.setSalaryCycleDate);
   const openSheet = useAppStore((state) => state.openSheet);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const [error, setError] = useState('');
@@ -59,12 +61,15 @@ export function SalarySyncSheet() {
       payDelayMode: person?.salaryPayDelayMode ?? 'none',
       periodWeeks: Number(person?.salaryPayPeriodWeeks ?? person?.salaryPayDay ?? 2),
       restDays: person ? getRestDays(person) : [0],
+      cycleDate: person?.salaryCycleDate ?? '',
     },
   });
   const payDelayMode = useWatch({ control, name: 'payDelayMode' });
   const watchedEffectiveDate = useWatch({ control, name: 'effectiveDate' });
   const watchedPeriodWeeks = useWatch({ control, name: 'periodWeeks' });
   const restDays = useWatch({ control, name: 'restDays' });
+  const watchedCycleDate = useWatch({ control, name: 'cycleDate' });
+  const watchedAmount = useWatch({ control, name: 'amount' });
   useUnsavedForm(isDirty);
   if (!person || !salary) return null;
   const wasConfigured = Boolean(person.salaryAmount && person.salaryStartDate);
@@ -90,6 +95,18 @@ export function SalarySyncSheet() {
   const previewDueDate = addDays(previewDate, previewPeriodWeeks * 7);
   const previewPayDate = computeSalaryPayDate(previewDueDate, payDelayMode);
 
+  // Only offered when setting a salary up for the first time: that's when the start and the cycle
+  // can differ. (For someone already set up it lives in the salary history's starting point.)
+  const firstPeriod = !wasConfigured
+    ? describeFirstPeriod({
+        startDate: watchedEffectiveDate,
+        cycleDate: watchedCycleDate,
+        periodWeeks: previewPeriodWeeks,
+        monthly: Number(watchedAmount) || 0,
+        restDays,
+      })
+    : null;
+
   const submit = handleSubmit(async (values) => {
     if (!values.effectiveDate) {
       setError(wasConfigured ? 'New cycle date is required' : 'Start date is required');
@@ -110,6 +127,7 @@ export function SalarySyncSheet() {
         values.periodWeeks,
       );
       await setRestDays(person.id, values.restDays);
+      if (!wasConfigured) await setCycleDate(person.id, values.cycleDate);
       closeAfterSave();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not update salary');
@@ -142,6 +160,22 @@ export function SalarySyncSheet() {
           <input autoComplete="off" type="date" {...register('effectiveDate')} />
           {wasConfigured && <small>{t('Only resets the schedule if you change this date.')}</small>}
         </label>
+        {!wasConfigured && (
+          <label className="field">
+            <span>
+              {t('Cycle starts on')} <small>{t('optional')}</small>
+            </span>
+            <input autoComplete="off" type="date" {...register('cycleDate')} />
+            <small>{t('Set it if the pay cycle starts on a different day than work did.')}</small>
+          </label>
+        )}
+        {firstPeriod && (
+          <p className="inline-note">
+            {t('Short first period')}: {formatDate(firstPeriod.startDate)} –{' '}
+            {formatDate(firstPeriod.endDate)} · {firstPeriod.workingDays} {t('days')} ·{' '}
+            <strong>{formatMoney(firstPeriod.amount, person.currency, false)}</strong>
+          </p>
+        )}
         <label className="field">
           <span>{wasConfigured ? t('New monthly salary') : t('Monthly salary')}</span>
           <input

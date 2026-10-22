@@ -91,6 +91,13 @@ export interface Person {
   salaryAdjustments?: SalaryAdjustment[];
   /** Weekdays nobody works (0 = Sunday … 6 = Saturday). Unset means Sunday only. */
   salaryRestDays?: number[];
+  /**
+   * The day the pay cycle starts on, when it isn't the day work began. Setting it also switches
+   * this person to pricing partial periods by working days instead of rounding to whole weeks:
+   * the days from the start up to the first cycle boundary become a short first period of their
+   * own. Unset keeps everything exactly as it was.
+   */
+  salaryCycleDate?: string;
 }
 
 export interface SalaryCalculationResult {

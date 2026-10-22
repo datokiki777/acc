@@ -91,6 +91,10 @@ const ka: Record<string, string> = {
   'Reset to calculated': 'დაბრუნება გამოთვლილზე',
   days: 'დღე',
   Note: 'შენიშვნა',
+  'Cycle starts on': 'ციკლი იწყება',
+  'Set it if the pay cycle starts on a different day than work did.':
+    'მიუთითე, თუ ხელფასის ციკლი სხვა დღეს იწყება, ვიდრე სამუშაო.',
+  'Short first period': 'მოკლე პირველი პერიოდი',
   'Rest days': 'დასვენების დღეები',
   'Not charged when work stops. One working day = monthly salary ÷':
     'გაჩერებისას არ ითვლება. ერთი სამუშაო დღე = თვიური ხელფასი ÷',
