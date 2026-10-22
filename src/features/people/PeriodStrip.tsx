@@ -26,7 +26,7 @@ export function PeriodStrip({ periods, onOpen }: PeriodStripProps) {
         <span className="period-strip-summary">
           {allPaid
             ? t('All paid')
-            : t('Paid through {date}').replace('{date}', formatDate(date ?? '').slice(0, 5))}
+            : t('Work paid through {date}').replace('{date}', formatDate(date ?? '').slice(0, 5))}
         </span>
       )}
       <span className="period-strip-row">

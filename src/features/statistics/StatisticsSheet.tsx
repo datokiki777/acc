@@ -98,6 +98,9 @@ export function StatisticsSheet() {
               </div>
             ))}
           </div>
+          {payroll.payDates.length > 0 && (
+            <small className="pay-dates-caption">{t('Payment dates')}</small>
+          )}
           {payroll.payDates.map((group) => (
             <div className="pay-date-row" key={group.date}>
               <strong>{formatDate(group.date)}</strong>

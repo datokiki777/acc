@@ -62,10 +62,11 @@ describe('PeriodList', () => {
     );
 
     const rows = screen.getAllByRole('listitem');
-    expect(rows.map((row) => within(row).getByText(/^\d\d\.\d\d\.\d{4} – /).textContent)).toEqual([
-      '07.10.2026 – 21.10.2026',
-      '23.09.2026 – 07.10.2026',
-      '09.09.2026 – 23.09.2026',
+    // The work comes first, labelled, in short dates; the (later) pay date has its own line below.
+    expect(rows.map((row) => within(row).getByText(/^Worked /).textContent)).toEqual([
+      'Worked 07.10 – 21.10',
+      'Worked 23.09 – 07.10',
+      'Worked 09.09 – 23.09',
     ]);
     expect(within(rows[0]!).getByText('Upcoming')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('Pay date 04.11.2026')).toBeInTheDocument();

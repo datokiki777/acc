@@ -749,7 +749,7 @@ describe('calculatePeriodStatuses', () => {
   it('reports a delayed salary as paid through the work period end, not the later pay date', () => {
     // A real case: 3000/month on two-week periods from 12.08; from 09.09 the salary is paid two
     // weeks after each period ends. 6000 paid covers four periods — the last one is the work
-    // through 07.10, which falls due on 21.10. 'Paid through' must say 07.10.
+    // through 07.10, which falls due on 21.10. 'Work paid through' must say 07.10.
     const person = weeklySalaryPerson({
       salaryAmount: 3000,
       salaryTimeline: [

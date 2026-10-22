@@ -143,7 +143,7 @@ describe('PayrollSummaryCard period strip', () => {
   it('shows where things stand: paid through, then a dot and pay date per period', () => {
     renderCard(crew, date(2026, 9, 20));
     const strip = screen.getByRole('button', { name: 'Show pay periods' });
-    expect(within(strip).getByText('Paid through 29.07')).toBeInTheDocument();
+    expect(within(strip).getByText('Work paid through 29.07')).toBeInTheDocument();
     expect(
       Array.from(strip.querySelectorAll('.period-strip-item small')).map(
         (item) => item.textContent,
@@ -184,6 +184,6 @@ describe('PayrollSummaryCard period strip', () => {
       ),
     ).toEqual(['07.10', '12.10']);
     // Nothing settled yet, so there's no 'paid through' line.
-    expect(within(strip).queryByText(/Paid through/)).not.toBeInTheDocument();
+    expect(within(strip).queryByText(/Work paid through/)).not.toBeInTheDocument();
   });
 });

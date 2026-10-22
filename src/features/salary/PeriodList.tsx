@@ -42,7 +42,8 @@ export function PeriodList({ periods, currency, onEditAdjustment }: PeriodListPr
           </span>
           <span className="period-list-text">
             <strong>
-              {formatDate(period.periodStartDate)} – {formatDate(period.periodEndDate)}
+              {t('Worked')} {formatDate(period.periodStartDate).slice(0, 5)} –{' '}
+              {formatDate(period.periodEndDate).slice(0, 5)}
             </strong>
             <small>
               {t(STATUS_LABELS[period.status])}
