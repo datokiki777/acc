@@ -15,7 +15,7 @@ import {
 import { createAppStore } from '../../store/app-store';
 import { AppStoreProvider } from '../../store/provider';
 import { date, entry, weeklySalaryPerson } from '../../test/fixtures/golden';
-import { paidThrough, visiblePeriods } from './period-strip';
+import { nextPayment, paidThrough, visiblePeriods } from './period-strip';
 import { PayrollSummaryCard } from './WorkSummaryCards';
 
 function period(
@@ -100,6 +100,26 @@ describe('period strip helpers', () => {
   });
 });
 
+describe('nextPayment', () => {
+  it('is what is still to pay on the next due date, and the work it is for', () => {
+    expect(
+      nextPayment(
+        [
+          period('2026-10-07', 'paid', '2026-09-23'),
+          { ...period('2026-10-21', 'partial', '2026-10-07'), paidAmount: 400 },
+          period('2026-11-04', 'upcoming', '2026-10-21'),
+        ],
+        '2026-10-21',
+      ),
+    ).toEqual({ amount: 600, workedFrom: '2026-10-07', workedTo: '2026-10-07' });
+  });
+
+  it('is null when nothing is coming', () => {
+    expect(nextPayment([period('2026-10-07', 'paid')], '')).toBeNull();
+    expect(nextPayment([period('2026-10-07', 'paid')], '2026-10-07')).toBeNull();
+  });
+});
+
 describe('PayrollSummaryCard period strip', () => {
   let database: AccReactDatabase;
 
@@ -144,6 +164,12 @@ describe('PayrollSummaryCard period strip', () => {
     renderCard(crew, date(2026, 9, 20));
     const strip = screen.getByRole('button', { name: 'Show pay periods' });
     expect(within(strip).getByText('Work paid through 29.07')).toBeInTheDocument();
+    // The next payment sits in this same card: when, how much, and which work it is for…
+    expect(within(strip).getByText('23.09.2026')).toBeInTheDocument();
+    expect(within(strip).getByText('1500€')).toBeInTheDocument();
+    expect(within(strip).getByText('Worked 09.09 – 23.09')).toBeInTheDocument();
+    // …and only there: the Started / Paid row no longer repeats it.
+    expect(screen.getAllByText('Next pay')).toHaveLength(1);
     expect(
       Array.from(strip.querySelectorAll('.period-strip-item small')).map(
         (item) => item.textContent,
@@ -185,5 +211,8 @@ describe('PayrollSummaryCard period strip', () => {
     ).toEqual(['07.10', '12.10']);
     // Nothing settled yet, so there's no 'paid through' line.
     expect(within(strip).queryByText(/Work paid through/)).not.toBeInTheDocument();
+    // An ended salary has no next payment to show; its end date takes the third slot instead.
+    expect(screen.queryByText('Next pay')).not.toBeInTheDocument();
+    expect(screen.getByText('Ended')).toBeInTheDocument();
   });
 });

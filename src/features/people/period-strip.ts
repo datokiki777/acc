@@ -26,3 +26,24 @@ export function paidThrough(periods: PeriodSummary[]): { date: string | null; al
   const settled = firstOpen === -1 ? periods : periods.slice(0, firstOpen);
   return { date: settled[settled.length - 1]?.periodEndDate ?? null, allPaid: firstOpen === -1 };
 }
+
+/**
+ * The next payment as the card shows it: the day it falls due, how much of it is still to pay,
+ * and which stretch of work it is for (so the pay date is never mistaken for the work period's
+ * own end). Null when nothing is coming — an ended salary, say, or everything already settled.
+ */
+export function nextPayment(
+  periods: PeriodSummary[],
+  nextPayDate: string,
+): { amount: number; workedFrom: string; workedTo: string } | null {
+  if (!nextPayDate) return null;
+  const due = periods.filter(
+    (period) => period.payDate === nextPayDate && period.status !== 'paid',
+  );
+  if (due.length === 0) return null;
+  return {
+    amount: due.reduce((sum, period) => sum + (period.amount - period.paidAmount), 0),
+    workedFrom: due[0]!.periodStartDate,
+    workedTo: due[due.length - 1]!.periodEndDate,
+  };
+}

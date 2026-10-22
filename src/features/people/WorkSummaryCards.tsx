@@ -106,18 +106,27 @@ export function PayrollSummaryCard({
           )}
         </div>
       </div>
-      <PeriodStrip onOpen={onOpenPeriods} periods={periods} />
-      <div className="panel-grid">
+      <PeriodStrip
+        currency={currency}
+        nextPayDate={salary.ended ? '' : salary.nextPayDate}
+        onOpen={onOpenPeriods}
+        periods={periods}
+      />
+      {/* The next payment lives in the period card above; this row only repeats it when there is no
+          such card (nothing to show periods for), and shows the end date once the salary ended. */}
+      <div className={salary.ended || periods.length === 0 ? 'panel-grid' : 'panel-grid is-two'}>
         <span>
           {t('Started')} <strong>{salary.startDate ? formatDate(salary.startDate) : '—'}</strong>
         </span>
         <span>
           {t('Paid')} <strong>{formatMoney(salary.paid, salary.currency, false)}</strong>
         </span>
-        <span>
-          {salary.ended ? t('Ended') : t('Next pay')}{' '}
-          <strong>{formatDate(salary.ended ? salary.endDate : salary.nextPayDate)}</strong>
-        </span>
+        {(salary.ended || periods.length === 0) && (
+          <span>
+            {salary.ended ? t('Ended') : t('Next pay')}{' '}
+            <strong>{formatDate(salary.ended ? salary.endDate : salary.nextPayDate)}</strong>
+          </span>
+        )}
       </div>
       <div className="payroll-secondary-actions">
         <button className="text-button payroll-action" onClick={onSyncPayDate} type="button">

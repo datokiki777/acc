@@ -3637,15 +3637,74 @@ a:focus-visible {
 .period-strip {
   display: grid;
   width: 100%;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.period-strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.period-strip-chevron {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.period-strip-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.period-strip-next-text {
+  display: grid;
+  gap: 1px;
+}
+
+.period-strip-next-text small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.period-strip-next-text strong {
+  font-size: 0.98rem;
+}
+
+.period-strip-next-amount {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.payroll-panel .panel-grid.is-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payroll-panel .panel-grid.is-two span:last-child {
+  justify-items: end;
+  text-align: right;
 }
 
 .period-strip-summary {
