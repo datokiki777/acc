@@ -75,7 +75,7 @@ const ka: Record<string, string> = {
   'All paid': 'ყველაფერი გადახდილია',
   'Pay periods': 'გადახდის პერიოდები',
   'Partly paid': 'ნაწილობრივ გადახდილი',
-  'Work period': 'სამუშაო პერიოდი',
+  'Pay date': 'გადახდის თარიღი',
   'Show pay periods': 'გადახდის პერიოდების ჩვენება',
   Started: 'დაწყება',
   Paid: 'გადახდილი',

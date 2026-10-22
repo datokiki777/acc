@@ -35,7 +35,7 @@ export function PeriodStrip({ periods, onOpen }: PeriodStripProps) {
             <span className={`period-dot is-${period.status}`}>
               <PeriodStatusIcon status={period.status} />
             </span>
-            <small>{formatDate(period.payDate).slice(0, 5)}</small>
+            <small>{formatDate(period.periodEndDate).slice(0, 5)}</small>
           </span>
         ))}
       </span>

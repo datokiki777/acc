@@ -743,6 +743,28 @@ describe('calculatePeriodStatuses', () => {
     ]);
   });
 
+  it('reports a delayed salary as paid through the work period end, not the later pay date', () => {
+    // A real case: 3000/month on two-week periods from 12.08; from 09.09 the salary is paid two
+    // weeks after each period ends. 6000 paid covers four periods — the last one is the work
+    // through 07.10, which falls due on 21.10. 'Paid through' must say 07.10.
+    const person = weeklySalaryPerson({
+      salaryAmount: 3000,
+      salaryTimeline: [
+        { effectiveDate: '2026-08-12', amount: 3000, periodWeeks: 2, payDelayMode: 'none' },
+        { effectiveDate: '2026-09-09', amount: 3000, periodWeeks: 2, payDelayMode: '2weeks' },
+      ],
+      entries: [entry({ id: 'p1', amount: 6000, category: 'salary', date: '2026-10-21' })],
+    });
+    const periods = calculatePeriodStatuses(person, date(2026, 10, 22));
+    expect(periods.map((period) => [period.periodEndDate, period.payDate, period.status])).toEqual([
+      ['2026-08-26', '2026-08-26', 'paid'],
+      ['2026-09-09', '2026-09-09', 'paid'],
+      ['2026-09-23', '2026-10-07', 'paid'],
+      ['2026-10-07', '2026-10-21', 'paid'],
+      ['2026-10-21', '2026-11-04', 'upcoming'],
+    ]);
+  });
+
   it('covers the tail period of an ended salary and is empty without any salary', () => {
     const ended = weeklySalaryPerson({
       salaryAmount: 4000,

@@ -18,10 +18,14 @@ import { date, entry, weeklySalaryPerson } from '../../test/fixtures/golden';
 import { paidThrough, visiblePeriods } from './period-strip';
 import { PayrollSummaryCard } from './WorkSummaryCards';
 
-function period(payDate: string, status: PeriodSummary['status']): PeriodSummary {
+function period(
+  payDate: string,
+  status: PeriodSummary['status'],
+  periodEndDate = payDate,
+): PeriodSummary {
   return {
-    periodStartDate: payDate,
-    periodEndDate: payDate,
+    periodStartDate: periodEndDate,
+    periodEndDate,
     payDate,
     amount: 1000,
     paidAmount: status === 'paid' ? 1000 : 0,
@@ -65,6 +69,17 @@ describe('period strip helpers', () => {
       '2026-09-06',
       '2026-09-07',
     ]);
+  });
+
+  it('reports paid-through as the work period’s end date, not its delayed pay date', () => {
+    // Work through 07.10 is paid on 21.10 (two-week delay): "paid through" is the 07.10.
+    expect(
+      paidThrough([
+        period('2026-10-07', 'paid', '2026-09-23'),
+        period('2026-10-21', 'paid', '2026-10-07'),
+        period('2026-11-04', 'upcoming', '2026-10-21'),
+      ]),
+    ).toEqual({ date: '2026-10-07', allPaid: false });
   });
 
   it('reports the date paid through, and whether anything is still open', () => {
@@ -165,7 +180,7 @@ describe('PayrollSummaryCard period strip', () => {
       Array.from(strip.querySelectorAll('.period-strip-item small')).map(
         (item) => item.textContent,
       ),
-    ).toEqual(['21.10', '26.10']);
+    ).toEqual(['07.10', '12.10']);
     // Nothing settled yet, so there's no 'paid through' line.
     expect(within(strip).queryByText(/Paid through/)).not.toBeInTheDocument();
   });

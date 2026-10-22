@@ -16,12 +16,13 @@ export function visiblePeriods(periods: PeriodSummary[]): PeriodSummary[] {
 }
 
 /**
- * The pay date of the last period in the unbroken run of fully-paid periods from the start — i.e.
- * "paid through" — or null when the very first one isn't settled. `allPaid` is true when nothing
- * at all is open.
+ * "Paid through": the END DATE of the last period in the unbroken run of fully-paid periods from
+ * the start — the day the work is paid up to, not the day the money was due. With a payment delay
+ * the two differ (work through 07.10 gets paid on 21.10), and "paid through" is about the work.
+ * Null when the very first period isn't settled; `allPaid` is true when nothing at all is open.
  */
 export function paidThrough(periods: PeriodSummary[]): { date: string | null; allPaid: boolean } {
   const firstOpen = periods.findIndex((period) => period.status !== 'paid');
   const settled = firstOpen === -1 ? periods : periods.slice(0, firstOpen);
-  return { date: settled[settled.length - 1]?.payDate ?? null, allPaid: firstOpen === -1 };
+  return { date: settled[settled.length - 1]?.periodEndDate ?? null, allPaid: firstOpen === -1 };
 }

@@ -18,33 +18,34 @@ describe('PeriodList', () => {
     await database.delete();
   });
 
-  it('lists the newest first, with status text, partial progress and the work period', () => {
+  it('lists the newest first, led by the work period, with status, partial progress and pay date', () => {
     database = createAccReactDatabase(`period-list-${crypto.randomUUID()}`);
     const store = createAppStore({ repository: createAppRepository(database) });
+    // Two-week payment delay: each period is paid 14 days after it ends.
     const periods: PeriodSummary[] = [
       {
-        periodStartDate: '2026-07-01',
-        periodEndDate: '2026-07-15',
-        payDate: '2026-07-15',
+        periodStartDate: '2026-09-09',
+        periodEndDate: '2026-09-23',
+        payDate: '2026-10-07',
         amount: 1500,
         paidAmount: 1500,
         status: 'paid',
       },
       {
-        periodStartDate: '2026-07-15',
-        periodEndDate: '2026-07-29',
-        payDate: '2026-07-29',
+        periodStartDate: '2026-09-23',
+        periodEndDate: '2026-10-07',
+        payDate: '2026-10-21',
         amount: 1500,
         paidAmount: 500,
         status: 'partial',
       },
       {
-        periodStartDate: '2026-07-29',
-        periodEndDate: '2026-08-12',
-        payDate: '2026-08-12',
+        periodStartDate: '2026-10-07',
+        periodEndDate: '2026-10-21',
+        payDate: '2026-11-04',
         amount: 1500,
         paidAmount: 0,
-        status: 'overdue',
+        status: 'upcoming',
       },
     ];
     render(
@@ -54,16 +55,37 @@ describe('PeriodList', () => {
     );
 
     const rows = screen.getAllByRole('listitem');
-    expect(rows.map((row) => within(row).getByText(/^\d\d\.\d\d\.\d{4}$/).textContent)).toEqual([
-      '12.08.2026',
-      '29.07.2026',
-      '15.07.2026',
+    expect(rows.map((row) => within(row).getByText(/^\d\d\.\d\d\.\d{4} – /).textContent)).toEqual([
+      '07.10.2026 – 21.10.2026',
+      '23.09.2026 – 07.10.2026',
+      '09.09.2026 – 23.09.2026',
     ]);
-    expect(within(rows[0]!).getByText('Overdue')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Upcoming')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Pay date 04.11.2026')).toBeInTheDocument();
     expect(within(rows[1]!).getByText(/Partly paid · 500€ \/ 1500€/)).toBeInTheDocument();
     expect(within(rows[2]!).getByText('Paid')).toBeInTheDocument();
-    expect(
-      within(rows[2]!).getByText(/Work period 01\.07\.2026 – 15\.07\.2026/),
-    ).toBeInTheDocument();
+  });
+
+  it('leaves out the pay date when it is the same day the period ends', () => {
+    database = createAccReactDatabase(`period-list-${crypto.randomUUID()}`);
+    const store = createAppStore({ repository: createAppRepository(database) });
+    render(
+      <AppStoreProvider store={store}>
+        <PeriodList
+          currency="EUR"
+          periods={[
+            {
+              periodStartDate: '2026-09-09',
+              periodEndDate: '2026-09-23',
+              payDate: '2026-09-23',
+              amount: 1500,
+              paidAmount: 0,
+              status: 'overdue',
+            },
+          ]}
+        />
+      </AppStoreProvider>,
+    );
+    expect(screen.queryByText(/Pay date/)).not.toBeInTheDocument();
   });
 });

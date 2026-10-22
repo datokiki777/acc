@@ -30,16 +30,19 @@ export function PeriodList({ periods, currency }: PeriodListProps) {
             <PeriodStatusIcon status={period.status} />
           </span>
           <span className="period-list-text">
-            <strong>{formatDate(period.payDate)}</strong>
+            <strong>
+              {formatDate(period.periodStartDate)} – {formatDate(period.periodEndDate)}
+            </strong>
             <small>
               {t(STATUS_LABELS[period.status])}
               {period.status === 'partial' &&
                 ` · ${formatMoney(period.paidAmount, currency, false)} / ${formatMoney(period.amount, currency, false)}`}
             </small>
-            <small className="period-list-range">
-              {t('Work period')} {formatDate(period.periodStartDate)} –{' '}
-              {formatDate(period.periodEndDate)}
-            </small>
+            {period.payDate !== period.periodEndDate && (
+              <small className="period-list-range">
+                {t('Pay date')} {formatDate(period.payDate)}
+              </small>
+            )}
           </span>
           <strong className="period-list-amount">
             {formatMoney(period.amount, currency, false)}
