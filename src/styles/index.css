@@ -3784,8 +3784,14 @@ a:focus-visible {
 
 .period-list {
   display: grid;
+  /* About seven rows tall, then the list itself scrolls — the title, the close button and
+     'Add adjustment' stay put instead of the whole sheet growing with every new period. Newest
+     first, so what matters is already at the top. */
+  max-height: min(56dvh, 28rem);
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 }
 
