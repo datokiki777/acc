@@ -54,7 +54,7 @@ const ka: Record<string, string> = {
   Unarchive: 'დაბრუნება',
   Archive: 'დაარქივება',
   Delete: 'წაშლა',
-  Overdue: 'ვადაგადაცილებული',
+  Overdue: 'გადაცილებული',
   entry: 'ჩანაწერი',
   entries: 'ჩანაწერი',
   Net: 'სუფთა',
@@ -270,7 +270,7 @@ const ka: Record<string, string> = {
   'Tracking unavailable': 'თვალყურის დევნება მიუწვდომელია',
   'No backup yet': 'ჯერ არ არის ბექაფი',
   'Refresh your backup': 'განაახლე შენი ბექაფი',
-  'Backup overdue': 'ბექაფი ვადაგადაცილებულია',
+  'Backup overdue': 'ბექაფი გადაცილებულია',
   'Backup recommended': 'ბექაფი რეკომენდებულია',
   'Backup is current': 'ბექაფი აქტუალურია',
   'Export a JSON backup to protect this device data.':
