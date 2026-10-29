@@ -46,6 +46,7 @@ interface PersonCardProps {
   person: PersistedPerson;
   onDeletePerson: () => void;
   onDeleteEntry: (entryId: string) => void;
+  onDeleteAdjustment: (adjustmentId: string) => void;
   onToggleArchive: () => void;
   swipeOpen: PersonSwipeAction | null;
   onSwipeOpen: (action: PersonSwipeAction | null) => void;
@@ -55,6 +56,7 @@ export function PersonCard({
   person,
   onDeletePerson,
   onDeleteEntry,
+  onDeleteAdjustment,
   onToggleArchive,
   swipeOpen,
   onSwipeOpen,
@@ -370,6 +372,7 @@ export function PersonCard({
                   adjustments={person.salaryAdjustments ?? []}
                   currency={person.currency}
                   onAdd={() => openSheet('salary-adjustment', person.id)}
+                  onDelete={onDeleteAdjustment}
                   onEdit={(adjustmentId) => openSheet('salary-adjustment', person.id, adjustmentId)}
                   periods={periods}
                 />

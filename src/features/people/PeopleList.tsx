@@ -10,10 +10,16 @@ import { PersonCard, type PersonSwipeAction } from './PersonCard';
 interface PeopleListProps {
   onDeletePerson: (person: PersistedPerson) => void;
   onDeleteEntry: (person: PersistedPerson, entryId: string) => void;
+  onDeleteAdjustment: (person: PersistedPerson, adjustmentId: string) => void;
   onToggleArchive: (person: PersistedPerson) => void;
 }
 
-export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: PeopleListProps) {
+export function PeopleList({
+  onDeletePerson,
+  onDeleteEntry,
+  onDeleteAdjustment,
+  onToggleArchive,
+}: PeopleListProps) {
   const [openSwipe, setOpenSwipe] = useState<{
     personId: string;
     action: PersonSwipeAction;
@@ -83,6 +89,7 @@ export function PeopleList({ onDeletePerson, onDeleteEntry, onToggleArchive }: P
       {filtered.map((person) => (
         <PersonCard
           key={person.id}
+          onDeleteAdjustment={(adjustmentId) => onDeleteAdjustment(person, adjustmentId)}
           onDeleteEntry={(entryId) => onDeleteEntry(person, entryId)}
           onDeletePerson={() => onDeletePerson(person)}
           onSwipeOpen={(action) => setOpenSwipe(action ? { personId: person.id, action } : null)}

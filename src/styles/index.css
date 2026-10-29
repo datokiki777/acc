@@ -3903,7 +3903,7 @@ a:focus-visible {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--surface-raised) 70%, transparent);
+  background: var(--surface-raised);
 }
 
 .adjustments-summary-toggle {
@@ -3997,19 +3997,32 @@ a:focus-visible {
   border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
+.swipe-row-shell {
+  min-height: 52px;
+  border-radius: 0;
+}
+
+.swipe-row-surface {
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 160ms ease;
+}
+
+.swipe-row-surface.is-pressing {
+  opacity: 0.8;
+}
+
 .adjustments-row {
   display: flex;
   align-items: center;
   min-height: 52px;
   gap: 12px;
   padding: 6px 0;
-  border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  background: var(--surface-raised);
 }
 
 .adjustments-row-icon {

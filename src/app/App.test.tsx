@@ -330,6 +330,73 @@ describe('ACC application', () => {
     expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toMatchObject([
       { type: 'bonus', amount: 100, startDate: localDateString() },
     ]);
+    // 'Paid now' is on by default, so the money handed over is on record too — not left as owed.
+    expect(store.getState().peopleByMode.work[0]?.entries).toMatchObject([
+      { amount: 100, type: 'Gave', category: 'salary', date: localDateString() },
+    ]);
+  });
+
+  it('records no payment for a bonus when Paid now is switched off', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Later bonus team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const team = store.getState().peopleByMode.work[0]!;
+    act(() => store.getState().openSheet('salary-adjustment', team.id));
+
+    const form = await screen.findByRole('dialog', { name: 'Add adjustment' });
+    await user.click(within(form).getByRole('button', { name: 'Bonus' }));
+    await user.type(within(form).getByLabelText(/^Amount/), '250');
+    await user.click(within(form).getByRole('checkbox', { name: 'Paid now' }));
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toHaveLength(1),
+    );
+    expect(store.getState().peopleByMode.work[0]?.entries).toEqual([]);
+  });
+
+  it('deletes an adjustment by swiping its row and confirming, like an entry', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Swipe team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const team = store.getState().peopleByMode.work[0]!;
+    await act(async () => {
+      await store
+        .getState()
+        .setSalaryAdjustments(team.id, [
+          { id: 'b1', type: 'bonus', startDate: '2026-07-10', amount: 100, note: 'good month' },
+        ]);
+    });
+
+    await user.click(await findPersonSummary('Swipe team'));
+    await user.click(await screen.findByRole('button', { name: /1 adjustment/ }));
+    swipe(await screen.findByRole('button', { name: /good month/ }), 240, 120);
+    await user.click(await screen.findByRole('button', { name: /^Delete adjustment · Bonus/ }));
+
+    const confirm = await screen.findByRole('dialog', { name: 'Delete adjustment?' });
+    expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toHaveLength(1);
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }));
+    await waitFor(() =>
+      expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toBeUndefined(),
+    );
   });
 
   it('only offers Adjustment for someone with a salary, and not when editing an entry', async () => {

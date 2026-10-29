@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { createAccReactDatabase, type AccReactDatabase } from '../../db/database';
@@ -70,6 +70,7 @@ describe('AdjustmentsSummary', () => {
     database = createAccReactDatabase(`adjustments-${crypto.randomUUID()}`);
     const store = createAppStore({ repository: createAppRepository(database) });
     const onEdit = vi.fn();
+    const onDelete = vi.fn();
     const onAdd = vi.fn();
     render(
       <AppStoreProvider store={store}>
@@ -77,13 +78,14 @@ describe('AdjustmentsSummary', () => {
           adjustments={list}
           currency="EUR"
           onAdd={onAdd}
+          onDelete={onDelete}
           onEdit={onEdit}
           periods={periods()}
           {...handlers}
         />
       </AppStoreProvider>,
     );
-    return { onEdit, onAdd };
+    return { onEdit, onDelete, onAdd };
   }
 
   it('is one closed line — the count, the net, and a short breakdown — until opened', () => {
@@ -109,6 +111,39 @@ describe('AdjustmentsSummary', () => {
 
     await user.click(screen.getByRole('button', { name: '+ Add adjustment' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes with a swipe left, the same gesture entries use, and a tap on an open row only closes it', async () => {
+    const user = userEvent.setup();
+    const { onEdit, onDelete } = renderSummary(adjustments);
+    await user.click(screen.getByRole('button', { expanded: false }));
+
+    const row = screen.getByRole('button', { name: /^Stoppage · 4 days/ });
+    const shell = row.closest('.entry-swipe-shell') as HTMLElement;
+    const deleteButton = within(shell).getByRole('button', {
+      name: 'Delete adjustment · Stoppage · 4 days',
+      hidden: true,
+    });
+    // Closed, the Delete button is out of reach.
+    expect(deleteButton).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.pointerDown(row, {
+      button: 0,
+      clientX: 240,
+      clientY: 20,
+      isPrimary: true,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(row, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 1 });
+    fireEvent.pointerUp(row, { clientX: 120, clientY: 20, isPrimary: true, pointerId: 1 });
+    expect(deleteButton).toHaveAttribute('tabindex', '0');
+    // The click that ends a swipe isn't a tap, so it doesn't open the editor.
+    fireEvent.click(row);
+    expect(onEdit).not.toHaveBeenCalled();
+
+    await user.click(deleteButton);
+    expect(onDelete).toHaveBeenCalledWith('stop');
+    expect(deleteButton).toHaveAttribute('tabindex', '-1');
   });
 
   it('takes no room at all when there are no adjustments', () => {

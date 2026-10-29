@@ -82,6 +82,13 @@ const ka: Record<string, string> = {
   adjustment: 'კორექტირება',
   adjustments: 'კორექტირება',
   'Add adjustment': 'კორექტირების დამატება',
+  'Paid now': 'ახლავე გადახდილია',
+  'Also records the payment as a salary entry, so it does not stay owed.':
+    'ჩაიწერება გადახდის ჩანაწერიც, რომ დავალიანებად არ დარჩეს.',
+  'Delete adjustment': 'კორექტირების წაშლა',
+  'Delete adjustment?': 'წავშალო კორექტირება?',
+  'Are you sure you want to delete this adjustment?':
+    'დარწმუნებული ხარ, რომ გინდა წაშალო ეს კორექტირება?',
   'Edit adjustment': 'კორექტირების რედაქტირება',
   Stoppage: 'გაჩერება',
   Bonus: 'ბონუსი',

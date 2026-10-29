@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { SwipeToDeleteRow } from '../../components/SwipeToDeleteRow';
 import type { PeriodSummary } from '../../domain/salary';
 import { useTranslation, type TranslateFn } from '../../i18n/useTranslation';
 import type { Currency, SalaryAdjustment } from '../../types/domain';
@@ -11,6 +12,7 @@ interface AdjustmentsSummaryProps {
   periods: PeriodSummary[];
   currency: Currency;
   onEdit: (adjustmentId: string) => void;
+  onDelete: (adjustmentId: string) => void;
   onAdd: () => void;
 }
 
@@ -37,10 +39,12 @@ export function AdjustmentsSummary({
   periods,
   currency,
   onEdit,
+  onDelete,
   onAdd,
 }: AdjustmentsSummaryProps) {
   const t = useTranslation();
   const [open, setOpen] = useState(false);
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   if (adjustments.length === 0) return null;
   const { rows, total } = summarizeAdjustments(adjustments, periods);
 
@@ -79,11 +83,16 @@ export function AdjustmentsSummary({
       {open && (
         <div className="adjustments-summary-list">
           {rows.map((row) => (
-            <button
+            <SwipeToDeleteRow
               className="adjustments-row"
+              deleteLabel={`${t('Delete adjustment')} · ${label(row, t)}`}
+              deleteText={t('Delete')}
               key={row.id}
-              onClick={() => onEdit(row.id)}
-              type="button"
+              onActivate={() => onEdit(row.id)}
+              onDelete={() => onDelete(row.id)}
+              onSwipeOpen={(isOpen) => setSwipedId(isOpen ? row.id : null)}
+              rowId={row.id}
+              swipeOpen={swipedId === row.id}
             >
               <span className={`adjustments-row-icon ${tone(row.net)}`} aria-hidden="true">
                 {row.type === 'bonus' ? '+' : '−'}
@@ -99,7 +108,7 @@ export function AdjustmentsSummary({
               <strong className={`adjustments-amount ${tone(row.net)}`}>
                 {signed(row.net, currency)}
               </strong>
-            </button>
+            </SwipeToDeleteRow>
           ))}
           <button className="text-button adjustments-add" onClick={onAdd} type="button">
             + {t('Add adjustment')}

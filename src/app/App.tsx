@@ -99,6 +99,7 @@ export function App() {
   const sheetEntryId = useAppStore((state) => state.ui.entryId);
   const deletePerson = useAppStore((state) => state.deletePerson);
   const deleteEntry = useAppStore((state) => state.deleteEntry);
+  const setSalaryAdjustments = useAppStore((state) => state.setSalaryAdjustments);
   const toggleArchive = useAppStore((state) => state.toggleArchive);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
@@ -408,6 +409,18 @@ export function App() {
     });
   }
 
+  function confirmAdjustmentDelete(person: PersistedPerson, adjustmentId: string) {
+    setConfirmation({
+      title: t('Delete adjustment?'),
+      message: t('Are you sure you want to delete this adjustment?'),
+      action: () =>
+        setSalaryAdjustments(
+          person.id,
+          (person.salaryAdjustments ?? []).filter((item) => item.id !== adjustmentId),
+        ),
+    });
+  }
+
   function confirmEntryDelete(person: PersistedPerson, entryId: string) {
     setConfirmation({
       title: t('Delete entry?'),
@@ -480,6 +493,7 @@ export function App() {
           )}
           {initialized && (
             <PeopleList
+              onDeleteAdjustment={confirmAdjustmentDelete}
               onDeleteEntry={confirmEntryDelete}
               onDeletePerson={confirmPersonDelete}
               onToggleArchive={confirmToggleArchive}

@@ -27,6 +27,8 @@ interface FormState {
   amountText: string;
   /** Stoppage only: the amount was typed in, instead of following the daily rate. */
   amountEdited: boolean;
+  /** Bonus only, when adding: also record the payment, so it doesn't sit there as owed. */
+  paidNow: boolean;
   note: string;
 }
 
@@ -38,6 +40,7 @@ export function SalaryAdjustmentSheet() {
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
   );
   const setAdjustments = useAppStore((state) => state.setSalaryAdjustments);
+  const addEntry = useAppStore((state) => state.addEntry);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const existing = person?.salaryAdjustments?.find((item) => item.id === adjustmentId);
 
@@ -50,6 +53,7 @@ export function SalaryAdjustmentSheet() {
           endDate: existing.endDate ?? existing.startDate,
           amountText: existing.amount === undefined ? '' : String(existing.amount),
           amountEdited: existing.type === 'stoppage' && existing.amount !== undefined,
+          paidNow: false,
           note: existing.note ?? '',
         }
       : {
@@ -58,6 +62,7 @@ export function SalaryAdjustmentSheet() {
           endDate: today,
           amountText: '',
           amountEdited: false,
+          paidNow: true,
           note: '',
         };
   });
@@ -151,6 +156,17 @@ export function SalaryAdjustmentSheet() {
           )
         : [...(person!.salaryAdjustments ?? []), build(makeId())];
       await setAdjustments(person!.id, next);
+      // A bonus is money handed over, so by default the payment is recorded with it — otherwise the
+      // period would show it as still owed (and overdue) until a payment entry was added by hand.
+      if (!existing && form.type === 'bonus' && form.paidNow) {
+        await addEntry(person!.id, {
+          amount: Math.round(Number(form.amountText)),
+          type: 'Gave',
+          date: form.startDate,
+          comment: form.note.trim() || t('Bonus'),
+          category: 'salary',
+        });
+      }
       closeAfterSave();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save');
@@ -296,6 +312,22 @@ export function SalaryAdjustmentSheet() {
           <p className="adjustment-preview" role="status">
             {preview}
           </p>
+        )}
+
+        {form.type === 'bonus' && !existing && (
+          <>
+            <label className="toggle-field">
+              <span>{t('Paid now')}</span>
+              <input
+                checked={form.paidNow}
+                onChange={(event) => update({ paidNow: event.target.checked })}
+                type="checkbox"
+              />
+            </label>
+            <p className="inline-note">
+              {t('Also records the payment as a salary entry, so it does not stay owed.')}
+            </p>
+          </>
         )}
 
         <label className="field">
