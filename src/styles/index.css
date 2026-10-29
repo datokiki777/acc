@@ -3792,7 +3792,14 @@ a:focus-visible {
   padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* No scrollbar at all: on a phone it sat on top of the amounts from the moment the sheet
+     opened. The list still scrolls by touch, and the last row being cut off shows there is more. */
+  scrollbar-width: none;
   list-style: none;
+}
+
+.period-list::-webkit-scrollbar {
+  display: none;
 }
 
 .period-list-row {
