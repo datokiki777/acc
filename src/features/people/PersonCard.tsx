@@ -116,13 +116,16 @@ export function PersonCard({
         }}
         onSwipeOpen={(open) => setOpenEntrySwipeId(open ? entry.id : null)}
         swipeOpen={openEntrySwipeId === entry.id}
+        isBonus={Boolean(entry.adjustmentId)}
         title={
           mode === 'work'
-            ? entry.category === 'salary'
-              ? 'Salary'
-              : entry.category === 'gift'
-                ? 'Other'
-                : entry.type
+            ? entry.adjustmentId
+              ? t('Bonus')
+              : entry.category === 'salary'
+                ? t('Salary')
+                : entry.category === 'gift'
+                  ? t('Other')
+                  : entry.type
             : entry.type
         }
       />

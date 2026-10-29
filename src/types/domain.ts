@@ -12,6 +12,8 @@ export interface Entry {
   date: string;
   comment?: string;
   category?: EntryCategory;
+  /** The bonus this payment was recorded with, so deleting or editing the bonus follows it. */
+  adjustmentId?: string;
 }
 
 export interface SalarySettings {

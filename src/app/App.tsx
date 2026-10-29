@@ -99,7 +99,7 @@ export function App() {
   const sheetEntryId = useAppStore((state) => state.ui.entryId);
   const deletePerson = useAppStore((state) => state.deletePerson);
   const deleteEntry = useAppStore((state) => state.deleteEntry);
-  const setSalaryAdjustments = useAppStore((state) => state.setSalaryAdjustments);
+  const deleteSalaryAdjustment = useAppStore((state) => state.deleteSalaryAdjustment);
   const toggleArchive = useAppStore((state) => state.toggleArchive);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
@@ -410,14 +410,14 @@ export function App() {
   }
 
   function confirmAdjustmentDelete(person: PersistedPerson, adjustmentId: string) {
+    // A bonus recorded as paid has its payment entry linked to it, and goes with it.
+    const hasPayment = person.entries.some((entry) => entry.adjustmentId === adjustmentId);
     setConfirmation({
       title: t('Delete adjustment?'),
-      message: t('Are you sure you want to delete this adjustment?'),
-      action: () =>
-        setSalaryAdjustments(
-          person.id,
-          (person.salaryAdjustments ?? []).filter((item) => item.id !== adjustmentId),
-        ),
+      message: hasPayment
+        ? `${t('Are you sure you want to delete this adjustment?')} ${t('The payment recorded with it will be deleted too.')}`
+        : t('Are you sure you want to delete this adjustment?'),
+      action: () => deleteSalaryAdjustment(person.id, adjustmentId),
     });
   }
 

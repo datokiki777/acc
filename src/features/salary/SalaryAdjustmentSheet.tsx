@@ -27,7 +27,7 @@ interface FormState {
   amountText: string;
   /** Stoppage only: the amount was typed in, instead of following the daily rate. */
   amountEdited: boolean;
-  /** Bonus only, when adding: also record the payment, so it doesn't sit there as owed. */
+  /** Bonus only: the payment is recorded with it, so it doesn't sit there as owed. */
   paidNow: boolean;
   note: string;
 }
@@ -40,7 +40,8 @@ export function SalaryAdjustmentSheet() {
     state.peopleByMode.work.find((candidate) => candidate.id === personId),
   );
   const setAdjustments = useAppStore((state) => state.setSalaryAdjustments);
-  const addEntry = useAppStore((state) => state.addEntry);
+  const deleteAdjustment = useAppStore((state) => state.deleteSalaryAdjustment);
+  const setPayment = useAppStore((state) => state.setAdjustmentPayment);
   const { closeAfterSave, requestClose } = useAppNavigation();
   const existing = person?.salaryAdjustments?.find((item) => item.id === adjustmentId);
 
@@ -53,7 +54,7 @@ export function SalaryAdjustmentSheet() {
           endDate: existing.endDate ?? existing.startDate,
           amountText: existing.amount === undefined ? '' : String(existing.amount),
           amountEdited: existing.type === 'stoppage' && existing.amount !== undefined,
-          paidNow: false,
+          paidNow: person?.entries.some((entry) => entry.adjustmentId === existing.id) ?? false,
           note: existing.note ?? '',
         }
       : {
@@ -150,22 +151,33 @@ export function SalaryAdjustmentSheet() {
     }
     setIsSubmitting(true);
     try {
+      const adjustmentId = existing?.id ?? makeId();
       const next = existing
         ? (person!.salaryAdjustments ?? []).map((item) =>
             item.id === existing.id ? build(existing.id) : item,
           )
-        : [...(person!.salaryAdjustments ?? []), build(makeId())];
+        : [...(person!.salaryAdjustments ?? []), build(adjustmentId)];
       await setAdjustments(person!.id, next);
-      // A bonus is money handed over, so by default the payment is recorded with it — otherwise the
-      // period would show it as still owed (and overdue) until a payment entry was added by hand.
-      if (!existing && form.type === 'bonus' && form.paidNow) {
-        await addEntry(person!.id, {
-          amount: Math.round(Number(form.amountText)),
-          type: 'Gave',
-          date: form.startDate,
-          comment: form.note.trim() || t('Bonus'),
-          category: 'salary',
-        });
+      // A bonus is money handed over, so by default the payment is recorded with it (and linked to
+      // it): otherwise the period would show it as still owed, and overdue, until a payment entry
+      // was added by hand. Editing the bonus keeps that payment in step; switching 'Paid now' off,
+      // or turning the adjustment into something that isn't a bonus, takes the payment away.
+      if (form.type === 'bonus') {
+        await setPayment(
+          person!.id,
+          adjustmentId,
+          form.paidNow
+            ? {
+                amount: Math.round(Number(form.amountText)),
+                type: 'Gave',
+                date: form.startDate,
+                comment: form.note.trim(),
+                category: 'salary',
+              }
+            : null,
+        );
+      } else if (existing) {
+        await setPayment(person!.id, adjustmentId, null);
       }
       closeAfterSave();
     } catch (caught) {
@@ -183,10 +195,7 @@ export function SalaryAdjustmentSheet() {
     }
     setIsSubmitting(true);
     try {
-      await setAdjustments(
-        person!.id,
-        (person!.salaryAdjustments ?? []).filter((item) => item.id !== existing?.id),
-      );
+      await deleteAdjustment(person!.id, existing!.id);
       closeAfterSave();
     } finally {
       setIsSubmitting(false);
@@ -314,7 +323,7 @@ export function SalaryAdjustmentSheet() {
           </p>
         )}
 
-        {form.type === 'bonus' && !existing && (
+        {form.type === 'bonus' && (
           <>
             <label className="toggle-field">
               <span>{t('Paid now')}</span>

@@ -537,6 +537,107 @@ describe('ACC application', () => {
     expect(await screen.findByRole('dialog', { name: 'Edit adjustment' })).toBeVisible();
   });
 
+  it('a bonus and its payment are linked: edited together, shown as a bonus, deleted together', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Linked team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const team = store.getState().peopleByMode.work[0]!;
+    const current = () => store.getState().peopleByMode.work[0]!;
+
+    // Add a bonus with the default 'Paid now': the payment is recorded and linked to it.
+    act(() => store.getState().openSheet('salary-adjustment', team.id));
+    let form = await screen.findByRole('dialog', { name: 'Add adjustment' });
+    await user.click(within(form).getByRole('button', { name: 'Bonus' }));
+    await user.type(within(form).getByLabelText(/^Amount/), '250');
+    await user.type(within(form).getByLabelText(/^Note/), 'two days');
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(current().salaryAdjustments).toHaveLength(1));
+    const adjustmentId = current().salaryAdjustments![0]!.id;
+    expect(current().entries).toHaveLength(1);
+    expect(current().entries[0]).toMatchObject({
+      amount: 250,
+      comment: 'two days',
+      adjustmentId,
+    });
+
+    // In the entries it reads as a bonus, in its own colour, not as plain Salary.
+    await user.click(await findPersonSummary('Linked team'));
+    const bonusTitle = document.querySelector('.entry-kind-bonus');
+    expect(bonusTitle).toHaveTextContent('Bonus');
+
+    // Editing the bonus keeps its payment in step.
+    act(() => store.getState().openSheet('salary-adjustment', team.id, adjustmentId));
+    form = await screen.findByRole('dialog', { name: 'Edit adjustment' });
+    expect(within(form).getByRole('checkbox', { name: 'Paid now' })).toBeChecked();
+    const amount = within(form).getByLabelText(/^Amount/);
+    await user.clear(amount);
+    await user.type(amount, '300');
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(current().entries[0]?.amount).toBe(300));
+    expect(current().entries).toHaveLength(1);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    // Switching 'Paid now' off removes the payment but keeps the bonus.
+    act(() => store.getState().openSheet('salary-adjustment', team.id, adjustmentId));
+    form = await screen.findByRole('dialog', { name: 'Edit adjustment' });
+    await user.click(within(form).getByRole('checkbox', { name: 'Paid now' }));
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(current().entries).toEqual([]));
+    expect(current().salaryAdjustments).toHaveLength(1);
+  });
+
+  it('one delete removes a bonus and its payment, and the confirmation says so', async () => {
+    const user = userEvent.setup();
+    const store = renderApp();
+    await waitFor(() => expect(store.getState().initialized).toBe(true));
+    await act(async () => {
+      await store.getState().setMode('work');
+      await store.getState().addPerson({
+        ...draft('Cascade team'),
+        salaryEnabled: true,
+        salaryAmount: 3000,
+        salaryStartDate: '2026-07-01',
+      });
+    });
+    const team = store.getState().peopleByMode.work[0]!;
+    await act(async () => {
+      await store
+        .getState()
+        .setSalaryAdjustments(team.id, [
+          { id: 'b1', type: 'bonus', startDate: '2026-07-10', amount: 100, note: 'good month' },
+        ]);
+      await store.getState().setAdjustmentPayment(team.id, 'b1', {
+        amount: 100,
+        type: 'Gave',
+        date: '2026-07-10',
+        comment: 'good month',
+        category: 'salary',
+      });
+    });
+
+    await user.click(await findPersonSummary('Cascade team'));
+    await user.click(await screen.findByRole('button', { name: /1 adjustment/ }));
+    swipe(await screen.findByRole('button', { name: /good month/ }), 240, 120);
+    await user.click(await screen.findByRole('button', { name: /^Delete adjustment · Bonus/ }));
+
+    const confirm = await screen.findByRole('dialog', { name: 'Delete adjustment?' });
+    expect(
+      within(confirm).getByText(/The payment recorded with it will be deleted too\./),
+    ).toBeVisible();
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(store.getState().peopleByMode.work[0]?.entries).toEqual([]));
+    expect(store.getState().peopleByMode.work[0]?.salaryAdjustments).toBeUndefined();
+  });
+
   it('lets you choose the rest days in Change Salary, and keeps Sunday as the default', async () => {
     const user = userEvent.setup();
     const store = renderApp();

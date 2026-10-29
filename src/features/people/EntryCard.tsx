@@ -32,6 +32,8 @@ interface EntryCardProps {
   effect: number;
   currency: Currency;
   swipeOpen: boolean;
+  /** The payment recorded with a bonus: shown in its own colour, apart from plain salary. */
+  isBonus?: boolean;
   onSwipeOpen: (open: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -43,6 +45,7 @@ export function EntryCard({
   effect,
   currency,
   swipeOpen,
+  isBonus = false,
   onSwipeOpen,
   onEdit,
   onDelete,
@@ -146,7 +149,7 @@ export function EntryCard({
       </div>
       <div
         aria-label={`${title}, ${formatMoney(effect, currency)}. Long press or press F2 to edit`}
-        className={`entry-card-surface ${entry.comment ? 'has-comment' : ''} ${isDragging ? 'is-dragging' : ''} ${longPress.isPressing ? 'is-pressing' : ''}`}
+        className={`entry-card-surface ${isBonus ? 'is-bonus' : ''} ${entry.comment ? 'has-comment' : ''} ${isDragging ? 'is-dragging' : ''} ${longPress.isPressing ? 'is-pressing' : ''}`}
         onContextMenu={(event) => event.preventDefault()}
         onKeyDown={(event) => {
           if (event.key === 'F2') {
@@ -162,7 +165,7 @@ export function EntryCard({
         tabIndex={0}
       >
         <strong
-          className={`entry-kind ${entry.category === 'salary' ? 'entry-kind-salary' : entry.type === 'Gave' ? 'positive' : 'negative'}`}
+          className={`entry-kind ${isBonus ? 'entry-kind-bonus' : entry.category === 'salary' ? 'entry-kind-salary' : entry.type === 'Gave' ? 'positive' : 'negative'}`}
         >
           {title}
         </strong>

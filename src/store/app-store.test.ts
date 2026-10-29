@@ -290,6 +290,73 @@ describe('Zustand application actions', () => {
     expect(store.getState().peopleByMode.work[0]!.salaryCycleDate).toBeUndefined();
   });
 
+  it('keeps a bonus and the payment recorded with it together: created, updated, removed', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+    const bonus = { id: 'bonus-1', type: 'bonus' as const, startDate: '2026-07-10', amount: 250 };
+    await store.getState().setSalaryAdjustments(employee.id, [bonus]);
+    const payment = {
+      amount: 250,
+      type: 'Gave' as const,
+      date: '2026-07-10',
+      comment: 'good month',
+      category: 'salary' as const,
+    };
+
+    await store.getState().setAdjustmentPayment(employee.id, 'bonus-1', payment);
+    let entries = store.getState().peopleByMode.work[0]!.entries;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ amount: 250, adjustmentId: 'bonus-1', category: 'salary' });
+    const paymentId = entries[0]!.id;
+
+    // Updating keeps the same entry (same id), not a second one.
+    await store
+      .getState()
+      .setAdjustmentPayment(employee.id, 'bonus-1', { ...payment, amount: 300 });
+    entries = store.getState().peopleByMode.work[0]!.entries;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ id: paymentId, amount: 300 });
+
+    await store.getState().setAdjustmentPayment(employee.id, 'bonus-1', null);
+    expect(store.getState().peopleByMode.work[0]!.entries).toEqual([]);
+  });
+
+  it('deleting an adjustment takes its linked payment with it, and nothing else', async () => {
+    const store = makeStore();
+    await store.getState().initialize();
+    await store.getState().setMode('work');
+    await store.getState().addPerson(salaryDraft());
+    const employee = store.getState().peopleByMode.work[0]!;
+    await store.getState().setSalaryAdjustments(employee.id, [
+      { id: 'bonus-1', type: 'bonus', startDate: '2026-07-10', amount: 250 },
+      { id: 'stop-1', type: 'stoppage', startDate: '2026-07-14', endDate: '2026-07-15' },
+    ]);
+    const ordinary = {
+      amount: 100,
+      type: 'Gave' as const,
+      date: '2026-07-12',
+      comment: '',
+      category: 'salary' as const,
+    };
+    await store.getState().addEntry(employee.id, ordinary);
+    await store
+      .getState()
+      .setAdjustmentPayment(employee.id, 'bonus-1', { ...ordinary, amount: 250 });
+    expect(store.getState().peopleByMode.work[0]!.entries).toHaveLength(2);
+
+    await store.getState().deleteSalaryAdjustment(employee.id, 'bonus-1');
+    const person = store.getState().peopleByMode.work[0]!;
+    expect(person.salaryAdjustments?.map((item) => item.id)).toEqual(['stop-1']);
+    // The bonus's own payment went; the ordinary salary entry stayed.
+    expect(person.entries.map((entry) => entry.amount)).toEqual([100]);
+
+    await store.getState().deleteSalaryAdjustment(employee.id, 'stop-1');
+    expect(store.getState().peopleByMode.work[0]!.salaryAdjustments).toBeUndefined();
+  });
+
   it('saves the chosen rest days, treating Sunday-only as the unset default', async () => {
     const store = makeStore();
     await store.getState().initialize();

@@ -4066,3 +4066,14 @@ a:focus-visible {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* The payment recorded with a bonus: the accent colour, so it stands apart from plain salary. */
+.entry-kind-bonus {
+  color: var(--accent);
+}
+
+.entry-card-surface.is-bonus .entry-amount {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}

@@ -77,6 +77,7 @@ export interface EntryDraft {
   date: string;
   comment: string;
   category?: EntryCategory;
+  adjustmentId?: string;
 }
 
 type UndoAction =
@@ -130,6 +131,14 @@ export interface AppStoreState {
   ) => Promise<void>;
   updateSalaryTimeline: (personId: string, timeline: SalaryTimelineEntry[]) => Promise<void>;
   setSalaryAdjustments: (personId: string, adjustments: SalaryAdjustment[]) => Promise<void>;
+  /** Removes an adjustment together with the payment that was recorded with it, in one step. */
+  deleteSalaryAdjustment: (personId: string, adjustmentId: string) => Promise<void>;
+  /** Creates, updates or (with null) removes the payment recorded together with a bonus. */
+  setAdjustmentPayment: (
+    personId: string,
+    adjustmentId: string,
+    payment: Omit<EntryDraft, 'adjustmentId'> | null,
+  ) => Promise<void>;
   setSalaryRestDays: (personId: string, restDays: number[]) => Promise<void>;
   setSalaryCycleDate: (personId: string, cycleDate: string) => Promise<void>;
   importBackup: (
@@ -255,6 +264,7 @@ function entryFromDraft(draft: EntryDraft, id: string): PersistedEntry {
     date: draft.date,
     comment: draft.comment.trim(),
     ...(category ? { category } : {}),
+    ...(draft.adjustmentId ? { adjustmentId: draft.adjustmentId } : {}),
   };
 }
 
@@ -592,6 +602,62 @@ export function createAppStore(dependencies: StoreDependencies): StoreApi<AppSto
             if (adjustments.length > 0) next.salaryAdjustments = adjustments;
             else delete next.salaryAdjustments;
             return next;
+          });
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async deleteSalaryAdjustment(personId, adjustmentId) {
+        await withError(async () => {
+          const state = get();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            const remaining = (person.salaryAdjustments ?? []).filter(
+              (item) => item.id !== adjustmentId,
+            );
+            const next = {
+              ...person,
+              entries: person.entries.filter((entry) => entry.adjustmentId !== adjustmentId),
+            };
+            if (remaining.length > 0) next.salaryAdjustments = remaining;
+            else delete next.salaryAdjustments;
+            return next;
+          });
+          await persistModePeople(state.mode, people);
+        });
+      },
+
+      async setAdjustmentPayment(personId, adjustmentId, payment) {
+        await withError(async () => {
+          const state = get();
+          const people = state.peopleByMode[state.mode].map((person) => {
+            if (person.id !== personId) return person;
+            const linked = person.entries.filter((entry) => entry.adjustmentId === adjustmentId);
+            if (!payment) {
+              return linked.length === 0
+                ? person
+                : {
+                    ...person,
+                    entries: person.entries.filter((entry) => entry.adjustmentId !== adjustmentId),
+                  };
+            }
+            if (linked.length === 0) {
+              const created = entryFromDraft({ ...payment, adjustmentId }, createId());
+              return { ...person, entries: [created, ...person.entries] };
+            }
+            // Keep the first payment where it is (same id, same place in the list), updated; any
+            // stray duplicates go.
+            const keepId = linked[0]!.id;
+            return {
+              ...person,
+              entries: person.entries
+                .filter((entry) => entry.adjustmentId !== adjustmentId || entry.id === keepId)
+                .map((entry) =>
+                  entry.id === keepId
+                    ? { ...entry, ...entryFromDraft({ ...payment, adjustmentId }, keepId) }
+                    : entry,
+                ),
+            };
           });
           await persistModePeople(state.mode, people);
         });
