@@ -17,9 +17,8 @@ import {
 } from 'firebase/firestore';
 
 import type { ReactBackupData } from '../types/persistence';
+import { historyExpiry, planHistoryRetention } from './cloud-retention';
 import { firebaseAuth, firestore } from './firebase';
-
-export const CLOUD_HISTORY_RETENTION_DAYS = 30;
 
 export interface CloudUser {
   uid: string;
@@ -97,18 +96,27 @@ function formatDateLabel(value: string): string {
   return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value;
 }
 
-async function pruneOldHistory(uid: string, referenceDate: Date): Promise<void> {
-  const cutoff = new Date(referenceDate);
-  cutoff.setDate(cutoff.getDate() - CLOUD_HISTORY_RETENTION_DAYS);
+/**
+ * Trims the daily history after a save (see planHistoryRetention for the rule) and brings the
+ * stored expiry of the copies that stay up to date.
+ */
+async function applyHistoryRetention(uid: string, referenceDate: Date): Promise<void> {
   const historyRef = collection(firestore, 'acc_users', uid, 'backups_history');
   const snapshot = await getDocs(historyRef);
-  const deletions = snapshot.docs
-    .filter((entry) => {
-      const parsed = new Date(entry.id);
-      return !Number.isNaN(parsed.getTime()) && parsed < cutoff;
-    })
-    .map((entry) => deleteDoc(entry.ref));
-  await Promise.all(deletions);
+  const plan = planHistoryRetention(
+    snapshot.docs.map((entry) => ({
+      id: entry.id,
+      expireAtMs: (entry.data().expireAt as Timestamp | undefined)?.toMillis?.(),
+    })),
+    referenceDate,
+  );
+  const byId = new Map(snapshot.docs.map((entry) => [entry.id, entry.ref]));
+  await Promise.all([
+    ...plan.remove.map((id) => deleteDoc(byId.get(id)!)),
+    ...plan.refreshExpiry.map(({ id, expireAt }) =>
+      setDoc(byId.get(id)!, { expireAt: Timestamp.fromDate(expireAt) }, { merge: true }),
+    ),
+  ]);
 }
 
 export async function saveBackupToCloud(
@@ -125,14 +133,13 @@ export async function saveBackupToCloud(
     'backups_history',
     historyDateKey(referenceDate),
   );
-  const expireAt = new Date(referenceDate);
-  expireAt.setDate(expireAt.getDate() + CLOUD_HISTORY_RETENTION_DAYS);
+  const expireAt = historyExpiry(historyDateKey(referenceDate));
   const record = { payload, exportDate: backup.exportDate, savedAt: serverTimestamp() };
   await Promise.all([
     setDoc(latestRef, record),
     setDoc(historyRef, { ...record, expireAt: Timestamp.fromDate(expireAt) }),
   ]);
-  await pruneOldHistory(uid, referenceDate);
+  await applyHistoryRetention(uid, referenceDate);
 }
 
 export async function listCloudBackups(
